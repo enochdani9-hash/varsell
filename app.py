@@ -6,7 +6,6 @@ import string
 import base64
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 
-# Optional PostgreSQL import (used automatically on Render when DATABASE_URL is set)
 try:
     import psycopg2
     import psycopg2.extras
@@ -15,6 +14,7 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "varsell-super-secret-dev-key-2026")
+ADMIN_MASTER_KEY = os.environ.get("ADMIN_KEY", "VARSELL-BOSS-2026")
 
 DB_NAME = "varsell.db"
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
@@ -25,7 +25,6 @@ IS_POSTGRES = bool(DATABASE_URL and psycopg2)
 
 
 class DBWrapper:
-    """Unified database wrapper that works seamlessly with both Cloud PostgreSQL and local SQLite"""
     def __init__(self):
         if IS_POSTGRES:
             self.conn = psycopg2.connect(DATABASE_URL)
@@ -67,9 +66,11 @@ def init_db():
                 whatsapp_number TEXT NOT NULL,
                 category TEXT DEFAULT 'General',
                 bio TEXT DEFAULT '',
+                logo_data TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS logo_data TEXT DEFAULT ''")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id SERIAL PRIMARY KEY,
@@ -93,9 +94,14 @@ def init_db():
                 whatsapp_number TEXT NOT NULL,
                 category TEXT DEFAULT 'General',
                 bio TEXT DEFAULT '',
+                logo_data TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        try:
+            conn.execute("ALTER TABLE stores ADD COLUMN logo_data TEXT DEFAULT ''")
+        except Exception:
+            pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,7 +151,7 @@ def clean_whatsapp_number(number):
 def index():
     conn = get_db_connection()
     recent_stores = conn.execute(
-        "SELECT store_name, store_slug, category, bio FROM stores ORDER BY id DESC LIMIT 6"
+        "SELECT store_name, store_slug, category, bio, logo_data FROM stores ORDER BY id DESC LIMIT 6"
     ).fetchall()
     conn.close()
     return render_template("index.html", recent_stores=recent_stores)
@@ -229,7 +235,7 @@ def change_key():
 
     new_key = normalize_key(request.form.get("new_key", ""))
     if len(new_key) < 4:
-        flash("Your new Secret Key must be at least 4 characters long (letters or numbers).", "error")
+        flash("Your new Secret Key must be at least 4 characters long.", "error")
         return redirect(url_for("dashboard"))
 
     conn = get_db_connection()
@@ -253,6 +259,44 @@ def change_key():
 
     session["store_key"] = new_key
     flash(f"Your Store Secret Key has been updated to: {new_key}", "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/update-store", methods=["POST"])
+def update_store():
+    current_key = session.get("store_key")
+    if not current_key:
+        return redirect(url_for("index"))
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    if not store:
+        conn.close()
+        return redirect(url_for("index"))
+
+    store_name = request.form.get("store_name", store["store_name"]).strip()
+    whatsapp_number = clean_whatsapp_number(request.form.get("whatsapp_number", store["whatsapp_number"]))
+    category = request.form.get("category", store["category"]).strip()
+    bio = request.form.get("bio", store["bio"]).strip()
+    logo_file = request.files.get("logo_file")
+
+    logo_data = store["logo_data"] or ""
+    if logo_file and logo_file.filename != "":
+        file_bytes = logo_file.read()
+        mime_type = logo_file.mimetype or "image/jpeg"
+        b64_encoded = base64.b64encode(file_bytes).decode("utf-8")
+        logo_data = f"data:{mime_type};base64,{b64_encoded}"
+
+    conn.execute(
+        """UPDATE stores
+           SET store_name = ?, whatsapp_number = ?, category = ?, bio = ?, logo_data = ?
+           WHERE id = ?""",
+        (store_name, whatsapp_number, category, bio, logo_data, store["id"])
+    )
+    conn.commit()
+    conn.close()
+
+    flash("Store profile & branding updated!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -397,6 +441,68 @@ def view_store(store_slug):
     conn.close()
 
     return render_template("store.html", store=store, products=products)
+
+
+# --- PART 2: FOUNDER MASTER ADMIN ROUTES ---
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin_panel():
+    if request.method == "POST":
+        entered_key = request.form.get("admin_key", "").strip()
+        if entered_key == ADMIN_MASTER_KEY:
+            session["is_varsell_admin"] = True
+            flash("Welcome back, Founder!", "success")
+            return redirect(url_for("admin_panel"))
+        else:
+            flash("Invalid Master Admin Key.", "error")
+            return redirect(url_for("admin_panel"))
+
+    is_admin = session.get("is_varsell_admin", False)
+    if not is_admin:
+        return render_template("admin.html", is_admin=False)
+
+    conn = get_db_connection()
+    stores = conn.execute("""
+        SELECT s.*, COUNT(p.id) AS product_count
+        FROM stores s
+        LEFT JOIN products p ON s.id = p.store_id
+        GROUP BY s.id
+        ORDER BY s.id DESC
+    """).fetchall()
+
+    total_products_row = conn.execute("SELECT COUNT(*) AS cnt FROM products").fetchone()
+    total_products = total_products_row["cnt"] if total_products_row else 0
+    conn.close()
+
+    db_type = "Neon Cloud PostgreSQL" if IS_POSTGRES else "Local SQLite"
+    return render_template(
+        "admin.html",
+        is_admin=True,
+        stores=stores,
+        total_products=total_products,
+        db_type=db_type
+    )
+
+
+@app.route("/admin/delete-store/<int:store_id>", methods=["POST"])
+def admin_delete_store(store_id):
+    if not session.get("is_varsell_admin"):
+        return redirect(url_for("admin_panel"))
+
+    conn = get_db_connection()
+    conn.execute("DELETE FROM products WHERE store_id = ?", (store_id,))
+    conn.execute("DELETE FROM stores WHERE id = ?", (store_id,))
+    conn.commit()
+    conn.close()
+
+    flash("Store and its products deleted.", "success")
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin-logout")
+def admin_logout():
+    session.pop("is_varsell_admin", None)
+    return redirect(url_for("index"))
 
 
 if __name__ == "__main__":
