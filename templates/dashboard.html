@@ -20,9 +20,13 @@
   <header class="border-b border-white/10 bg-slate-900/70 backdrop-blur-xl sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <a href="/" class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-lg shadow-lg">
-          V
-        </a>
+        {% if store.logo_data %}
+          <img src="{{ store.logo_data }}" alt="Logo" class="w-10 h-10 rounded-xl object-cover border border-emerald-400/40 shadow-lg" />
+        {% else %}
+          <a href="/" class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-lg shadow-lg">
+            {{ store.store_name[:1]|upper }}
+          </a>
+        {% endif %}
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-extrabold text-white text-base sm:text-lg leading-none">{{ store.store_name }}</h1>
@@ -32,7 +36,14 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          onclick="toggleProfileEditor()"
+          class="bg-white/5 hover:bg-white/10 border border-white/15 text-xs sm:text-sm font-bold text-slate-200 px-3.5 py-2.5 rounded-xl transition"
+        >
+          ⚙️ Edit Store & Logo
+        </button>
         <a
           href="/store/{{ store.store_slug }}"
           target="_blank"
@@ -42,7 +53,7 @@
         </a>
         <a
           href="/logout"
-          class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-semibold text-slate-300 px-3.5 py-2.5 rounded-xl transition"
+          class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-semibold text-slate-300 px-3 py-2.5 rounded-xl transition"
         >
           Lock
         </a>
@@ -57,7 +68,7 @@
     <div class="bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-transparent border border-emerald-500/40 rounded-3xl p-6">
       <h2 class="text-xl font-extrabold text-emerald-300">🎉 Boom! Your Varsell Store is Live!</h2>
       <p class="text-xs sm:text-sm text-slate-200 mt-1">
-        Your Secret Key and Store Link are ready below. You can customize your Secret Key anytime or start posting products immediately.
+        Your Secret Key and Store Link are ready below. You can upload a Store Logo using the "Edit Store & Logo" button above!
       </p>
     </div>
     {% endif %}
@@ -74,10 +85,83 @@
       {% endif %}
     {% endwith %}
 
+    <!-- Collapsible Store Branding & Profile Editor (Part 3) -->
+    <div id="profileEditorCard" class="hidden bg-slate-900/95 border-2 border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Store Customization</span>
+          <h2 class="text-xl font-extrabold text-white">Edit Store Branding & Details</h2>
+        </div>
+        <button type="button" onclick="toggleProfileEditor()" class="text-xs text-slate-400 hover:text-white">✕ Close</button>
+      </div>
+
+      <form action="/update-store" method="POST" enctype="multipart/form-data" class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Store Name</label>
+          <input
+            type="text"
+            name="store_name"
+            value="{{ store.store_name }}"
+            required
+            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Order WhatsApp Number</label>
+          <input
+            type="text"
+            name="whatsapp_number"
+            value="{{ store.whatsapp_number }}"
+            required
+            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Category</label>
+          <input
+            type="text"
+            name="category"
+            value="{{ store.category }}"
+            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Upload Custom Store Logo</label>
+          <input
+            type="file"
+            name="logo_file"
+            accept="image/*"
+            class="w-full text-xs text-slate-300 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30"
+          />
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Store Bio / Delivery Information</label>
+          <textarea
+            name="bio"
+            rows="2"
+            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+          >{{ store.bio }}</textarea>
+        </div>
+
+        <div class="sm:col-span-2 flex justify-end">
+          <button
+            type="submit"
+            class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-6 py-3 rounded-2xl text-sm transition shadow-lg"
+          >
+            Save Store Changes
+          </button>
+        </div>
+      </form>
+    </div>
+
     <!-- Top Credentials Grid: Custom Secret Key + Public Store Link -->
     <div class="grid md:grid-cols-2 gap-5">
 
-      <!-- Secret Key Card (With Built-in Custom Key Editor) -->
+      <!-- Secret Key Card -->
       <div class="bg-slate-900/90 border border-white/10 rounded-3xl p-6 flex flex-col justify-between shadow-xl">
         <div class="flex items-start justify-between gap-3">
           <div>
@@ -102,7 +186,6 @@
           </div>
         </div>
 
-        <!-- Hidden Custom Key Form (Opens when 'Customize Key' is clicked) -->
         <form id="keyEditorForm" action="/change-key" method="POST" class="hidden mt-4 pt-4 border-t border-white/10">
           <label class="block text-xs font-bold text-slate-300 mb-2">Type your new custom Secret Key (min 4 characters):</label>
           <div class="flex gap-2">
@@ -196,7 +279,6 @@
             </div>
           </div>
 
-          <!-- Interactive Photo Upload Dropzone -->
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Product Photo (From Phone or PC)</label>
             <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/15 hover:border-emerald-400/60 bg-slate-950/60 rounded-2xl p-4 cursor-pointer transition text-center">
@@ -282,7 +364,6 @@
                 </div>
               </div>
 
-              <!-- Product Management Controls -->
               <div class="p-5 pt-0 grid grid-cols-2 gap-2">
                 <form action="/toggle-stock/{{ p.id }}" method="POST">
                   <button
@@ -318,8 +399,11 @@
 
   <script>
     function toggleKeyEditor() {
-      const form = document.getElementById("keyEditorForm");
-      form.classList.toggle("hidden");
+      document.getElementById("keyEditorForm").classList.toggle("hidden");
+    }
+
+    function toggleProfileEditor() {
+      document.getElementById("profileEditorCard").classList.toggle("hidden");
     }
 
     function showToast(message, textToCopy) {
