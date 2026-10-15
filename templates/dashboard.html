@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ store.store_name }} — Varsell Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050811; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen pb-16">
+
+  <!-- Toast Notification Popup -->
+  <div id="toast" class="fixed top-5 right-5 z-50 hidden bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"></div>
+
+  <!-- Top Navigation -->
+  <header class="border-b border-white/10 bg-slate-900/70 backdrop-blur-xl sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <a href="/" class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-lg shadow-lg">
+          V
+        </a>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-white text-base sm:text-lg leading-none">{{ store.store_name }}</h1>
+            <span class="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">Live Store</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Varsell Seller Command Center</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <a
+          href="/store/{{ store.store_slug }}"
+          target="_blank"
+          class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs sm:text-sm font-extrabold px-4 py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20"
+        >
+          View Live Store ↗
+        </a>
+        <a
+          href="/logout"
+          class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-semibold text-slate-300 px-3.5 py-2.5 rounded-xl transition"
+        >
+          Lock
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- New Store Welcome Alert -->
+    {% if new_store_alert %}
+    <div class="bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-transparent border border-emerald-500/40 rounded-3xl p-6">
+      <h2 class="text-xl font-extrabold text-emerald-300">🎉 Boom! Your Varsell Store is Live!</h2>
+      <p class="text-xs sm:text-sm text-slate-200 mt-1">
+        Your Secret Key and Store Link are ready below. You can customize your Secret Key anytime or start posting products immediately.
+      </p>
+    </div>
+    {% endif %}
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="p-4 rounded-2xl text-sm font-bold flex items-center gap-2.5 {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-200{% else %}bg-emerald-500/15 border border-emerald-500/40 text-emerald-200{% endif %}">
+            <span>{% if category == 'error' %}⚠️{% else %}✅{% endif %}</span>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Top Credentials Grid: Custom Secret Key + Public Store Link -->
+    <div class="grid md:grid-cols-2 gap-5">
+
+      <!-- Secret Key Card (With Built-in Custom Key Editor) -->
+      <div class="bg-slate-900/90 border border-white/10 rounded-3xl p-6 flex flex-col justify-between shadow-xl">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">Your Store Secret Key (Login Password)</span>
+            <p class="text-2xl sm:text-3xl font-mono font-extrabold text-amber-400 mt-1 tracking-wider">{{ store.access_key }}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              onclick="toggleKeyEditor()"
+              class="bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold px-3 py-2 rounded-xl transition"
+            >
+              ✏️ Customize Key
+            </button>
+            <button
+              type="button"
+              onclick="showToast('Secret Key copied to clipboard!', '{{ store.access_key }}')"
+              class="bg-white/5 hover:bg-white/10 text-xs font-bold px-3.5 py-2 rounded-xl border border-white/10 transition"
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+
+        <!-- Hidden Custom Key Form (Opens when 'Customize Key' is clicked) -->
+        <form id="keyEditorForm" action="/change-key" method="POST" class="hidden mt-4 pt-4 border-t border-white/10">
+          <label class="block text-xs font-bold text-slate-300 mb-2">Type your new custom Secret Key (min 4 characters):</label>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              name="new_key"
+              placeholder="e.g. KOFIDRIP2026"
+              required
+              minlength="4"
+              class="flex-1 bg-slate-950 border border-amber-400/40 rounded-xl px-3.5 py-2 text-sm text-white font-mono uppercase focus:outline-none focus:border-amber-400"
+            />
+            <button
+              type="submit"
+              class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl transition"
+            >
+              Save New Key
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Public Store Link Card -->
+      <div class="bg-slate-900/90 border border-white/10 rounded-3xl p-6 flex flex-col justify-between shadow-xl">
+        <div class="flex items-start justify-between gap-3">
+          <div class="overflow-hidden">
+            <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">Your Shareable Store Link</span>
+            <p class="text-sm sm:text-base font-mono font-bold text-emerald-400 truncate mt-2">
+              {{ request.host_url }}store/{{ store.store_slug }}
+            </p>
+          </div>
+          <button
+            type="button"
+            onclick="showToast('Store Link copied! Paste it on your WhatsApp status.', '{{ request.host_url }}store/{{ store.store_slug }}')"
+            class="shrink-0 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20"
+          >
+            Copy Store Link
+          </button>
+        </div>
+        <p class="text-xs text-slate-400 mt-3">
+          💡 Put this link on your WhatsApp Bio, Status, Instagram, or TikTok so customers can shop 24/7.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Main Workspace: Add Product Form + Live Inventory -->
+    <div class="grid lg:grid-cols-12 gap-8 items-start">
+
+      <!-- Left Column: Post New Product -->
+      <div class="lg:col-span-5 bg-slate-900/90 border border-white/10 rounded-3xl p-6 shadow-2xl">
+        <div class="mb-5">
+          <span class="text-[11px] font-bold uppercase tracking-widest text-emerald-400">Inventory Uploader</span>
+          <h2 class="text-xl font-extrabold text-white">Add a New Product</h2>
+        </div>
+
+        <form action="/add-product" method="POST" enctype="multipart/form-data" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Product Title *</label>
+            <input
+              type="text"
+              name="product_name"
+              placeholder="e.g. Designer Black Leather Belt"
+              required
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+            />
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Currency</label>
+              <select
+                name="currency"
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+              >
+                <option value="GHS">GHS (₵)</option>
+                <option value="NGN">NGN (₦)</option>
+                <option value="USD">USD ($)</option>
+                <option value="KES">KES (KSh)</option>
+              </select>
+            </div>
+            <div class="col-span-2">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Price *</label>
+              <input
+                type="number"
+                step="0.01"
+                name="price"
+                placeholder="e.g. 200"
+                required
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+              />
+            </div>
+          </div>
+
+          <!-- Interactive Photo Upload Dropzone -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Product Photo (From Phone or PC)</label>
+            <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/15 hover:border-emerald-400/60 bg-slate-950/60 rounded-2xl p-4 cursor-pointer transition text-center">
+              <img id="imagePreview" class="hidden w-full h-40 object-cover rounded-xl mb-2" />
+              <div id="uploadPrompt" class="py-2">
+                <p class="text-xs font-bold text-emerald-400">📸 Click to choose photo from gallery</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">JPG, PNG, or WEBP supported</p>
+              </div>
+              <input
+                type="file"
+                name="image_file"
+                accept="image/*"
+                onchange="previewSelectedImage(event)"
+                class="hidden"
+              />
+            </label>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Or Paste Image Link (Optional)</label>
+            <input
+              type="url"
+              name="image_url"
+              placeholder="https://..."
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Sizes / Details / Description</label>
+            <textarea
+              name="description"
+              rows="2"
+              placeholder="e.g. Size 3, pure leather, available for immediate delivery..."
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+            ></textarea>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-emerald-500/20"
+          >
+            + Publish Product to Store
+          </button>
+        </form>
+      </div>
+
+      <!-- Right Column: Live Products Grid -->
+      <div class="lg:col-span-7 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Store Catalog</span>
+            <h2 class="text-xl font-extrabold text-white">Your Active Products ({{ products|length }})</h2>
+          </div>
+        </div>
+
+        {% if products %}
+          <div class="grid sm:grid-cols-2 gap-5">
+            {% for p in products %}
+            <div class="bg-slate-900/90 border border-white/10 rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group">
+              <div>
+                <div class="relative overflow-hidden bg-slate-950 h-48">
+                  <img
+                    src="{{ p.image_data }}"
+                    alt="{{ p.product_name }}"
+                    class="w-full h-full object-cover group-hover:scale-105 transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
+                  />
+                  <span class="absolute top-3 left-3 text-[11px] font-extrabold px-2.5 py-1 rounded-full {% if p.in_stock == 1 %}bg-emerald-500 text-slate-950{% else %}bg-red-500 text-white{% endif %}">
+                    {% if p.in_stock == 1 %}● In Stock{% else %}Sold Out{% endif %}
+                  </span>
+                </div>
+
+                <div class="p-5">
+                  <div class="flex items-start justify-between gap-2">
+                    <h3 class="font-extrabold text-white text-base">{{ p.product_name }}</h3>
+                    <span class="shrink-0 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-extrabold text-xs px-2.5 py-1 rounded-xl">
+                      {{ p.currency }} {{ "%.2f"|format(p.price) }}
+                    </span>
+                  </div>
+                  {% if p.description %}
+                    <p class="text-xs text-slate-400 mt-1.5 line-clamp-2">{{ p.description }}</p>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Product Management Controls -->
+              <div class="p-5 pt-0 grid grid-cols-2 gap-2">
+                <form action="/toggle-stock/{{ p.id }}" method="POST">
+                  <button
+                    type="submit"
+                    class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs font-bold py-2.5 rounded-xl transition"
+                  >
+                    {% if p.in_stock == 1 %}Mark Sold Out{% else %}Mark In Stock{% endif %}
+                  </button>
+                </form>
+
+                <form action="/delete-product/{{ p.id }}" method="POST">
+                  <button
+                    type="submit"
+                    class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold py-2.5 rounded-xl transition"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="bg-slate-900/50 border-2 border-dashed border-white/10 rounded-3xl p-12 text-center">
+            <p class="text-base font-bold text-white">Your store catalog is empty</p>
+            <p class="text-xs text-slate-400 mt-1">Use the uploader on the left to post your first product photo and price.</p>
+          </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    function toggleKeyEditor() {
+      const form = document.getElementById("keyEditorForm");
+      form.classList.toggle("hidden");
+    }
+
+    function showToast(message, textToCopy) {
+      if (textToCopy) {
+        navigator.clipboard.writeText(textToCopy);
+      }
+      const toast = document.getElementById("toast");
+      toast.textContent = "✨ " + message;
+      toast.classList.remove("hidden");
+      setTimeout(() => {
+        toast.classList.add("hidden");
+      }, 2800);
+    }
+
+    function previewSelectedImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const preview = document.getElementById("imagePreview");
+        const prompt = document.getElementById("uploadPrompt");
+        preview.src = e.target.result;
+        preview.classList.remove("hidden");
+        prompt.innerHTML = `<p class="text-xs font-bold text-emerald-400">✅ Photo Selected (${file.name})</p>`;
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>

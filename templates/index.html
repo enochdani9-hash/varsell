@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Varsell — Turn Your WhatsApp Into a 24/7 Online Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050811; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .bg-grid {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen relative overflow-x-hidden bg-grid">
+
+  <!-- Ambient Glows -->
+  <div class="pointer-events-none fixed top-[-150px] left-[-150px] w-[500px] h-[500px] rounded-full bg-emerald-500/15 blur-[130px] z-0"></div>
+  <div class="pointer-events-none fixed bottom-[-150px] right-[-150px] w-[500px] h-[500px] rounded-full bg-teal-500/10 blur-[140px] z-0"></div>
+
+  <!-- Navbar -->
+  <header class="border-b border-white/10 bg-[#050811]/80 backdrop-blur-xl sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3 group">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold text-xl shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition">
+          V
+        </div>
+        <div>
+          <span class="text-xl font-extrabold tracking-tight text-white">Varsell</span>
+          <span class="hidden sm:inline-block ml-2 text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-emerald-400 px-2 py-0.5 rounded-full">Cloud Stores</span>
+        </div>
+      </a>
+      <a href="#unlock-store" class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-semibold text-emerald-400 px-4 py-2.5 rounded-xl transition">
+        🔑 Unlock My Store
+      </a>
+    </div>
+  </header>
+
+  <!-- Flash Alerts -->
+  <div class="max-w-6xl mx-auto px-4 mt-6 relative z-10">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="p-4 rounded-2xl mb-3 text-sm font-semibold flex items-center gap-3 backdrop-blur-xl {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-200{% else %}bg-emerald-500/15 border border-emerald-500/40 text-emerald-200{% endif %}">
+            <span>{% if category == 'error' %}⚠️{% else %}✨{% endif %}</span>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- Main Hero Grid -->
+  <main class="max-w-6xl mx-auto px-4 py-10 lg:py-16 grid lg:grid-cols-12 gap-12 items-center relative z-10">
+
+    <!-- Left Column: Brand Pitch & Login -->
+    <div class="lg:col-span-6 space-y-8">
+      <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs font-bold px-3.5 py-1.5 rounded-full">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        NO CODING • NO MONTHLY FEES • INSTANT STORE LINK
+      </div>
+
+      <h1 class="text-4xl sm:text-6xl font-extrabold leading-[1.1] tracking-tight text-white">
+        Your WhatsApp hustle deserves a <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">real storefront.</span>
+      </h1>
+
+      <p class="text-slate-400 text-base sm:text-lg leading-relaxed">
+        Stop flooding your status with 40 photos every morning. Launch your clean Varsell store in 60 seconds, lock it with your own custom Secret Key, and receive organized customer orders straight on WhatsApp.
+      </p>
+
+      <!-- Value Pills -->
+      <div class="grid grid-cols-3 gap-3 pt-2">
+        <div class="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-3.5">
+          <p class="text-xl font-extrabold text-white">60 Sec</p>
+          <p class="text-xs text-slate-400 mt-0.5">Store Setup</p>
+        </div>
+        <div class="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-3.5">
+          <p class="text-xl font-extrabold text-emerald-400">Custom Key</p>
+          <p class="text-xs text-slate-400 mt-0.5">1-Click Login</p>
+        </div>
+        <div class="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-3.5">
+          <p class="text-xl font-extrabold text-white">100% Free</p>
+          <p class="text-xs text-slate-400 mt-0.5">Direct to WhatsApp</p>
+        </div>
+      </div>
+
+      <!-- Existing Seller Login Card -->
+      <div id="unlock-store" class="bg-slate-900/70 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span>🔐</span> Already have a Varsell Store?
+          </h2>
+          <span class="text-[11px] text-slate-400">Seller Portal</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Enter your custom Secret Key below to manage your products.</p>
+        <form action="/login" method="POST" class="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            name="access_key"
+            placeholder="Enter your Secret Key (e.g. KOFI2026)"
+            required
+            class="flex-1 bg-slate-950/90 border border-white/15 rounded-2xl px-4 py-3.5 text-white uppercase tracking-wider font-mono text-sm focus:outline-none focus:border-emerald-400 transition"
+          />
+          <button
+            type="submit"
+            class="bg-white text-slate-950 hover:bg-emerald-400 font-extrabold px-6 py-3.5 rounded-2xl text-sm transition shadow-lg"
+          >
+            Unlock Store →
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Right Column: Create Store Card -->
+    <div class="lg:col-span-6">
+      <div class="bg-slate-900/80 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 sm:p-9 shadow-2xl relative">
+        <div class="mb-6">
+          <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Instant Store Generator</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">Launch Your Store</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">Fill in your details and choose a Secret Key you will easily remember.</p>
+        </div>
+
+        <form action="/create-store" method="POST" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Business / Store Name *</label>
+            <input
+              type="text"
+              name="store_name"
+              placeholder="e.g. Kofi Drip & Kicks"
+              required
+              class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-400 transition"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">WhatsApp Number (For Orders) *</label>
+            <input
+              type="text"
+              name="whatsapp_number"
+              placeholder="e.g. 0541234567"
+              required
+              class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-400 transition"
+            />
+          </div>
+
+          <!-- Custom Secret Key Input -->
+          <div class="bg-emerald-500/5 border border-emerald-500/25 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-bold uppercase tracking-wider text-emerald-300">
+                Create Your Secret Key *
+              </label>
+              <button
+                type="button"
+                onclick="generateEasyKey()"
+                class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline"
+              >
+                ✨ Suggest Easy Key
+              </button>
+            </div>
+            <input
+              type="text"
+              id="customKeyInput"
+              name="custom_key"
+              placeholder="e.g. KOFIDRIP99 (min 4 characters)"
+              required
+              minlength="4"
+              class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-4 py-3 text-sm text-amber-300 font-mono uppercase tracking-wider focus:outline-none focus:border-emerald-400"
+            />
+            <p class="text-[11px] text-slate-400 mt-1.5">
+              This is your personal password to log into your store. You can change it anytime inside your dashboard.
+            </p>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Category</label>
+              <select
+                name="category"
+                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+              >
+                <option value="Fashion & Drip">Fashion & Drip</option>
+                <option value="Phones & Gadgets">Phones & Gadgets</option>
+                <option value="Beauty & Skincare">Beauty & Skincare</option>
+                <option value="Shoes & Sneakers">Shoes & Sneakers</option>
+                <option value="Food & Groceries">Food & Groceries</option>
+                <option value="General Store">General Store</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Delivery Note / Bio</label>
+              <input
+                type="text"
+                name="bio"
+                placeholder="e.g. Nationwide delivery in GH"
+                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-extrabold py-4 rounded-2xl text-sm tracking-wide transition shadow-xl shadow-emerald-500/20"
+          >
+            Launch My Varsell Store Now →
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Live Marketplace Showcase -->
+  {% if recent_stores %}
+  <section class="max-w-6xl mx-auto px-4 py-14 border-t border-white/10 relative z-10">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Live Network</span>
+        <h3 class="text-2xl font-extrabold text-white">Trending Stores on Varsell</h3>
+      </div>
+    </div>
+    <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
+      {% for s in recent_stores %}
+      <a href="/store/{{ s.store_slug }}" class="group bg-slate-900/60 hover:bg-slate-900 border border-white/10 hover:border-emerald-500/50 rounded-3xl p-6 transition flex flex-col justify-between shadow-lg">
+        <div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+              {{ s.category }}
+            </span>
+            <span class="w-8 h-8 rounded-full bg-white/5 group-hover:bg-emerald-500 group-hover:text-slate-950 flex items-center justify-center text-xs font-bold transition">↗</span>
+          </div>
+          <h4 class="text-xl font-extrabold text-white mt-4 group-hover:text-emerald-300 transition">{{ s.store_name }}</h4>
+          <p class="text-xs text-slate-400 mt-1.5 line-clamp-2">{{ s.bio or 'Verified Varsell storefront. Click to browse items and order on WhatsApp.' }}</p>
+        </div>
+        <div class="mt-5 pt-4 border-t border-white/5 flex items-center justify-between text-xs font-bold text-slate-300">
+          <span>/store/{{ s.store_slug }}</span>
+          <span class="text-emerald-400">Shop Now →</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <script>
+    function generateEasyKey() {
+      const words = ["BOSS", "SHOP", "STAR", "DRIP", "GOLD", "FAST", "KING", "VIBE"];
+      const word = words[Math.floor(Math.random() * words.length)];
+      const num = Math.floor(100 + Math.random() * 900);
+      document.getElementById("customKeyInput").value = `${word}-${num}`;
+    }
+  </script>
+</body>
+</html>
