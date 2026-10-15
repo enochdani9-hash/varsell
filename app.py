@@ -6,49 +6,110 @@ import string
 import base64
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 
+# Optional PostgreSQL import (used automatically on Render when DATABASE_URL is set)
+try:
+    import psycopg2
+    import psycopg2.extras
+except ImportError:
+    psycopg2 = None
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "varsell-super-secret-dev-key-2026")
+
 DB_NAME = "varsell.db"
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+IS_POSTGRES = bool(DATABASE_URL and psycopg2)
+
+
+class DBWrapper:
+    """Unified database wrapper that works seamlessly with both Cloud PostgreSQL and local SQLite"""
+    def __init__(self):
+        if IS_POSTGRES:
+            self.conn = psycopg2.connect(DATABASE_URL)
+        else:
+            self.conn = sqlite3.connect(DB_NAME)
+            self.conn.row_factory = sqlite3.Row
+
+    def execute(self, query, params=()):
+        if IS_POSTGRES:
+            pg_query = query.replace("?", "%s")
+            cursor = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cursor.execute(pg_query, params)
+            return cursor
+        else:
+            cursor = self.conn.cursor()
+            cursor.execute(query, params)
+            return cursor
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
 
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return DBWrapper()
 
 
 def init_db():
     conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS stores (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            store_name TEXT NOT NULL,
-            store_slug TEXT UNIQUE NOT NULL,
-            access_key TEXT UNIQUE NOT NULL,
-            whatsapp_number TEXT NOT NULL,
-            category TEXT DEFAULT 'General',
-            bio TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            store_id INTEGER NOT NULL,
-            product_name TEXT NOT NULL,
-            price REAL NOT NULL,
-            currency TEXT DEFAULT 'GHS',
-            description TEXT DEFAULT '',
-            image_data TEXT NOT NULL,
-            in_stock INTEGER DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE
-        )
-    """)
-
+    if IS_POSTGRES:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS stores (
+                id SERIAL PRIMARY KEY,
+                store_name TEXT NOT NULL,
+                store_slug TEXT UNIQUE NOT NULL,
+                access_key TEXT UNIQUE NOT NULL,
+                whatsapp_number TEXT NOT NULL,
+                category TEXT DEFAULT 'General',
+                bio TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS products (
+                id SERIAL PRIMARY KEY,
+                store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+                product_name TEXT NOT NULL,
+                price REAL NOT NULL,
+                currency TEXT DEFAULT 'GHS',
+                description TEXT DEFAULT '',
+                image_data TEXT NOT NULL,
+                in_stock INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    else:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS stores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                store_name TEXT NOT NULL,
+                store_slug TEXT UNIQUE NOT NULL,
+                access_key TEXT UNIQUE NOT NULL,
+                whatsapp_number TEXT NOT NULL,
+                category TEXT DEFAULT 'General',
+                bio TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                store_id INTEGER NOT NULL,
+                product_name TEXT NOT NULL,
+                price REAL NOT NULL,
+                currency TEXT DEFAULT 'GHS',
+                description TEXT DEFAULT '',
+                image_data TEXT NOT NULL,
+                in_stock INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE
+            )
+        """)
     conn.commit()
     conn.close()
 
@@ -57,13 +118,11 @@ init_db()
 
 
 def generate_access_key():
-    """Fallback simple key generator if a user leaves the custom key blank"""
     digits = "".join(secrets.choice(string.digits) for _ in range(4))
     return f"VS-{digits}"
 
 
 def normalize_key(raw_key):
-    """Cleans a user's custom key (uppercase, spaces turned into dashes)"""
     cleaned = re.sub(r"\s+", "-", raw_key.strip().upper())
     cleaned = re.sub(r"[^A-Z0-9_-]", "", cleaned)
     return cleaned
@@ -106,7 +165,6 @@ def create_store():
 
     conn = get_db_connection()
 
-    # Handle Custom Secret Key vs Auto-Generated Key
     if custom_key_input:
         access_key = normalize_key(custom_key_input)
         if len(access_key) < 4:
@@ -126,7 +184,6 @@ def create_store():
         while conn.execute("SELECT id FROM stores WHERE access_key = ?", (access_key,)).fetchone():
             access_key = generate_access_key()
 
-    # Generate unique URL slug
     base_slug = create_slug(store_name)
     slug = base_slug
     counter = 1
@@ -181,7 +238,6 @@ def change_key():
         conn.close()
         return redirect(url_for("index"))
 
-    # Make sure no other store is using this key
     taken = conn.execute(
         "SELECT id FROM stores WHERE access_key = ? AND id != ?", (new_key, store["id"])
     ).fetchone()
