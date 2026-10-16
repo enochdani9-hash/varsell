@@ -23,11 +23,11 @@ if DATABASE_URL.startswith("postgres://"):
 
 IS_POSTGRES = bool(DATABASE_URL and psycopg2)
 
-# Reserved system paths so a store slug never collides with app routes
+# Reserved system routes so a seller doesn't accidentally overwrite app routes
 RESERVED_SLUGS = {
-    "admin", "login", "logout", "dashboard", "create-store", "add-product",
-    "change-key", "update-store", "admin-logout", "store", "sw.js",
-    "manifest.json", "icon.svg", "sitemap.xml", "robots.txt", "static"
+    "login", "logout", "dashboard", "admin", "admin-logout", "create-store",
+    "change-key", "change-store-name", "update-store", "add-product",
+    "manifest.json", "sw.js", "icon.svg", "sitemap.xml", "robots.txt", "store"
 }
 
 
@@ -82,6 +82,18 @@ def init_db():
         conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS logo_data TEXT DEFAULT ''")
         conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS momo_number TEXT DEFAULT ''")
         conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS momo_name TEXT DEFAULT ''")
+
+        # Alias table remembers every old store name/slug so old links never break
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS store_aliases (
+                id SERIAL PRIMARY KEY,
+                store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+                old_slug TEXT UNIQUE NOT NULL,
+                old_name TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id SERIAL PRIMARY KEY,
@@ -116,6 +128,18 @@ def init_db():
                 conn.execute(f"ALTER TABLE stores ADD COLUMN {col} TEXT DEFAULT ''")
             except Exception:
                 pass
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS store_aliases (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                store_id INTEGER NOT NULL,
+                old_slug TEXT UNIQUE NOT NULL,
+                old_name TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE
+            )
+        """)
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,7 +176,7 @@ def create_slug(store_name):
     slug = re.sub(r"[^a-zA-Z0-9\s-]", "", store_name).strip().lower()
     slug = re.sub(r"[\s-]+", "-", slug)
     if not slug or slug in RESERVED_SLUGS:
-        slug = f"shop-{secrets.choice(string.digits)}{secrets.choice(string.digits)}"
+        slug = f"{slug or 'shop'}-store"
     return slug
 
 
@@ -163,37 +187,70 @@ def clean_whatsapp_number(number):
     return cleaned
 
 
-# --- GOOGLE SEO, SITEMAP & PWA ROUTES ---
-
-@app.route("/robots.txt")
-def robots_txt():
-    base_url = request.host_url.rstrip("/")
-    lines = [
-        "User-agent: *",
-        "Allow: /",
-        "Disallow: /admin",
-        "Disallow: /dashboard",
-        f"Sitemap: {base_url}/sitemap.xml"
-    ]
-    return Response("\n".join(lines), mimetype="text/plain")
+def save_alias_if_needed(conn, store_id, old_slug, old_name):
+    """Saves previous slug & name in store_aliases so old links always redirect to the new name"""
+    existing = conn.execute(
+        "SELECT id FROM store_aliases WHERE old_slug = ?", (old_slug,)
+    ).fetchone()
+    if not existing:
+        conn.execute(
+            "INSERT INTO store_aliases (store_id, old_slug, old_name) VALUES (?, ?, ?)",
+            (store_id, old_slug, old_name)
+        )
 
 
-@app.route("/sitemap.xml")
-def sitemap_xml():
-    base_url = request.host_url.rstrip("/")
-    conn = get_db_connection()
-    stores = conn.execute("SELECT store_slug FROM stores ORDER BY id DESC").fetchall()
-    conn.close()
+def find_store_by_any_identifier(conn, identifier):
+    """
+    Smart Store Resolver:
+    1. Exact slug match
+    2. Normalized slug match (e.g. 'Zayn Luxury' -> 'zayn-luxury')
+    3. Case-insensitive Store Name match
+    4. Compact/no-dash match (e.g. 'zaynluxury' matches 'zayn-luxury')
+    5. Old slug/name alias match (redirects to newest store_slug)
+    """
+    raw = identifier.strip()
+    slug_candidate = create_slug(raw)
+    compact_candidate = re.sub(r"[^a-z0-9]", "", raw.lower())
 
-    xml = ['<?xml version="1.0" encoding="UTF-8"?>']
-    xml.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
-    xml.append(f'  <url><loc>{base_url}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>')
-    for s in stores:
-        slug = s["store_slug"]
-        xml.append(f'  <url><loc>{base_url}/{slug}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>')
-    xml.append('</urlset>')
-    return Response("\n".join(xml), mimetype="application/xml")
+    # 1. Exact or normalized slug match
+    store = conn.execute(
+        "SELECT * FROM stores WHERE store_slug = ? OR store_slug = ?",
+        (raw.lower(), slug_candidate)
+    ).fetchone()
+    if store:
+        return store, False
 
+    # 2. Direct Store Name match (case-insensitive)
+    store = conn.execute(
+        "SELECT * FROM stores WHERE LOWER(store_name) = ?",
+        (raw.lower(),)
+    ).fetchone()
+    if store:
+        return store, True
+
+    # 3. Check old aliases (if the user renamed their store earlier)
+    alias = conn.execute(
+        "SELECT store_id FROM store_aliases WHERE old_slug = ? OR old_slug = ? OR LOWER(old_name) = ?",
+        (raw.lower(), slug_candidate, raw.lower())
+    ).fetchone()
+    if alias:
+        store = conn.execute("SELECT * FROM stores WHERE id = ?", (alias["store_id"],)).fetchone()
+        if store:
+            return store, True
+
+    # 4. Compact / fuzzy match across all stores (e.g. typing 'kofidrip' finds 'kofi-drip')
+    if compact_candidate:
+        all_stores = conn.execute("SELECT * FROM stores").fetchall()
+        for s in all_stores:
+            s_compact = re.sub(r"[^a-z0-9]", "", s["store_slug"].lower())
+            name_compact = re.sub(r"[^a-z0-9]", "", s["store_name"].lower())
+            if compact_candidate in (s_compact, name_compact):
+                return s, True
+
+    return None, False
+
+
+# --- PWA, OFFLINE & GOOGLE SEO ROUTES ---
 
 @app.route("/icon.svg")
 def app_icon():
@@ -283,16 +340,55 @@ self.addEventListener('fetch', (event) => {
     return Response(sw_code, mimetype="application/javascript")
 
 
+@app.route("/robots.txt")
+def robots_txt():
+    host = request.host_url.rstrip("/")
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        f"Sitemap: {host}/sitemap.xml"
+    ]
+    return Response("\n".join(lines), mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    """Dynamically lists every store's latest custom link so Google indexes new store names fast"""
+    host = request.host_url.rstrip("/")
+    conn = get_db_connection()
+    stores = conn.execute("SELECT store_slug FROM stores ORDER BY id DESC").fetchall()
+    conn.close()
+
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>']
+    xml.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    xml.append(f"  <url><loc>{host}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>")
+    for s in stores:
+        xml.append(f"  <url><loc>{host}/{s['store_slug']}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>")
+    xml.append("</urlset>")
+    return Response("\n".join(xml), mimetype="application/xml")
+
+
 # --- MAIN PLATFORM ROUTES ---
 
 @app.route("/")
 def index():
+    q = request.args.get("q", "").strip()
     conn = get_db_connection()
-    recent_stores = conn.execute(
-        "SELECT store_name, store_slug, category, bio, logo_data, momo_name FROM stores ORDER BY id DESC LIMIT 24"
-    ).fetchall()
+    if q:
+        like_q = f"%{q.lower()}%"
+        recent_stores = conn.execute(
+            """SELECT store_name, store_slug, category, bio, logo_data, momo_name
+               FROM stores
+               WHERE LOWER(store_name) LIKE ? OR LOWER(store_slug) LIKE ? OR LOWER(category) LIKE ?
+               ORDER BY id DESC LIMIT 24""",
+            (like_q, like_q, like_q)
+        ).fetchall()
+    else:
+        recent_stores = conn.execute(
+            "SELECT store_name, store_slug, category, bio, logo_data, momo_name FROM stores ORDER BY id DESC LIMIT 12"
+        ).fetchall()
     conn.close()
-    return render_template("index.html", recent_stores=recent_stores)
+    return render_template("index.html", recent_stores=recent_stores, search_query=q)
 
 
 @app.route("/create-store", methods=["POST"])
@@ -418,6 +514,58 @@ def change_key():
     return redirect(url_for("dashboard"))
 
 
+@app.route("/change-store-name", methods=["POST"])
+def change_store_name():
+    """Allows a seller to customize their Store Name and Web Link to any name they want while keeping old links alive"""
+    current_key = session.get("store_key")
+    if not current_key:
+        return redirect(url_for("index"))
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    if not store:
+        conn.close()
+        return redirect(url_for("index"))
+
+    new_store_name = request.form.get("new_store_name", "").strip()
+    custom_slug_input = request.form.get("new_store_slug", "").strip()
+
+    if not new_store_name:
+        conn.close()
+        flash("Store Name cannot be empty.", "error")
+        return redirect(url_for("dashboard"))
+
+    # Create new slug from custom_slug_input if provided, otherwise from the new store name
+    desired_slug = create_slug(custom_slug_input if custom_slug_input else new_store_name)
+
+    # Check if another store already owns this slug
+    conflict = conn.execute(
+        "SELECT id FROM stores WHERE store_slug = ? AND id != ?",
+        (desired_slug, store["id"])
+    ).fetchone()
+
+    if conflict:
+        conn.close()
+        flash(f"The web link '/{desired_slug}' is already taken by another shop. Try adding 'gh', 'shop', or your city!", "error")
+        return redirect(url_for("dashboard"))
+
+    # Save the old slug/name in store_aliases so old links still redirect automatically
+    if desired_slug != store["store_slug"]:
+        save_alias_if_needed(conn, store["id"], store["store_slug"], store["store_name"])
+        # Remove desired_slug from aliases if this store previously used it
+        conn.execute("DELETE FROM store_aliases WHERE old_slug = ? AND store_id = ?", (desired_slug, store["id"]))
+
+    conn.execute(
+        "UPDATE stores SET store_name = ?, store_slug = ? WHERE id = ?",
+        (new_store_name, desired_slug, store["id"])
+    )
+    conn.commit()
+    conn.close()
+
+    flash(f"✨ Store renamed to '{new_store_name}'! Your new link is /{desired_slug} (and your old link still redirects automatically!).", "success")
+    return redirect(url_for("dashboard"))
+
+
 @app.route("/update-store", methods=["POST"])
 def update_store():
     current_key = session.get("store_key")
@@ -430,24 +578,26 @@ def update_store():
         conn.close()
         return redirect(url_for("index"))
 
-    store_name = request.form.get("store_name", store["store_name"]).strip()
-    custom_slug_raw = request.form.get("store_slug", store["store_slug"]).strip()
-    new_slug = create_slug(custom_slug_raw) if custom_slug_raw else store["store_slug"]
-
-    # Check if custom short link is taken by another store
-    slug_taken = conn.execute(
-        "SELECT id FROM stores WHERE store_slug = ? AND id != ?", (new_slug, store["id"])
-    ).fetchone()
-    if slug_taken or new_slug in RESERVED_SLUGS:
-        new_slug = store["store_slug"]
-        flash("That custom short link is already taken, so we kept your current link.", "error")
-
+    store_name = request.form.get("store_name", store["store_name"]).strip() or store["store_name"]
+    custom_slug_raw = request.form.get("store_slug", "").strip()
     whatsapp_number = clean_whatsapp_number(request.form.get("whatsapp_number", store["whatsapp_number"]))
     category = request.form.get("category", store["category"]).strip()
     bio = request.form.get("bio", store["bio"]).strip()
     momo_number = request.form.get("momo_number", store.get("momo_number", "")).strip()
     momo_name = request.form.get("momo_name", store.get("momo_name", "")).strip()
     logo_file = request.files.get("logo_file")
+
+    # Determine if slug should update
+    new_slug = create_slug(custom_slug_raw) if custom_slug_raw else create_slug(store_name)
+    conflict = conn.execute(
+        "SELECT id FROM stores WHERE store_slug = ? AND id != ?",
+        (new_slug, store["id"])
+    ).fetchone()
+    if conflict:
+        new_slug = store["store_slug"]  # Keep current slug if conflict
+    elif new_slug != store["store_slug"]:
+        save_alias_if_needed(conn, store["id"], store["store_slug"], store["store_name"])
+        conn.execute("DELETE FROM store_aliases WHERE old_slug = ? AND store_id = ?", (new_slug, store["id"]))
 
     logo_data = store["logo_data"] or ""
     if logo_file and logo_file.filename != "":
@@ -465,7 +615,7 @@ def update_store():
     conn.commit()
     conn.close()
 
-    flash("Store link, MoMo details & branding updated!", "success")
+    flash("Store name, web link, MoMo details & branding updated!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -594,37 +744,6 @@ def logout():
     return redirect(url_for("index"))
 
 
-# --- ULTRA-SIMPLE STORE LINKS (/store/slug AND /slug) ---
-
-def render_store_page(store_slug):
-    clean_slug = store_slug.strip().lower().lstrip("@")
-    conn = get_db_connection()
-    store = conn.execute("SELECT * FROM stores WHERE LOWER(store_slug) = ?", (clean_slug,)).fetchone()
-
-    if not store:
-        conn.close()
-        return render_template("index.html", recent_stores=[]), 404
-
-    products = conn.execute(
-        "SELECT * FROM products WHERE store_id = ? ORDER BY in_stock DESC, id DESC",
-        (store["id"],)
-    ).fetchall()
-    conn.close()
-
-    return render_template("store.html", store=store, products=products)
-
-
-@app.route("/store/<store_slug>")
-def view_store(store_slug):
-    return render_store_page(store_slug)
-
-
-@app.route("/<store_slug>")
-def view_short_store(store_slug):
-    """Enables ultra-clean direct links like varsell.onrender.com/zayn"""
-    return render_store_page(store_slug)
-
-
 # --- FOUNDER MASTER ADMIN ROUTES ---
 
 @app.route("/admin", methods=["GET", "POST"])
@@ -691,6 +810,7 @@ def admin_delete_store(store_id):
 
     conn = get_db_connection()
     conn.execute("DELETE FROM products WHERE store_id = ?", (store_id,))
+    conn.execute("DELETE FROM store_aliases WHERE store_id = ?", (store_id,))
     conn.execute("DELETE FROM stores WHERE id = ?", (store_id,))
     conn.commit()
     conn.close()
@@ -703,6 +823,33 @@ def admin_delete_store(store_id):
 def admin_logout():
     session.pop("is_varsell_admin", None)
     return redirect(url_for("index"))
+
+
+# --- SMART DYNAMIC STOREFRONT ROUTES (SUPPORTS /<store_slug> AND /store/<store_slug>) ---
+
+@app.route("/store/<store_slug>")
+@app.route("/<store_slug>")
+def view_store(store_slug):
+    conn = get_db_connection()
+    store, should_redirect = find_store_by_any_identifier(conn, store_slug)
+
+    if not store:
+        conn.close()
+        # If someone typed an unknown name in the URL, redirect to homepage search for that name
+        return redirect(url_for("index", q=store_slug))
+
+    # If accessed via an old store name/slug or unformatted name, redirect cleanly to their current custom link
+    if should_redirect and store["store_slug"] != store_slug:
+        conn.close()
+        return redirect(f"/{store['store_slug']}", code=302)
+
+    products = conn.execute(
+        "SELECT * FROM products WHERE store_id = ? ORDER BY in_stock DESC, id DESC",
+        (store["id"],)
+    ).fetchall()
+    conn.close()
+
+    return render_template("store.html", store=store, products=products)
 
 
 if __name__ == "__main__":
