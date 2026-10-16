@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Varsell — Turn Your WhatsApp Into a 24/7 Online Store</title>
+  <meta name="theme-color" content="#10b981" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <title>Varsell — Ghana's #1 WhatsApp & MoMo Store Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
@@ -19,25 +22,42 @@
 </head>
 <body class="text-slate-100 min-h-screen relative overflow-x-hidden bg-grid">
 
+  <!-- Offline Status Banner -->
+  <div id="offlineBanner" class="hidden bg-amber-400 text-slate-950 text-center py-2 px-4 text-xs font-extrabold sticky top-0 z-50">
+    ⚡ Offline Mode Active — You are browsing Varsell with 0MB data!
+  </div>
+
   <!-- Ambient Glows -->
   <div class="pointer-events-none fixed top-[-150px] left-[-150px] w-[500px] h-[500px] rounded-full bg-emerald-500/15 blur-[130px] z-0"></div>
   <div class="pointer-events-none fixed bottom-[-150px] right-[-150px] w-[500px] h-[500px] rounded-full bg-teal-500/10 blur-[140px] z-0"></div>
 
   <!-- Navbar -->
   <header class="border-b border-white/10 bg-[#050811]/80 backdrop-blur-xl sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-2">
       <a href="/" class="flex items-center gap-3 group">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold text-xl shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition">
           V
         </div>
         <div>
           <span class="text-xl font-extrabold tracking-tight text-white">Varsell</span>
-          <span class="hidden sm:inline-block ml-2 text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-emerald-400 px-2 py-0.5 rounded-full">Cloud Stores</span>
+          <span class="hidden sm:inline-block ml-2 text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full">Ghana Edition</span>
         </div>
       </a>
-      <a href="#unlock-store" class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-semibold text-emerald-400 px-4 py-2.5 rounded-xl transition">
-        🔑 Unlock My Store
-      </a>
+
+      <div class="flex items-center gap-2">
+        <!-- PWA Install App Button -->
+        <button
+          id="installAppBtn"
+          onclick="triggerInstall()"
+          class="bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5"
+        >
+          <span>📲</span> <span>Install App</span>
+        </button>
+
+        <a href="#unlock-store" class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 px-3.5 py-2.5 rounded-xl transition">
+          🔑 Unlock Store
+        </a>
+      </div>
     </div>
   </header>
 
@@ -56,36 +76,36 @@
   </div>
 
   <!-- Main Hero Grid -->
-  <main class="max-w-6xl mx-auto px-4 py-10 lg:py-16 grid lg:grid-cols-12 gap-12 items-center relative z-10">
+  <main class="max-w-6xl mx-auto px-4 py-10 lg:py-14 grid lg:grid-cols-12 gap-12 items-center relative z-10">
 
     <!-- Left Column: Brand Pitch & Login -->
     <div class="lg:col-span-6 space-y-8">
       <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs font-bold px-3.5 py-1.5 rounded-full">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        NO CODING • NO MONTHLY FEES • INSTANT STORE LINK
+        WORKS OFFLINE • MOMO READY • DIRECT TO WHATSAPP
       </div>
 
       <h1 class="text-4xl sm:text-6xl font-extrabold leading-[1.1] tracking-tight text-white">
-        Your WhatsApp hustle deserves a <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">real storefront.</span>
+        Turn your WhatsApp hustle into a <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 bg-clip-text text-transparent">MoMo-ready store.</span>
       </h1>
 
       <p class="text-slate-400 text-base sm:text-lg leading-relaxed">
-        Stop flooding your status with 40 photos every morning. Launch your clean Varsell store in 60 seconds, lock it with your own custom Secret Key, and receive organized customer orders straight on WhatsApp.
+        Stop answering <em>"How much?"</em> and typing your MoMo number 50 times a day. Launch your Varsell store in 60 seconds, let customers browse your products even when their data finishes, and receive ready-to-pay orders straight on WhatsApp.
       </p>
 
       <!-- Value Pills -->
-      <div class="grid grid-cols-3 gap-3 pt-2">
+      <div class="grid grid-cols-3 gap-3 pt-1">
         <div class="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-3.5">
-          <p class="text-xl font-extrabold text-white">60 Sec</p>
-          <p class="text-xs text-slate-400 mt-0.5">Store Setup</p>
+          <p class="text-lg sm:text-xl font-extrabold text-amber-400">MoMo Built-In</p>
+          <p class="text-xs text-slate-400 mt-0.5">MTN / Telecel Ready</p>
         </div>
         <div class="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-3.5">
-          <p class="text-xl font-extrabold text-emerald-400">Custom Key</p>
-          <p class="text-xs text-slate-400 mt-0.5">1-Click Login</p>
+          <p class="text-lg sm:text-xl font-extrabold text-emerald-400">0MB Offline</p>
+          <p class="text-xs text-slate-400 mt-0.5">Installable PWA App</p>
         </div>
         <div class="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-3.5">
-          <p class="text-xl font-extrabold text-white">100% Free</p>
-          <p class="text-xs text-slate-400 mt-0.5">Direct to WhatsApp</p>
+          <p class="text-lg sm:text-xl font-extrabold text-white">Status QR</p>
+          <p class="text-xs text-slate-400 mt-0.5">Auto Flyer Maker</p>
         </div>
       </div>
 
@@ -95,9 +115,9 @@
           <h2 class="text-base font-bold text-white flex items-center gap-2">
             <span>🔐</span> Already have a Varsell Store?
           </h2>
-          <span class="text-[11px] text-slate-400">Seller Portal</span>
+          <span class="text-[11px] text-slate-400">Seller & Founder Portal</span>
         </div>
-        <p class="text-xs text-slate-400 mb-4">Enter your custom Secret Key below to manage your products.</p>
+        <p class="text-xs text-slate-400 mb-4">Enter your custom Secret Key below to open your dashboard.</p>
         <form action="/login" method="POST" class="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
@@ -118,39 +138,61 @@
 
     <!-- Right Column: Create Store Card -->
     <div class="lg:col-span-6">
-      <div class="bg-slate-900/80 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 sm:p-9 shadow-2xl relative">
-        <div class="mb-6">
-          <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Instant Store Generator</span>
-          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">Launch Your Store</h2>
-          <p class="text-xs sm:text-sm text-slate-400 mt-1">Fill in your details and choose a Secret Key you will easily remember.</p>
+      <div class="bg-slate-900/80 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl relative">
+        <div class="mb-5">
+          <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Free Forever • Instant Setup</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">Create Your Varsell Store</h2>
         </div>
 
-        <form action="/create-store" method="POST" class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Business / Store Name *</label>
-            <input
-              type="text"
-              name="store_name"
-              placeholder="e.g. Kofi Drip & Kicks"
-              required
-              class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-400 transition"
-            />
+        <form action="/create-store" method="POST" class="space-y-3.5">
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">Store Name *</label>
+              <input
+                type="text"
+                name="store_name"
+                placeholder="e.g. Kofi Drip & Kicks"
+                required
+                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">WhatsApp Number *</label>
+              <input
+                type="text"
+                name="whatsapp_number"
+                placeholder="e.g. 0541234567"
+                required
+                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+              />
+            </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">WhatsApp Number (For Orders) *</label>
-            <input
-              type="text"
-              name="whatsapp_number"
-              placeholder="e.g. 0541234567"
-              required
-              class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-400 transition"
-            />
+          <!-- Optional MoMo Setup Box -->
+          <div class="bg-amber-400/5 border border-amber-400/20 rounded-2xl p-3.5">
+            <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 block mb-2">
+              💛 Mobile Money Details (Displayed at Customer Checkout)
+            </span>
+            <div class="grid sm:grid-cols-2 gap-2.5">
+              <input
+                type="text"
+                name="momo_number"
+                placeholder="MoMo Number (e.g. 0541234567)"
+                class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
+              />
+              <input
+                type="text"
+                name="momo_name"
+                placeholder="Registered MoMo Name (for trust)"
+                class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
+              />
+            </div>
           </div>
 
           <!-- Custom Secret Key Input -->
-          <div class="bg-emerald-500/5 border border-emerald-500/25 rounded-2xl p-4">
-            <div class="flex items-center justify-between mb-1.5">
+          <div class="bg-emerald-500/5 border border-emerald-500/25 rounded-2xl p-3.5">
+            <div class="flex items-center justify-between mb-1">
               <label class="block text-xs font-bold uppercase tracking-wider text-emerald-300">
                 Create Your Secret Key *
               </label>
@@ -169,35 +211,33 @@
               placeholder="e.g. KOFIDRIP99 (min 4 characters)"
               required
               minlength="4"
-              class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-4 py-3 text-sm text-amber-300 font-mono uppercase tracking-wider focus:outline-none focus:border-emerald-400"
+              class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-4 py-2.5 text-sm text-amber-300 font-mono uppercase tracking-wider focus:outline-none focus:border-emerald-400"
             />
-            <p class="text-[11px] text-slate-400 mt-1.5">
-              This is your personal password to log into your store. You can change it anytime inside your dashboard.
-            </p>
           </div>
 
           <div class="grid sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Category</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">Category</label>
               <select
                 name="category"
-                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
               >
                 <option value="Fashion & Drip">Fashion & Drip</option>
                 <option value="Phones & Gadgets">Phones & Gadgets</option>
                 <option value="Beauty & Skincare">Beauty & Skincare</option>
                 <option value="Shoes & Sneakers">Shoes & Sneakers</option>
                 <option value="Food & Groceries">Food & Groceries</option>
+                <option value="Home & Laundry">Home & Laundry</option>
                 <option value="General Store">General Store</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Delivery Note / Bio</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">Delivery Info / Bio</label>
               <input
                 type="text"
                 name="bio"
-                placeholder="e.g. Nationwide delivery in GH"
-                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+                placeholder="e.g. Same-day Accra & VIP Kumasi"
+                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
               />
             </div>
           </div>
@@ -231,14 +271,25 @@
             <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
               {{ s.category }}
             </span>
-            <span class="w-8 h-8 rounded-full bg-white/5 group-hover:bg-emerald-500 group-hover:text-slate-950 flex items-center justify-center text-xs font-bold transition">↗</span>
+            {% if s.momo_name %}
+              <span class="text-[10px] font-bold text-amber-300 bg-amber-400/10 border border-amber-400/20 px-2.5 py-0.5 rounded-full">✓ MoMo Verified</span>
+            {% endif %}
           </div>
-          <h4 class="text-xl font-extrabold text-white mt-4 group-hover:text-emerald-300 transition">{{ s.store_name }}</h4>
-          <p class="text-xs text-slate-400 mt-1.5 line-clamp-2">{{ s.bio or 'Verified Varsell storefront. Click to browse items and order on WhatsApp.' }}</p>
+          <div class="flex items-center gap-3 mt-4">
+            {% if s.logo_data %}
+              <img src="{{ s.logo_data }}" class="w-11 h-11 rounded-2xl object-cover border border-white/15 shrink-0" />
+            {% else %}
+              <div class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black flex items-center justify-center shrink-0">
+                {{ s.store_name[:1]|upper }}
+              </div>
+            {% endif %}
+            <h4 class="text-xl font-extrabold text-white group-hover:text-emerald-300 transition truncate">{{ s.store_name }}</h4>
+          </div>
+          <p class="text-xs text-slate-400 mt-2 line-clamp-2">{{ s.bio or 'Verified Varsell storefront. Click to browse items even offline and order via WhatsApp.' }}</p>
         </div>
         <div class="mt-5 pt-4 border-t border-white/5 flex items-center justify-between text-xs font-bold text-slate-300">
-          <span>/store/{{ s.store_slug }}</span>
-          <span class="text-emerald-400">Shop Now →</span>
+          <span class="font-mono text-[11px] text-slate-400">/store/{{ s.store_slug }}</span>
+          <span class="text-emerald-400">Open Store →</span>
         </div>
       </a>
       {% endfor %}
@@ -246,13 +297,70 @@
   </section>
   {% endif %}
 
+  <!-- Install App Guide Modal (Fallback for iPhone / Browsers) -->
+  <div id="installModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-extrabold text-white">📲 Install Varsell on Your Phone</h3>
+        <button onclick="document.getElementById('installModal').classList.add('hidden')" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Installing Varsell adds it to your home screen and lets you open stores and view products **even when your data is off**:
+      </p>
+      <div class="bg-slate-950 border border-white/10 rounded-2xl p-4 space-y-2 text-xs text-slate-300">
+        <p><strong>🤖 On Android / Chrome:</strong> Tap the <strong>3 dots (⋮)</strong> in the top right of Chrome and select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</p>
+        <p><strong>🍏 On iPhone (Safari):</strong> Tap the <strong>Share icon (⬆️)</strong> at the bottom and tap <strong>"Add to Home Screen"</strong>.</p>
+      </div>
+      <button onclick="document.getElementById('installModal').classList.add('hidden')" class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs">
+        Got It!
+      </button>
+    </div>
+  </div>
+
   <script>
     function generateEasyKey() {
-      const words = ["BOSS", "SHOP", "STAR", "DRIP", "GOLD", "FAST", "KING", "VIBE"];
+      const words = ["BOSS", "SHOP", "STAR", "DRIP", "GOLD", "ACCRA", "KING", "MOMO"];
       const word = words[Math.floor(Math.random() * words.length)];
       const num = Math.floor(100 + Math.random() * 900);
       document.getElementById("customKeyInput").value = `${word}-${num}`;
     }
+
+    // Register Offline Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+
+    // Handle Native PWA Install Prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+
+    async function triggerInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      } else {
+        document.getElementById('installModal').classList.remove('hidden');
+      }
+    }
+
+    // Offline Detection Banner
+    function updateOnlineStatus() {
+      const banner = document.getElementById('offlineBanner');
+      if (!navigator.onLine) {
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
   </script>
 </body>
 </html>
