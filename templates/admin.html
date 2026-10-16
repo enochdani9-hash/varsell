@@ -3,50 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Varsell — Founder Master Admin</title>
+  <title>Varsell — Founder Master Command HQ</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050811; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #04070f; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .bg-grid {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    }
   </style>
 </head>
-<body class="text-slate-100 min-h-screen pb-16">
+<body class="text-slate-100 min-h-screen pb-20 relative overflow-x-hidden bg-grid">
+
+  <!-- Ambient Executive Glows -->
+  <div class="pointer-events-none fixed top-[-150px] left-[-120px] w-[480px] h-[480px] rounded-full bg-amber-500/15 blur-[140px] z-0"></div>
+  <div class="pointer-events-none fixed bottom-[-150px] right-[-120px] w-[480px] h-[480px] rounded-full bg-emerald-500/15 blur-[140px] z-0"></div>
+
+  <!-- Toast Popup -->
+  <div id="adminToast" class="fixed top-5 right-5 z-50 hidden bg-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl"></div>
 
   <!-- Top Navbar -->
-  <header class="border-b border-white/10 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <a href="/" class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-slate-950 font-black text-lg shadow-lg">
+  <header class="border-b border-white/10 bg-[#04070f]/80 backdrop-blur-xl sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3.5">
+        <a href="/" class="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-amber-500/25">
           V
         </a>
         <div>
-          <h1 class="font-extrabold text-white text-base sm:text-lg leading-none">Varsell Founder HQ</h1>
-          <span class="text-xs text-amber-400 font-semibold">Master Admin Control Center</span>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-white text-base sm:text-xl tracking-tight">Varsell Founder HQ</h1>
+            <span class="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest bg-amber-400/15 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> God Mode
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Multi-Tenant Cloud Infrastructure & Store Directory</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <a href="/" class="text-xs sm:text-sm text-slate-300 hover:text-white px-3 py-2 rounded-xl bg-white/5 border border-white/10">
-          Public Site ↗
+      <div class="flex items-center gap-2.5">
+        <a href="/" class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-bold text-slate-200 px-4 py-2.5 rounded-xl transition">
+          Public App ↗
         </a>
         {% if is_admin %}
-        <a href="/admin-logout" class="text-xs sm:text-sm text-red-300 hover:text-white px-3.5 py-2 rounded-xl bg-red-500/10 border border-red-500/20 font-bold">
-          Lock Admin
+        <a href="/admin-logout" class="bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-xs sm:text-sm font-extrabold text-red-300 px-4 py-2.5 rounded-xl transition">
+          Lock HQ
         </a>
         {% endif %}
       </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-8">
+  <main class="max-w-6xl mx-auto px-4 py-8 relative z-10 space-y-8">
 
     <!-- Flash Alerts -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="p-4 rounded-2xl mb-6 text-sm font-bold {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-200{% else %}bg-emerald-500/15 border border-emerald-500/40 text-emerald-200{% endif %}">
-            {{ message }}
+          <div class="p-4 rounded-2xl text-sm font-bold flex items-center gap-3 backdrop-blur-xl {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-200{% else %}bg-emerald-500/15 border border-emerald-500/40 text-emerald-200{% endif %}">
+            <span>{{ message }}</span>
           </div>
         {% endfor %}
       {% endif %}
@@ -54,10 +72,12 @@
 
     {% if not is_admin %}
       <!-- Founder Login Box -->
-      <div class="max-w-md mx-auto mt-16 bg-slate-900/90 border border-white/15 rounded-3xl p-8 shadow-2xl">
-        <span class="text-xs font-bold uppercase tracking-widest text-amber-400">Restricted Area</span>
-        <h2 class="text-2xl font-extrabold text-white mt-1">Founder Master Login</h2>
-        <p class="text-xs text-slate-400 mt-1 mb-6">Enter your Master Admin Key to inspect and manage all stores on Varsell.</p>
+      <div class="max-w-md mx-auto mt-16 bg-slate-900/85 backdrop-blur-2xl border border-white/15 rounded-3xl p-8 shadow-2xl">
+        <span class="text-xs font-extrabold uppercase tracking-widest text-amber-400">Restricted Access</span>
+        <h2 class="text-2xl font-extrabold text-white mt-1">Unlock Founder HQ</h2>
+        <p class="text-xs text-slate-400 mt-1 mb-6">
+          Tip: You can also enter your Master Key directly into the "Unlock Store" box on the main homepage!
+        </p>
 
         <form action="/admin" method="POST" class="space-y-4">
           <input
@@ -65,40 +85,81 @@
             name="admin_key"
             placeholder="Enter Master Admin Key..."
             required
-            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400"
+            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3.5 text-sm text-amber-300 font-mono focus:outline-none focus:border-amber-400"
           />
           <button
             type="submit"
-            class="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg"
+            class="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-sm transition shadow-xl shadow-amber-500/20"
           >
-            Unlock Founder Dashboard →
+            Unlock Command Center →
           </button>
         </form>
       </div>
 
     {% else %}
-      <!-- Top Platform Metrics -->
-      <div class="grid sm:grid-cols-3 gap-5 mb-8">
-        <div class="bg-slate-900/90 border border-white/10 rounded-3xl p-6">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Hosted Stores</span>
-          <p class="text-4xl font-extrabold text-white mt-2">{{ stores|length }}</p>
+      <!-- Executive Telemetry Cards -->
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Hosted Stores</span>
+            <span class="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-sm">🏪</span>
+          </div>
+          <p class="text-4xl font-extrabold text-white mt-3">{{ stores|length }}</p>
+          <p class="text-xs text-slate-400 mt-1">Active merchant storefronts</p>
         </div>
-        <div class="bg-slate-900/90 border border-white/10 rounded-3xl p-6">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Products Uploaded</span>
-          <p class="text-4xl font-extrabold text-emerald-400 mt-2">{{ total_products }}</p>
+
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Live Products</span>
+            <span class="w-8 h-8 rounded-xl bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center text-sm">📦</span>
+          </div>
+          <p class="text-4xl font-extrabold text-emerald-400 mt-3">{{ total_products }}</p>
+          <p class="text-xs text-slate-400 mt-1">Catalog items across Varsell</p>
         </div>
-        <div class="bg-slate-900/90 border border-white/10 rounded-3xl p-6">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Database Engine</span>
-          <p class="text-2xl font-extrabold text-amber-400 mt-3">{{ db_type }}</p>
+
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Cloud Database</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          </div>
+          <p class="text-xl font-extrabold text-amber-400 mt-4 truncate">{{ db_type }}</p>
+          <p class="text-xs text-emerald-400 font-semibold mt-1">● Permanent Storage Active</p>
+        </div>
+
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Founder Login Key</span>
+            <button
+              type="button"
+              onclick="copyAdminText('{{ master_key }}', 'Master Key copied!')"
+              class="text-[11px] font-bold text-amber-400 hover:underline"
+            >
+              Copy Key
+            </button>
+          </div>
+          <p class="text-base font-mono font-extrabold text-white mt-3 truncate">{{ master_key }}</p>
+          <p class="text-[11px] text-slate-400 mt-1">Works in main homepage login box</p>
         </div>
       </div>
 
-      <!-- All Stores Directory Table -->
-      <div class="bg-slate-900/90 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+      <!-- Master Store Directory Card -->
+      <div class="bg-slate-900/85 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
         <div class="p-6 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
+            <span class="text-[11px] font-extrabold uppercase tracking-widest text-amber-400">Platform Control</span>
             <h2 class="text-xl font-extrabold text-white">All Registered Stores ({{ stores|length }})</h2>
-            <p class="text-xs text-slate-400 mt-0.5">View store credentials, contact sellers on WhatsApp, or remove spam stores.</p>
+            <p class="text-xs text-slate-400 mt-0.5">Click any Secret Key to copy it, or click "Manage" to enter a seller's dashboard.</p>
+          </div>
+
+          <!-- Instant Search Bar -->
+          <div class="w-full sm:w-80">
+            <input
+              type="text"
+              id="adminStoreSearch"
+              onkeyup="filterAdminStores()"
+              placeholder="🔍 Search store, key, or WhatsApp..."
+              class="w-full bg-slate-950/90 border border-white/15 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 transition"
+            />
           </div>
         </div>
 
@@ -106,60 +167,89 @@
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-950/50">
-                <th class="py-3.5 px-4">Store</th>
-                <th class="py-3.5 px-4">Secret Key</th>
-                <th class="py-3.5 px-4">WhatsApp</th>
-                <th class="py-3.5 px-4">Products</th>
-                <th class="py-3.5 px-4 text-right">Actions</th>
+              <tr class="border-b border-white/10 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 bg-slate-950/60">
+                <th class="py-4 px-5">Storefront</th>
+                <th class="py-4 px-5">Secret Key (Click to Copy)</th>
+                <th class="py-4 px-5">Seller WhatsApp</th>
+                <th class="py-4 px-5">Inventory</th>
+                <th class="py-4 px-5 text-right">Founder Actions</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-white/5 text-sm">
+            <tbody id="adminStoreTable" class="divide-y divide-white/5 text-sm">
               {% for s in stores %}
-              <tr class="hover:bg-white/[0.02]">
-                <td class="py-4 px-4">
-                  <div class="flex items-center gap-3">
+              <tr
+                data-search="{{ s.store_name|lower }} {{ s.access_key|lower }} {{ s.whatsapp_number }} {{ s.category|lower }} {{ s.store_slug|lower }}"
+                class="admin-store-row hover:bg-white/[0.03] transition"
+              >
+                <td class="py-4 px-5">
+                  <div class="flex items-center gap-3.5">
                     {% if s.logo_data %}
-                      <img src="{{ s.logo_data }}" class="w-10 h-10 rounded-xl object-cover border border-white/10" />
+                      <img src="{{ s.logo_data }}" class="w-11 h-11 rounded-2xl object-cover border border-white/15 shadow-md" />
                     {% else %}
-                      <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 font-extrabold flex items-center justify-center">
+                      <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-teal-500/20 border border-emerald-400/30 text-emerald-300 font-black text-base flex items-center justify-center">
                         {{ s.store_name[:1]|upper }}
                       </div>
                     {% endif %}
                     <div>
-                      <a href="/store/{{ s.store_slug }}" target="_blank" class="font-bold text-white hover:text-emerald-400">
-                        {{ s.store_name }} ↗
+                      <a href="/store/{{ s.store_slug }}" target="_blank" class="font-extrabold text-white hover:text-emerald-400 transition flex items-center gap-1">
+                        <span>{{ s.store_name }}</span>
+                        <span class="text-xs text-slate-400">↗</span>
                       </a>
-                      <p class="text-xs text-slate-400">{{ s.category }} • /store/{{ s.store_slug }}</p>
+                      <p class="text-xs text-slate-400 mt-0.5">{{ s.category }} • <span class="font-mono text-[11px] text-slate-500">/store/{{ s.store_slug }}</span></p>
                     </div>
                   </div>
                 </td>
-                <td class="py-4 px-4">
-                  <span class="font-mono font-bold text-amber-300 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-lg text-xs">
-                    {{ s.access_key }}
-                  </span>
-                </td>
-                <td class="py-4 px-4">
-                  <a
-                    href="https://wa.me/{{ s.whatsapp_number }}"
-                    target="_blank"
-                    class="text-xs font-mono text-emerald-400 hover:underline"
+
+                <td class="py-4 px-5">
+                  <button
+                    type="button"
+                    onclick="copyAdminText('{{ s.access_key }}', 'Copied Secret Key: {{ s.access_key }}')"
+                    title="Click to copy key"
+                    class="font-mono font-extrabold text-amber-300 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 px-3 py-1.5 rounded-xl text-xs transition"
                   >
-                    +{{ s.whatsapp_number }} 💬
+                    🔑 {{ s.access_key }}
+                  </button>
+                </td>
+
+                <td class="py-4 px-5">
+                  <a
+                    href="https://wa.me/{{ s.whatsapp_number }}?text={{ ('Hello ' ~ s.store_name ~ ', this is Varsell Support checking in on your store!')|urlencode }}"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-xl transition"
+                  >
+                    <span>+{{ s.whatsapp_number }}</span>
+                    <span>💬</span>
                   </a>
                 </td>
-                <td class="py-4 px-4">
-                  <span class="font-bold text-white">{{ s.product_count }}</span>
+
+                <td class="py-4 px-5">
+                  <span class="inline-flex items-center gap-1.5 font-extrabold text-xs px-3 py-1 rounded-full {% if s.product_count > 0 %}bg-emerald-500/15 text-emerald-300 border border-emerald-500/30{% else %}bg-white/5 text-slate-400{% endif %}">
+                    {{ s.product_count }} items
+                  </span>
                 </td>
-                <td class="py-4 px-4 text-right">
-                  <form action="/admin/delete-store/{{ s.id }}" method="POST" onsubmit="return confirm('Delete {{ s.store_name }} and all its products permanently?');" class="inline">
-                    <button
-                      type="submit"
-                      class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/20 text-xs font-bold px-3 py-1.5 rounded-xl transition"
+
+                <td class="py-4 px-5 text-right">
+                  <div class="inline-flex items-center gap-2">
+                    <a
+                      href="/admin/manage-store/{{ s.id }}"
+                      class="bg-white/5 hover:bg-amber-400 hover:text-slate-950 text-slate-200 border border-white/10 text-xs font-extrabold px-3.5 py-2 rounded-xl transition"
                     >
-                      Delete Store
-                    </button>
-                  </form>
+                      ⚡ Manage
+                    </a>
+                    <form
+                      action="/admin/delete-store/{{ s.id }}"
+                      method="POST"
+                      onsubmit="return confirm('Delete {{ s.store_name }} and all its products permanently?');"
+                      class="inline"
+                    >
+                      <button
+                        type="submit"
+                        class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/20 text-xs font-extrabold px-3.5 py-2 rounded-xl transition"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
               {% endfor %}
@@ -167,11 +257,33 @@
           </table>
         </div>
         {% else %}
-          <div class="p-12 text-center text-slate-400 text-sm">No stores have been created yet.</div>
+          <div class="p-14 text-center">
+            <p class="text-base font-bold text-white">No stores registered yet</p>
+            <p class="text-xs text-slate-400 mt-1">New stores created on Varsell will appear here automatically.</p>
+          </div>
         {% endif %}
       </div>
     {% endif %}
 
   </main>
+
+  <script>
+    function copyAdminText(text, message) {
+      navigator.clipboard.writeText(text);
+      const toast = document.getElementById("adminToast");
+      toast.textContent = "⚡ " + message;
+      toast.classList.remove("hidden");
+      setTimeout(() => toast.classList.add("hidden"), 2500);
+    }
+
+    function filterAdminStores() {
+      const q = document.getElementById("adminStoreSearch").value.toLowerCase();
+      const rows = document.querySelectorAll(".admin-store-row");
+      rows.forEach(row => {
+        const text = row.getAttribute("data-search");
+        row.style.display = text.includes(q) ? "" : "none";
+      });
+    }
+  </script>
 </body>
 </html>
