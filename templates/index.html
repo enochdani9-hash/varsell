@@ -4,13 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#10b981" />
+  <meta name="description" content="Varsell is Ghana's #1 cloud storefront platform. Create a free online store in 60 seconds, share your simple store link, and receive MoMo & WhatsApp orders." />
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-  <title>Varsell — Ghana's #1 WhatsApp & MoMo Store Platform</title>
+  <title>Varsell — Launch Your Online Store in 60 Seconds</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050811; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050811; scroll-behavior: smooth; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
     .bg-grid {
       background-size: 40px 40px;
@@ -32,7 +33,7 @@
   <div class="pointer-events-none fixed bottom-[-150px] right-[-150px] w-[500px] h-[500px] rounded-full bg-teal-500/10 blur-[140px] z-0"></div>
 
   <!-- Navbar -->
-  <header class="border-b border-white/10 bg-[#050811]/80 backdrop-blur-xl sticky top-0 z-40">
+  <header class="border-b border-white/10 bg-[#050811]/85 backdrop-blur-xl sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-2">
       <a href="/" class="flex items-center gap-3 group">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold text-xl shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition">
@@ -40,12 +41,18 @@
         </div>
         <div>
           <span class="text-xl font-extrabold tracking-tight text-white">Varsell</span>
-          <span class="hidden sm:inline-block ml-2 text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full">Ghana Edition</span>
+          <span class="hidden sm:inline-block ml-2 text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full">Cloud Stores</span>
         </div>
       </a>
 
+      <!-- Navigation Links -->
+      <nav class="hidden md:flex items-center gap-6 text-xs font-bold text-slate-300">
+        <a href="#explore-stores" class="hover:text-emerald-400 transition">Explore Stores</a>
+        <a href="#about-varsell" class="hover:text-emerald-400 transition">About Us</a>
+        <a href="#help-center" class="hover:text-emerald-400 transition">Help Center</a>
+      </nav>
+
       <div class="flex items-center gap-2">
-        <!-- PWA Install App Button -->
         <button
           id="installAppBtn"
           onclick="triggerInstall()"
@@ -82,15 +89,15 @@
     <div class="lg:col-span-6 space-y-8">
       <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs font-bold px-3.5 py-1.5 rounded-full">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        WORKS OFFLINE • MOMO READY • DIRECT TO WHATSAPP
+        SIMPLE WEB LINKS • WORKS OFFLINE • MOMO READY
       </div>
 
       <h1 class="text-4xl sm:text-6xl font-extrabold leading-[1.1] tracking-tight text-white">
-        Turn your WhatsApp hustle into a <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 bg-clip-text text-transparent">MoMo-ready store.</span>
+        Turn your WhatsApp hustle into a <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 bg-clip-text text-transparent">searchable web store.</span>
       </h1>
 
       <p class="text-slate-400 text-base sm:text-lg leading-relaxed">
-        Stop answering <em>"How much?"</em> and typing your MoMo number 50 times a day. Launch your Varsell store in 60 seconds, let customers browse your products even when their data finishes, and receive ready-to-pay orders straight on WhatsApp.
+        Stop paying huge sums for websites or posting 40 status photos a day. Get your own ultra-simple store link (like <span class="text-emerald-400 font-mono text-sm">varsell.onrender.com/yourname</span>), let customers shop even offline, and receive ready-to-pay MoMo orders straight on WhatsApp.
       </p>
 
       <!-- Value Pills -->
@@ -104,8 +111,8 @@
           <p class="text-xs text-slate-400 mt-0.5">Installable PWA App</p>
         </div>
         <div class="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-3.5">
-          <p class="text-lg sm:text-xl font-extrabold text-white">Status QR</p>
-          <p class="text-xs text-slate-400 mt-0.5">Auto Flyer Maker</p>
+          <p class="text-lg sm:text-xl font-extrabold text-white">SEO Indexed</p>
+          <p class="text-xs text-slate-400 mt-0.5">Searchable on Web</p>
         </div>
       </div>
 
@@ -151,7 +158,7 @@
               <input
                 type="text"
                 name="store_name"
-                placeholder="e.g. Kofi Drip & Kicks"
+                placeholder="e.g. Kofi Drip"
                 required
                 class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
               />
@@ -254,18 +261,34 @@
 
   </main>
 
-  <!-- Live Marketplace Showcase -->
-  {% if recent_stores %}
-  <section class="max-w-6xl mx-auto px-4 py-14 border-t border-white/10 relative z-10">
-    <div class="flex items-center justify-between mb-6">
+  <!-- Global Store Search & Directory -->
+  <section id="explore-stores" class="max-w-6xl mx-auto px-4 py-14 border-t border-white/10 relative z-10">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
       <div>
-        <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Live Network</span>
-        <h3 class="text-2xl font-extrabold text-white">Trending Stores on Varsell</h3>
+        <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Searchable Web Directory</span>
+        <h3 class="text-2xl sm:text-3xl font-extrabold text-white">Find Any Store on Varsell</h3>
+        <p class="text-xs text-slate-400 mt-1">Search by store name, short link, or category—or type a link directly into your browser.</p>
+      </div>
+
+      <div class="w-full md:w-96">
+        <input
+          type="text"
+          id="globalStoreSearch"
+          onkeyup="filterHomeStores()"
+          placeholder="🔍 Search store name or link (e.g. zayn)..."
+          class="w-full bg-slate-900 border border-white/15 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-400 shadow-lg"
+        />
       </div>
     </div>
-    <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
+
+    {% if recent_stores %}
+    <div id="homeStoresGrid" class="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
       {% for s in recent_stores %}
-      <a href="/store/{{ s.store_slug }}" class="group bg-slate-900/60 hover:bg-slate-900 border border-white/10 hover:border-emerald-500/50 rounded-3xl p-6 transition flex flex-col justify-between shadow-lg">
+      <a
+        href="/{{ s.store_slug }}"
+        data-store="{{ s.store_name|lower }} {{ s.store_slug|lower }} {{ s.category|lower }} {{ s.bio|lower }}"
+        class="home-store-card group bg-slate-900/60 hover:bg-slate-900 border border-white/10 hover:border-emerald-500/50 rounded-3xl p-6 transition flex flex-col justify-between shadow-lg"
+      >
         <div>
           <div class="flex items-center justify-between gap-2">
             <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
@@ -288,16 +311,123 @@
           <p class="text-xs text-slate-400 mt-2 line-clamp-2">{{ s.bio or 'Verified Varsell storefront. Click to browse items even offline and order via WhatsApp.' }}</p>
         </div>
         <div class="mt-5 pt-4 border-t border-white/5 flex items-center justify-between text-xs font-bold text-slate-300">
-          <span class="font-mono text-[11px] text-slate-400">/store/{{ s.store_slug }}</span>
-          <span class="text-emerald-400">Open Store →</span>
+          <span class="font-mono text-[11px] text-emerald-400">{{ request.host }}/{{ s.store_slug }}</span>
+          <span class="text-white group-hover:translate-x-1 transition">Shop →</span>
         </div>
       </a>
       {% endfor %}
     </div>
+    {% else %}
+      <div class="bg-slate-900/50 border border-white/10 rounded-3xl p-10 text-center text-sm text-slate-400">
+        No stores launched yet. Create the first store above!
+      </div>
+    {% endif %}
   </section>
-  {% endif %}
 
-  <!-- Install App Guide Modal (Fallback for iPhone / Browsers) -->
+  <!-- About Varsell Section -->
+  <section id="about-varsell" class="max-w-6xl mx-auto px-4 py-16 border-t border-white/10 relative z-10">
+    <div class="bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-emerald-950/30 border border-white/10 rounded-3xl p-8 sm:p-12 shadow-2xl">
+      <div class="max-w-3xl space-y-4">
+        <span class="text-xs font-extrabold uppercase tracking-widest text-emerald-400">About Varsell</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+          Built to give every entrepreneur a real online store—without the heavy price tag.
+        </h2>
+        <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+          Thousands of business owners across Ghana and Africa struggle to pay expensive developer fees just to get an e-commerce website—leaving them stuck posting dozens of photos on their WhatsApp status every single day.
+        </p>
+        <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+          <strong>Varsell</strong> solves this by hosting thousands of fast, mobile-first cloud stores on one unified platform. Every merchant who signs up gets a private <strong>Secret Key</strong> to manage their catalog, a clean web-searchable store link, built-in <strong>Mobile Money (MoMo)</strong> checkout, and offline Progressive Web App (PWA) technology so customers can shop anytime, anywhere.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-5 mt-8 pt-8 border-t border-white/10">
+        <div>
+          <h4 class="text-base font-extrabold text-white">🚀 Zero Coding or Fees</h4>
+          <p class="text-xs text-slate-400 mt-1">Sign up in 60 seconds, unlock your store with your custom key, and start posting products immediately.</p>
+        </div>
+        <div>
+          <h4 class="text-base font-extrabold text-emerald-400">🌐 Searchable Short Links</h4>
+          <p class="text-xs text-slate-400 mt-1">Every store gets an indexed, easy-to-remember web link and automatic sitemap registration for search engines.</p>
+        </div>
+        <div>
+          <h4 class="text-base font-extrabold text-amber-400">📲 Offline-First PWA</h4>
+          <p class="text-xs text-slate-400 mt-1">Customers can install your store on their phone and browse your catalog even with 0MB mobile data.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Official Help Center & Support Section -->
+  <section id="help-center" class="max-w-6xl mx-auto px-4 py-14 border-t border-white/10 relative z-10">
+    <div class="text-center max-w-2xl mx-auto mb-10">
+      <span class="text-xs font-extrabold uppercase tracking-widest text-amber-400">24/7 Merchant & Buyer Support</span>
+      <h2 class="text-3xl font-extrabold text-white mt-1">Varsell Help Center</h2>
+      <p class="text-xs sm:text-sm text-slate-400 mt-2">
+        Forgot your Store Secret Key, need help setting up your catalog, or have a question? Reach our support team directly via WhatsApp, Phone, or Email.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-5">
+      <!-- WhatsApp Support Card -->
+      <a
+        href="https://wa.me/233245641480?text={{ 'Hello Varsell Support! I need help with my Varsell store.'|urlencode }}"
+        target="_blank"
+        class="bg-slate-900/80 hover:bg-slate-900 border border-white/10 hover:border-emerald-400/50 rounded-3xl p-6 transition shadow-xl flex flex-col justify-between"
+      >
+        <div>
+          <span class="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-2xl">💬</span>
+          <h3 class="text-lg font-extrabold text-white mt-4">WhatsApp Support</h3>
+          <p class="text-xs text-slate-400 mt-1">Chat live with our support team on WhatsApp for instant help.</p>
+        </div>
+        <p class="text-sm font-mono font-extrabold text-emerald-400 mt-5">0245641480 →</p>
+      </a>
+
+      <!-- Direct Call Card -->
+      <a
+        href="tel:0245641480"
+        class="bg-slate-900/80 hover:bg-slate-900 border border-white/10 hover:border-amber-400/50 rounded-3xl p-6 transition shadow-xl flex flex-col justify-between"
+      >
+        <div>
+          <span class="w-12 h-12 rounded-2xl bg-amber-400/15 border border-amber-400/30 flex items-center justify-center text-2xl">📞</span>
+          <h3 class="text-lg font-extrabold text-white mt-4">Call Help Desk</h3>
+          <p class="text-xs text-slate-400 mt-1">Speak directly with Varsell customer care for urgent store assistance.</p>
+        </div>
+        <p class="text-sm font-mono font-extrabold text-amber-400 mt-5">0245641480 →</p>
+      </a>
+
+      <!-- Official Email Card -->
+      <a
+        href="mailto:agriconnect886@gmail.com?subject=Varsell%20Store%20Support"
+        class="bg-slate-900/80 hover:bg-slate-900 border border-white/10 hover:border-teal-400/50 rounded-3xl p-6 transition shadow-xl flex flex-col justify-between"
+      >
+        <div>
+          <span class="w-12 h-12 rounded-2xl bg-teal-400/15 border border-teal-400/30 flex items-center justify-center text-2xl">✉️</span>
+          <h3 class="text-lg font-extrabold text-white mt-4">Official Email Support</h3>
+          <p class="text-xs text-slate-400 mt-1">Send us an email for account recovery, partnerships, or inquiries.</p>
+        </div>
+        <p class="text-sm font-mono font-extrabold text-teal-300 mt-5 break-all">agriconnect886@gmail.com →</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/10 bg-slate-950/80 py-10 relative z-10">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+      <div class="flex items-center gap-2">
+        <span class="w-6 h-6 rounded-lg bg-emerald-400 text-slate-950 font-black flex items-center justify-center">V</span>
+        <span class="font-bold text-white">Varsell Cloud Stores</span>
+        <span>• Built in Ghana</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-4">
+        <a href="#about-varsell" class="hover:text-white">About</a>
+        <a href="#help-center" class="hover:text-white">Help Center</a>
+        <a href="mailto:agriconnect886@gmail.com" class="text-emerald-400 hover:underline">agriconnect886@gmail.com</a>
+        <a href="tel:0245641480" class="text-amber-400 font-mono hover:underline">0245641480</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Install App Guide Modal -->
   <div id="installModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between">
@@ -325,14 +455,21 @@
       document.getElementById("customKeyInput").value = `${word}-${num}`;
     }
 
-    // Register Offline Service Worker
+    function filterHomeStores() {
+      const q = document.getElementById("globalStoreSearch").value.toLowerCase();
+      const cards = document.querySelectorAll(".home-store-card");
+      cards.forEach(card => {
+        const text = card.getAttribute("data-store");
+        card.style.display = text.includes(q) ? "flex" : "none";
+      });
+    }
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js');
       });
     }
 
-    // Handle Native PWA Install Prompt
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -349,7 +486,6 @@
       }
     }
 
-    // Offline Detection Banner
     function updateOnlineStatus() {
       const banner = document.getElementById('offlineBanner');
       if (!navigator.onLine) {
