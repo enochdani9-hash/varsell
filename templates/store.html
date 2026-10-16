@@ -10,34 +10,52 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050811; }
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #050811;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .bg-grid {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    }
   </style>
 </head>
-<body class="text-slate-100 min-h-screen pb-32">
+<body class="text-slate-100 min-h-screen pb-36 bg-grid relative overflow-x-hidden">
 
   <!-- Offline Status Banner -->
-  <div id="offlineBanner" class="hidden bg-amber-400 text-slate-950 text-center py-2 px-4 text-xs font-extrabold sticky top-0 z-50">
-    ⚡ Offline Mode Active — Browsing saved catalog with 0MB data!
+  <div
+    id="offlineBanner"
+    class="hidden bg-amber-400 text-slate-950 text-center py-2.5 px-4 text-xs font-extrabold sticky top-0 z-50 shadow-lg"
+  >
+    ⚡ Offline Mode Active — You are browsing {{ store.store_name }}'s saved catalog with 0MB data!
   </div>
 
   <!-- Toast Popup -->
-  <div id="storeToast" class="fixed top-5 right-5 z-50 hidden bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3 rounded-2xl shadow-2xl"></div>
+  <div
+    id="storeToast"
+    class="fixed top-5 right-5 z-50 hidden bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"
+  ></div>
 
   <!-- Storefront Hero Header -->
-  <header class="relative border-b border-white/10 bg-gradient-to-b from-emerald-950/30 via-slate-900/80 to-[#050811]">
+  <header class="relative border-b border-white/10 bg-gradient-to-b from-emerald-950/35 via-slate-900/85 to-[#050811]">
     <div class="max-w-5xl mx-auto px-4 py-8 sm:py-10">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         
+        <!-- Left: Store Logo / Avatar + Details -->
         <div class="flex items-start sm:items-center gap-4">
           {% if store.logo_data %}
             <img
               src="{{ store.logo_data }}"
               alt="{{ store.store_name }}"
-              class="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400/50 shadow-xl shadow-emerald-500/20 shrink-0"
+              class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-400/50 shadow-xl shadow-emerald-500/20 shrink-0"
             />
           {% else %}
-            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-2xl shadow-xl shadow-emerald-500/20 shrink-0">
+            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-2xl sm:text-3xl shadow-xl shadow-emerald-500/20 shrink-0">
               {{ store.store_name[:1]|upper }}
             </div>
           {% endif %}
@@ -52,58 +70,73 @@
                   ✓ Verified MoMo: {{ store.momo_name }}
                 </span>
               {% else %}
-                <span class="text-[11px] font-semibold text-slate-400">✓ Verified Varsell Store</span>
+                <span class="text-[11px] font-semibold text-slate-400">
+                  ✓ Verified Varsell Merchant
+                </span>
               {% endif %}
             </div>
-            <h1 class="text-2xl sm:text-4xl font-extrabold text-white mt-1">{{ store.store_name }}</h1>
+
+            <h1 class="text-2xl sm:text-4xl font-extrabold text-white mt-1.5 tracking-tight">
+              {{ store.store_name }}
+            </h1>
+
             {% if store.bio %}
-              <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">{{ store.bio }}</p>
+              <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed">
+                {{ store.bio }}
+              </p>
             {% endif %}
           </div>
         </div>
 
+        <!-- Right: Save Offline + Direct WhatsApp Chat -->
         <div class="flex items-center gap-2.5 shrink-0">
           <button
+            type="button"
             onclick="installStoreApp()"
-            class="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-extrabold px-4 py-3 rounded-2xl transition"
+            class="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-extrabold px-4 py-3 rounded-2xl transition flex items-center gap-1.5"
           >
-            📲 Save Offline
+            <span>📲</span>
+            <span>Save Offline</span>
           </button>
+
           <a
             href="https://wa.me/{{ store.whatsapp_number }}?text={{ ('Hi ' ~ store.store_name ~ '! I am browsing your Varsell store and have a quick question.')|urlencode }}"
             target="_blank"
             class="inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/15 text-xs font-bold px-4 py-3 rounded-2xl transition"
           >
-            💬 Chat Seller
+            <span>💬</span>
+            <span>Chat Seller</span>
           </a>
         </div>
+
       </div>
 
-      <!-- Search Filter Bar -->
+      <!-- Live Search Filter Bar -->
       {% if products|length > 1 %}
       <div class="mt-6">
         <input
           type="text"
           id="productSearch"
           onkeyup="filterProducts()"
-          placeholder="🔍 Search items in {{ store.store_name }}..."
-          class="w-full sm:max-w-md bg-slate-950/90 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+          placeholder="🔍 Search products or prices in {{ store.store_name }}..."
+          class="w-full sm:max-w-md bg-slate-950/90 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400 transition"
         />
       </div>
       {% endif %}
     </div>
   </header>
 
-  <!-- Store Catalog Grid -->
+  <!-- Main Store Catalog Grid -->
   <main class="max-w-5xl mx-auto px-4 py-8">
     {% if products %}
       <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {% for p in products %}
         <div
-          data-name="{{ p.product_name|lower }} {{ p.description|lower }}"
+          data-name="{{ p.product_name|lower }} {{ p.description|lower }} {{ p.price }}"
           class="product-card bg-slate-900/90 border border-white/10 rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group hover:border-emerald-500/40 transition"
         >
           <div>
+            <!-- Product Image Container -->
             <div class="relative h-60 bg-slate-950 overflow-hidden">
               <img
                 src="{{ p.image_data }}"
@@ -111,36 +144,48 @@
                 class="w-full h-full object-cover group-hover:scale-105 transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
               />
               {% if p.in_stock == 0 %}
-                <span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-extrabold px-3 py-1 rounded-full">
+                <span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-md">
                   Sold Out
+                </span>
+              {% else %}
+                <span class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-white/10 text-emerald-400 text-[11px] font-extrabold px-2.5 py-1 rounded-full">
+                  ● Available
                 </span>
               {% endif %}
             </div>
 
+            <!-- Product Title, Price & Description -->
             <div class="p-5">
               <div class="flex items-start justify-between gap-2">
-                <h2 class="text-lg font-extrabold text-white leading-snug">{{ p.product_name }}</h2>
+                <h2 class="text-lg font-extrabold text-white leading-snug">
+                  {{ p.product_name }}
+                </h2>
                 <span class="shrink-0 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-extrabold text-sm px-3 py-1 rounded-xl">
                   {{ p.currency }} {{ "%.2f"|format(p.price) }}
                 </span>
               </div>
+
               {% if p.description %}
-                <p class="text-xs text-slate-400 mt-2 leading-relaxed">{{ p.description }}</p>
+                <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                  {{ p.description }}
+                </p>
               {% endif %}
             </div>
           </div>
 
-          <!-- Purchase Buttons -->
+          <!-- Purchase Action Buttons -->
           <div class="p-5 pt-0">
             {% if p.in_stock == 1 %}
               <div class="grid grid-cols-2 gap-2.5">
                 <button
+                  type="button"
                   onclick='addToCart({{ p.id }}, {{ p.product_name|tojson }}, {{ p.price }}, {{ p.currency|tojson }})'
                   class="bg-white/5 hover:bg-white/10 text-white text-xs font-extrabold py-3 px-3 rounded-2xl border border-white/10 transition"
                 >
                   + Add to Bag
                 </button>
                 <button
+                  type="button"
                   onclick='quickBuyNow({{ p.id }}, {{ p.product_name|tojson }}, {{ p.price }}, {{ p.currency|tojson }})'
                   class="bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 text-xs font-extrabold py-3 px-3 rounded-2xl text-center transition shadow-lg shadow-emerald-500/20"
                 >
@@ -148,7 +193,11 @@
                 </button>
               </div>
             {% else %}
-              <button disabled class="w-full bg-white/5 text-slate-500 text-xs font-bold py-3 rounded-2xl cursor-not-allowed">
+              <button
+                type="button"
+                disabled
+                class="w-full bg-white/5 text-slate-500 text-xs font-bold py-3 rounded-2xl cursor-not-allowed border border-white/5"
+              >
                 Currently Out of Stock
               </button>
             {% endif %}
@@ -157,38 +206,56 @@
         {% endfor %}
       </div>
     {% else %}
+      <!-- Empty Store State -->
       <div class="bg-slate-900/60 border border-white/10 rounded-3xl p-14 text-center">
         <h3 class="text-xl font-extrabold text-white">New products coming soon!</h3>
-        <p class="text-xs sm:text-sm text-slate-400 mt-1">{{ store.store_name }} is updating its catalog. Check back shortly.</p>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          {{ store.store_name }} is updating its catalog. Check back shortly or chat with the seller on WhatsApp.
+        </p>
       </div>
     {% endif %}
   </main>
 
   <!-- Viral Varsell Footer -->
   <footer class="max-w-5xl mx-auto px-4 py-12 text-center border-t border-white/10 mt-8">
-    <a href="/" class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 border border-white/10 px-4 py-2.5 rounded-full text-xs text-slate-300 transition">
-      <span class="w-5 h-5 rounded-md bg-emerald-400 text-slate-950 font-black flex items-center justify-center">V</span>
-      <span>Powered by <strong class="text-white">Varsell</strong> — <span class="text-emerald-400 underline">Get your free MoMo & WhatsApp store in 60s</span></span>
+    <a
+      href="/"
+      class="inline-flex items-center gap-2.5 bg-slate-900 hover:bg-slate-800 border border-white/10 px-4 py-2.5 rounded-full text-xs text-slate-300 transition shadow-lg"
+    >
+      <span class="w-5 h-5 rounded-md bg-emerald-400 text-slate-950 font-black flex items-center justify-center">
+        V
+      </span>
+      <span>
+        Powered by <strong class="text-white">Varsell</strong> —
+        <span class="text-emerald-400 underline">Get your free MoMo & WhatsApp store in 60s</span>
+      </span>
     </a>
   </footer>
 
-  <!-- Floating Glassmorphic Checkout Bag -->
+  <!-- Floating Glassmorphic Checkout Bag Bar -->
   <div
     id="cartBar"
     class="hidden fixed bottom-4 inset-x-4 max-w-3xl mx-auto bg-slate-900/95 backdrop-blur-2xl border-2 border-emerald-400 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-40"
   >
     <div>
-      <span id="cartCount" class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">0 items in shopping bag</span>
-      <p id="cartTotal" class="text-xl font-extrabold text-white">Total: 0.00</p>
+      <span id="cartCount" class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">
+        0 items in shopping bag
+      </span>
+      <p id="cartTotal" class="text-xl font-extrabold text-white">
+        Total: 0.00
+      </p>
     </div>
+
     <div class="flex items-center gap-3">
       <button
+        type="button"
         onclick="clearCart()"
-        class="text-xs font-bold text-slate-400 hover:text-white px-3 py-2.5 rounded-xl bg-white/5"
+        class="text-xs font-bold text-slate-400 hover:text-white px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 transition"
       >
         Clear Bag
       </button>
       <button
+        type="button"
         onclick="openCheckoutModal()"
         class="flex-1 sm:flex-initial bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-sm px-6 py-3.5 rounded-2xl shadow-xl transition"
       >
@@ -198,39 +265,70 @@
   </div>
 
   <!-- Ghana MoMo & Delivery Zone Checkout Modal -->
-  <div id="checkoutModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between">
+  <div
+    id="checkoutModal"
+    class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
+    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
         <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">Express Ghana Checkout</span>
+          <span class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">
+            Express Ghana Checkout
+          </span>
           <h3 class="text-xl font-extrabold text-white">Complete Your Order</h3>
         </div>
-        <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
+        <button
+          type="button"
+          onclick="closeCheckoutModal()"
+          class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-sm"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Selected Items Summary inside Modal -->
+      <div class="bg-slate-950/80 border border-white/10 rounded-2xl p-3.5 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Order Summary</span>
+          <span id="modalTotalText" class="text-xs font-extrabold text-emerald-400"></span>
+        </div>
+        <div id="modalItemsList" class="space-y-1.5 text-xs text-slate-200 max-h-28 overflow-y-auto"></div>
       </div>
 
       {% if store.momo_number %}
-      <!-- Official MoMo Card -->
+      <!-- Official Merchant MoMo Payment Card -->
       <div class="bg-amber-400/10 border border-amber-400/30 rounded-2xl p-4 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">💛 Official Merchant MoMo</span>
+          <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
+            💛 Official Merchant MoMo
+          </span>
           <button
             type="button"
             onclick="copyMoMo('{{ store.momo_number }}')"
-            class="bg-amber-400 text-slate-950 font-extrabold text-[11px] px-3 py-1 rounded-lg"
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-[11px] px-3 py-1 rounded-lg transition"
           >
             Copy MoMo Number
           </button>
         </div>
-        <p class="text-xl font-mono font-extrabold text-white">{{ store.momo_number }}</p>
+        <p class="text-xl font-mono font-extrabold text-white tracking-wider">
+          {{ store.momo_number }}
+        </p>
         {% if store.momo_name %}
-          <p class="text-xs text-amber-200">Account Name: <strong>{{ store.momo_name }}</strong></p>
+          <p class="text-xs text-amber-200">
+            Registered Name: <strong>{{ store.momo_name }}</strong>
+          </p>
         {% endif %}
       </div>
       {% endif %}
 
+      <!-- Customer Delivery & Payment Form -->
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Your Name *</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">
+            Your Full Name *
+          </label>
           <input
             type="text"
             id="buyerName"
@@ -240,7 +338,9 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Delivery Zone / Location *</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">
+            Delivery Zone / Dispatch Mode *
+          </label>
           <select
             id="deliveryZone"
             class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
@@ -248,12 +348,14 @@
             <option value="Accra / Tema Dispatch Rider">🛵 Accra / Tema Dispatch Rider</option>
             <option value="Kumasi / Takoradi / Regional VIP Parcel">🚌 Regional VIP / STC Bus Parcel</option>
             <option value="Campus Delivery (Legon / KNUST / UPSA)">🎓 Campus Delivery (Legon / KNUST / UPSA)</option>
-            <option value="Store Pickup">🏪 Direct Store Pickup</option>
+            <option value="Direct Store Pickup">🏪 Direct Store Pickup</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Exact Landmark / Town *</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">
+            Exact Delivery Town / Landmark *
+          </label>
           <input
             type="text"
             id="buyerLocation"
@@ -263,18 +365,22 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Payment Method</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">
+            Preferred Payment Method
+          </label>
           <select
             id="paymentMethod"
             class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
           >
             <option value="Mobile Money (MTN / Telecel / AT)">💛 Mobile Money (MTN / Telecel / AT)</option>
-            <option value="Payment on Delivery">💵 Cash / MoMo on Delivery</option>
+            <option value="Cash or MoMo on Delivery">💵 Cash / MoMo on Delivery</option>
           </select>
         </div>
       </div>
 
+      <!-- Final Send to WhatsApp Button -->
       <button
+        type="button"
         onclick="checkoutWhatsApp()"
         class="w-full bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold py-3.5 rounded-2xl text-sm shadow-xl transition"
       >
@@ -283,15 +389,20 @@
     </div>
   </div>
 
+  <!-- Storefront Interactive JavaScript -->
   <script>
     const sellerWhatsApp = "{{ store.whatsapp_number }}";
     const storeName = {{ store.store_name|tojson }};
     let cart = [];
 
+    // 1. Register Offline Service Worker
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
     }
 
+    // 2. Handle Native PWA App Installation
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -304,8 +415,154 @@
         await deferredPrompt.userChoice;
         deferredPrompt = null;
       } else {
-        showStoreToast("Saved for offline use! You can also tap 'Add to Home Screen' in your browser menu.");
+        showStoreToast("Catalog saved for offline use! You can also tap 'Add to Home Screen' in your browser menu.");
       }
     }
 
-    function addTo
+    // 3. Shopping Bag Logic
+    function addToCart(id, name, price, currency) {
+      const existing = cart.find(item => item.id === id);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push({ id, name, price, currency, qty: 1 });
+      }
+      renderCartBar();
+      showStoreToast(`Added "${name}" to your bag!`);
+    }
+
+    function quickBuyNow(id, name, price, currency) {
+      const existing = cart.find(item => item.id === id);
+      if (!existing) {
+        cart.push({ id, name, price, currency, qty: 1 });
+      }
+      renderCartBar();
+      openCheckoutModal();
+    }
+
+    function openCheckoutModal() {
+      renderModalSummary();
+      document.getElementById("checkoutModal").classList.remove("hidden");
+    }
+
+    function closeCheckoutModal() {
+      document.getElementById("checkoutModal").classList.add("hidden");
+    }
+
+    function renderModalSummary() {
+      const listEl = document.getElementById("modalItemsList");
+      const totalEl = document.getElementById("modalTotalText");
+      if (!listEl || cart.length === 0) return;
+
+      const currency = cart[0].currency;
+      let total = 0;
+      listEl.innerHTML = "";
+
+      cart.forEach((item) => {
+        const sub = item.price * item.qty;
+        total += sub;
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between border-b border-white/5 pb-1";
+        row.innerHTML = `
+          <span><strong>${item.name}</strong> × ${item.qty}</span>
+          <span class="font-mono text-slate-300">${currency} ${sub.toFixed(2)}</span>
+        `;
+        listEl.appendChild(row);
+      });
+
+      totalEl.textContent = `Total: ${currency} ${total.toFixed(2)}`;
+    }
+
+    function copyMoMo(num) {
+      navigator.clipboard.writeText(num);
+      showStoreToast("Merchant MoMo Number copied!");
+    }
+
+    function showStoreToast(msg) {
+      const toast = document.getElementById("storeToast");
+      toast.textContent = "✨ " + msg;
+      toast.classList.remove("hidden");
+      setTimeout(() => {
+        toast.classList.add("hidden");
+      }, 2600);
+    }
+
+    function clearCart() {
+      cart = [];
+      renderCartBar();
+    }
+
+    function renderCartBar() {
+      const bar = document.getElementById("cartBar");
+      if (cart.length === 0) {
+        bar.classList.add("hidden");
+        return;
+      }
+      bar.classList.remove("hidden");
+
+      const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+      const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+      const currency = cart[0].currency;
+
+      document.getElementById("cartCount").textContent = `${totalItems} item(s) ready to order`;
+      document.getElementById("cartTotal").textContent = `Total: ${currency} ${totalAmount.toFixed(2)}`;
+    }
+
+    // 4. WhatsApp Order Formatter
+    function checkoutWhatsApp() {
+      if (cart.length === 0) return;
+
+      const buyerName = document.getElementById("buyerName").value.trim() || "Customer";
+      const deliveryZone = document.getElementById("deliveryZone").value;
+      const buyerLocation = document.getElementById("buyerLocation").value.trim() || "Not specified";
+      const paymentMethod = document.getElementById("paymentMethod").value;
+
+      const currency = cart[0].currency;
+      let total = 0;
+      let lines = [`Hello *${storeName}*! 👋\nNew Order from *${buyerName}* via Varsell:\n`];
+
+      cart.forEach((item, index) => {
+        const sub = item.price * item.qty;
+        total += sub;
+        lines.push(`${index + 1}. *${item.name}* (x${item.qty}) — ${currency} ${sub.toFixed(2)}`);
+      });
+
+      lines.push(`\n💰 *Total Order: ${currency} ${total.toFixed(2)}*`);
+      lines.push(`🚚 *Delivery Mode:* ${deliveryZone}`);
+      lines.push(`📍 *Location:* ${buyerLocation}`);
+      lines.push(`💳 *Payment:* ${paymentMethod}`);
+      lines.push(`\nPlease confirm availability and delivery details!`);
+
+      const url = `https://wa.me/${sellerWhatsApp}?text=${encodeURIComponent(lines.join("\n"))}`;
+      window.open(url, "_blank");
+      closeCheckoutModal();
+    }
+
+    // 5. Live Store Search Filter
+    function filterProducts() {
+      const searchInput = document.getElementById("productSearch");
+      if (!searchInput) return;
+      const query = searchInput.value.toLowerCase();
+      const cards = document.querySelectorAll(".product-card");
+      cards.forEach(card => {
+        const text = card.getAttribute("data-name");
+        card.style.display = text.includes(query) ? "flex" : "none";
+      });
+    }
+
+    // 6. Real-Time Offline Status Detection
+    function updateOnlineStatus() {
+      const banner = document.getElementById('offlineBanner');
+      if (!navigator.onLine) {
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+  </script>
+
+</body>
+</html>
