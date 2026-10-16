@@ -23,6 +23,13 @@ if DATABASE_URL.startswith("postgres://"):
 
 IS_POSTGRES = bool(DATABASE_URL and psycopg2)
 
+# Reserved system paths so a store slug never collides with app routes
+RESERVED_SLUGS = {
+    "admin", "login", "logout", "dashboard", "create-store", "add-product",
+    "change-key", "update-store", "admin-logout", "store", "sw.js",
+    "manifest.json", "icon.svg", "sitemap.xml", "robots.txt", "static"
+}
+
 
 class DBWrapper:
     def __init__(self):
@@ -144,7 +151,9 @@ def normalize_key(raw_key):
 def create_slug(store_name):
     slug = re.sub(r"[^a-zA-Z0-9\s-]", "", store_name).strip().lower()
     slug = re.sub(r"[\s-]+", "-", slug)
-    return slug or "store"
+    if not slug or slug in RESERVED_SLUGS:
+        slug = f"shop-{secrets.choice(string.digits)}{secrets.choice(string.digits)}"
+    return slug
 
 
 def clean_whatsapp_number(number):
@@ -154,7 +163,37 @@ def clean_whatsapp_number(number):
     return cleaned
 
 
-# --- PWA & OFFLINE ENGINE ROUTES ---
+# --- GOOGLE SEO, SITEMAP & PWA ROUTES ---
+
+@app.route("/robots.txt")
+def robots_txt():
+    base_url = request.host_url.rstrip("/")
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin",
+        "Disallow: /dashboard",
+        f"Sitemap: {base_url}/sitemap.xml"
+    ]
+    return Response("\n".join(lines), mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    base_url = request.host_url.rstrip("/")
+    conn = get_db_connection()
+    stores = conn.execute("SELECT store_slug FROM stores ORDER BY id DESC").fetchall()
+    conn.close()
+
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>']
+    xml.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    xml.append(f'  <url><loc>{base_url}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>')
+    for s in stores:
+        slug = s["store_slug"]
+        xml.append(f'  <url><loc>{base_url}/{slug}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>')
+    xml.append('</urlset>')
+    return Response("\n".join(xml), mimetype="application/xml")
+
 
 @app.route("/icon.svg")
 def app_icon():
@@ -196,7 +235,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-offline-v2';
+const CACHE_NAME = 'varsell-offline-v3';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -250,7 +289,7 @@ self.addEventListener('fetch', (event) => {
 def index():
     conn = get_db_connection()
     recent_stores = conn.execute(
-        "SELECT store_name, store_slug, category, bio, logo_data, momo_name FROM stores ORDER BY id DESC LIMIT 9"
+        "SELECT store_name, store_slug, category, bio, logo_data, momo_name FROM stores ORDER BY id DESC LIMIT 24"
     ).fetchall()
     conn.close()
     return render_template("index.html", recent_stores=recent_stores)
@@ -392,6 +431,17 @@ def update_store():
         return redirect(url_for("index"))
 
     store_name = request.form.get("store_name", store["store_name"]).strip()
+    custom_slug_raw = request.form.get("store_slug", store["store_slug"]).strip()
+    new_slug = create_slug(custom_slug_raw) if custom_slug_raw else store["store_slug"]
+
+    # Check if custom short link is taken by another store
+    slug_taken = conn.execute(
+        "SELECT id FROM stores WHERE store_slug = ? AND id != ?", (new_slug, store["id"])
+    ).fetchone()
+    if slug_taken or new_slug in RESERVED_SLUGS:
+        new_slug = store["store_slug"]
+        flash("That custom short link is already taken, so we kept your current link.", "error")
+
     whatsapp_number = clean_whatsapp_number(request.form.get("whatsapp_number", store["whatsapp_number"]))
     category = request.form.get("category", store["category"]).strip()
     bio = request.form.get("bio", store["bio"]).strip()
@@ -408,14 +458,14 @@ def update_store():
 
     conn.execute(
         """UPDATE stores
-           SET store_name = ?, whatsapp_number = ?, category = ?, bio = ?, logo_data = ?, momo_number = ?, momo_name = ?
+           SET store_name = ?, store_slug = ?, whatsapp_number = ?, category = ?, bio = ?, logo_data = ?, momo_number = ?, momo_name = ?
            WHERE id = ?""",
-        (store_name, whatsapp_number, category, bio, logo_data, momo_number, momo_name, store["id"])
+        (store_name, new_slug, whatsapp_number, category, bio, logo_data, momo_number, momo_name, store["id"])
     )
     conn.commit()
     conn.close()
 
-    flash("Store profile, MoMo details & branding updated!", "success")
+    flash("Store link, MoMo details & branding updated!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -544,14 +594,16 @@ def logout():
     return redirect(url_for("index"))
 
 
-@app.route("/store/<store_slug>")
-def view_store(store_slug):
+# --- ULTRA-SIMPLE STORE LINKS (/store/slug AND /slug) ---
+
+def render_store_page(store_slug):
+    clean_slug = store_slug.strip().lower().lstrip("@")
     conn = get_db_connection()
-    store = conn.execute("SELECT * FROM stores WHERE store_slug = ?", (store_slug,)).fetchone()
+    store = conn.execute("SELECT * FROM stores WHERE LOWER(store_slug) = ?", (clean_slug,)).fetchone()
 
     if not store:
         conn.close()
-        return "Store not found", 404
+        return render_template("index.html", recent_stores=[]), 404
 
     products = conn.execute(
         "SELECT * FROM products WHERE store_id = ? ORDER BY in_stock DESC, id DESC",
@@ -560,6 +612,17 @@ def view_store(store_slug):
     conn.close()
 
     return render_template("store.html", store=store, products=products)
+
+
+@app.route("/store/<store_slug>")
+def view_store(store_slug):
+    return render_store_page(store_slug)
+
+
+@app.route("/<store_slug>")
+def view_short_store(store_slug):
+    """Enables ultra-clean direct links like varsell.onrender.com/zayn"""
+    return render_store_page(store_slug)
 
 
 # --- FOUNDER MASTER ADMIN ROUTES ---
