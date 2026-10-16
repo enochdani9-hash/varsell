@@ -4,7 +4,7 @@ import sqlite3
 import secrets
 import string
 import base64
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, jsonify
 
 try:
     import psycopg2
@@ -67,10 +67,14 @@ def init_db():
                 category TEXT DEFAULT 'General',
                 bio TEXT DEFAULT '',
                 logo_data TEXT DEFAULT '',
+                momo_number TEXT DEFAULT '',
+                momo_name TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS logo_data TEXT DEFAULT ''")
+        conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS momo_number TEXT DEFAULT ''")
+        conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS momo_name TEXT DEFAULT ''")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id SERIAL PRIMARY KEY,
@@ -95,13 +99,16 @@ def init_db():
                 category TEXT DEFAULT 'General',
                 bio TEXT DEFAULT '',
                 logo_data TEXT DEFAULT '',
+                momo_number TEXT DEFAULT '',
+                momo_name TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        try:
-            conn.execute("ALTER TABLE stores ADD COLUMN logo_data TEXT DEFAULT ''")
-        except Exception:
-            pass
+        for col in ["logo_data", "momo_number", "momo_name"]:
+            try:
+                conn.execute(f"ALTER TABLE stores ADD COLUMN {col} TEXT DEFAULT ''")
+            except Exception:
+                pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -147,11 +154,103 @@ def clean_whatsapp_number(number):
     return cleaned
 
 
+# --- PWA & OFFLINE ENGINE ROUTES ---
+
+@app.route("/icon.svg")
+def app_icon():
+    svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#34d399"/>
+          <stop offset="100%" stop-color="#0d9488"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="115" fill="#04070f"/>
+      <rect x="36" y="36" width="440" height="440" rx="95" fill="url(#g)"/>
+      <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="290" fill="#04070f">V</text>
+    </svg>"""
+    return Response(svg, mimetype="image/svg+xml")
+
+
+@app.route("/manifest.json")
+def manifest():
+    return jsonify({
+        "name": "Varsell — Cloud Stores & WhatsApp Commerce",
+        "short_name": "Varsell",
+        "description": "Launch and browse online stores even offline. Built for WhatsApp & MoMo commerce.",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#04070f",
+        "theme_color": "#10b981",
+        "icons": [
+            {
+                "src": "/icon.svg",
+                "sizes": "192x192 512x512",
+                "type": "image/svg+xml",
+                "purpose": "any maskable"
+            }
+        ]
+    })
+
+
+@app.route("/sw.js")
+def service_worker():
+    sw_code = """
+const CACHE_NAME = 'varsell-offline-v2';
+const CORE_ASSETS = [
+  '/',
+  '/manifest.json',
+  '/icon.svg',
+  'https://cdn.tailwindcss.com'
+];
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : null)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        const clone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, clone);
+        });
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          return caches.match('/');
+        });
+      })
+  );
+});
+"""
+    return Response(sw_code, mimetype="application/javascript")
+
+
+# --- MAIN PLATFORM ROUTES ---
+
 @app.route("/")
 def index():
     conn = get_db_connection()
     recent_stores = conn.execute(
-        "SELECT store_name, store_slug, category, bio, logo_data FROM stores ORDER BY id DESC LIMIT 6"
+        "SELECT store_name, store_slug, category, bio, logo_data, momo_name FROM stores ORDER BY id DESC LIMIT 9"
     ).fetchall()
     conn.close()
     return render_template("index.html", recent_stores=recent_stores)
@@ -164,6 +263,8 @@ def create_store():
     custom_key_input = request.form.get("custom_key", "").strip()
     category = request.form.get("category", "General").strip()
     bio = request.form.get("bio", "").strip()
+    momo_number = request.form.get("momo_number", "").strip()
+    momo_name = request.form.get("momo_name", "").strip()
 
     if not store_name or not whatsapp_number:
         flash("Please provide both your Store Name and WhatsApp number.", "error")
@@ -205,9 +306,9 @@ def create_store():
     formatted_wa = clean_whatsapp_number(whatsapp_number)
 
     conn.execute(
-        """INSERT INTO stores (store_name, store_slug, access_key, whatsapp_number, category, bio)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (store_name, slug, access_key, formatted_wa, category, bio)
+        """INSERT INTO stores (store_name, store_slug, access_key, whatsapp_number, category, bio, momo_number, momo_name)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (store_name, slug, access_key, formatted_wa, category, bio, momo_number, momo_name)
     )
     conn.commit()
     conn.close()
@@ -222,7 +323,6 @@ def login():
     raw_input = request.form.get("access_key", "").strip()
     access_key = normalize_key(raw_input)
 
-    # Direct Founder Admin Unlock from Main Homepage!
     if raw_input.upper() == ADMIN_MASTER_KEY.upper() or access_key == normalize_key(ADMIN_MASTER_KEY):
         session["is_varsell_admin"] = True
         flash("⚡ Founder Master Key recognized! Welcome to Varsell Command HQ.", "success")
@@ -295,6 +395,8 @@ def update_store():
     whatsapp_number = clean_whatsapp_number(request.form.get("whatsapp_number", store["whatsapp_number"]))
     category = request.form.get("category", store["category"]).strip()
     bio = request.form.get("bio", store["bio"]).strip()
+    momo_number = request.form.get("momo_number", store.get("momo_number", "")).strip()
+    momo_name = request.form.get("momo_name", store.get("momo_name", "")).strip()
     logo_file = request.files.get("logo_file")
 
     logo_data = store["logo_data"] or ""
@@ -306,14 +408,14 @@ def update_store():
 
     conn.execute(
         """UPDATE stores
-           SET store_name = ?, whatsapp_number = ?, category = ?, bio = ?, logo_data = ?
+           SET store_name = ?, whatsapp_number = ?, category = ?, bio = ?, logo_data = ?, momo_number = ?, momo_name = ?
            WHERE id = ?""",
-        (store_name, whatsapp_number, category, bio, logo_data, store["id"])
+        (store_name, whatsapp_number, category, bio, logo_data, momo_number, momo_name, store["id"])
     )
     conn.commit()
     conn.close()
 
-    flash("Store profile & branding updated!", "success")
+    flash("Store profile, MoMo details & branding updated!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -504,7 +606,6 @@ def admin_panel():
 
 @app.route("/admin/manage-store/<int:store_id>")
 def admin_manage_store(store_id):
-    """Founder God-Mode: Jump directly into any store's dashboard with 1 click"""
     if not session.get("is_varsell_admin"):
         return redirect(url_for("admin_panel"))
 
