@@ -178,6 +178,11 @@ def create_store():
             flash("Your custom Secret Key must be at least 4 characters long.", "error")
             return redirect(url_for("index"))
 
+        if access_key == normalize_key(ADMIN_MASTER_KEY):
+            conn.close()
+            flash("That key is reserved. Please pick a different Secret Key.", "error")
+            return redirect(url_for("index"))
+
         existing_key = conn.execute(
             "SELECT id FROM stores WHERE access_key = ?", (access_key,)
         ).fetchone()
@@ -214,7 +219,15 @@ def create_store():
 
 @app.route("/login", methods=["POST"])
 def login():
-    access_key = normalize_key(request.form.get("access_key", ""))
+    raw_input = request.form.get("access_key", "").strip()
+    access_key = normalize_key(raw_input)
+
+    # Direct Founder Admin Unlock from Main Homepage!
+    if raw_input.upper() == ADMIN_MASTER_KEY.upper() or access_key == normalize_key(ADMIN_MASTER_KEY):
+        session["is_varsell_admin"] = True
+        flash("⚡ Founder Master Key recognized! Welcome to Varsell Command HQ.", "success")
+        return redirect(url_for("admin_panel"))
+
     conn = get_db_connection()
     store = conn.execute("SELECT * FROM stores WHERE access_key = ?", (access_key,)).fetchone()
     conn.close()
@@ -236,6 +249,10 @@ def change_key():
     new_key = normalize_key(request.form.get("new_key", ""))
     if len(new_key) < 4:
         flash("Your new Secret Key must be at least 4 characters long.", "error")
+        return redirect(url_for("dashboard"))
+
+    if new_key == normalize_key(ADMIN_MASTER_KEY):
+        flash("That key is reserved. Please pick a different Secret Key.", "error")
         return redirect(url_for("dashboard"))
 
     conn = get_db_connection()
@@ -443,15 +460,15 @@ def view_store(store_slug):
     return render_template("store.html", store=store, products=products)
 
 
-# --- PART 2: FOUNDER MASTER ADMIN ROUTES ---
+# --- FOUNDER MASTER ADMIN ROUTES ---
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin_panel():
     if request.method == "POST":
         entered_key = request.form.get("admin_key", "").strip()
-        if entered_key == ADMIN_MASTER_KEY:
+        if entered_key.upper() == ADMIN_MASTER_KEY.upper() or normalize_key(entered_key) == normalize_key(ADMIN_MASTER_KEY):
             session["is_varsell_admin"] = True
-            flash("Welcome back, Founder!", "success")
+            flash("⚡ Welcome back, Founder! Master Command HQ unlocked.", "success")
             return redirect(url_for("admin_panel"))
         else:
             flash("Invalid Master Admin Key.", "error")
@@ -480,8 +497,27 @@ def admin_panel():
         is_admin=True,
         stores=stores,
         total_products=total_products,
-        db_type=db_type
+        db_type=db_type,
+        master_key=ADMIN_MASTER_KEY
     )
+
+
+@app.route("/admin/manage-store/<int:store_id>")
+def admin_manage_store(store_id):
+    """Founder God-Mode: Jump directly into any store's dashboard with 1 click"""
+    if not session.get("is_varsell_admin"):
+        return redirect(url_for("admin_panel"))
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT access_key, store_name FROM stores WHERE id = ?", (store_id,)).fetchone()
+    conn.close()
+
+    if store:
+        session["store_key"] = store["access_key"]
+        flash(f"⚡ Founder Mode: You are now managing '{store['store_name']}'.", "success")
+        return redirect(url_for("dashboard"))
+
+    return redirect(url_for("admin_panel"))
 
 
 @app.route("/admin/delete-store/<int:store_id>", methods=["POST"])
@@ -495,7 +531,7 @@ def admin_delete_store(store_id):
     conn.commit()
     conn.close()
 
-    flash("Store and its products deleted.", "success")
+    flash("Store and all its products permanently removed.", "success")
     return redirect(url_for("admin_panel"))
 
 
