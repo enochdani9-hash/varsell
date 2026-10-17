@@ -1,5 +1,40 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+{% set theme = store.theme_color or 'emerald' %}
+{% set is_light = (theme == 'light') %}
+
+{% if theme == 'gold' %}
+  {% set accent_bg = 'bg-amber-400 hover:bg-amber-300 text-slate-950' %}
+  {% set accent_badge = 'bg-amber-400/15 text-amber-300 border-amber-400/30' %}
+  {% set accent_border = 'border-amber-400' %}
+  {% set hero_grad = 'from-amber-950/40 via-slate-900/85 to-[#050811]' %}
+{% elif theme == 'violet' %}
+  {% set accent_bg = 'bg-purple-500 hover:bg-purple-400 text-white' %}
+  {% set accent_badge = 'bg-purple-500/15 text-purple-300 border-purple-400/30' %}
+  {% set accent_border = 'border-purple-400' %}
+  {% set hero_grad = 'from-purple-950/45 via-slate-900/85 to-[#050811]' %}
+{% elif theme == 'rose' %}
+  {% set accent_bg = 'bg-rose-500 hover:bg-rose-400 text-white' %}
+  {% set accent_badge = 'bg-rose-500/15 text-rose-300 border-rose-400/30' %}
+  {% set accent_border = 'border-rose-400' %}
+  {% set hero_grad = 'from-rose-950/45 via-slate-900/85 to-[#050811]' %}
+{% elif theme == 'ocean' %}
+  {% set accent_bg = 'bg-cyan-400 hover:bg-cyan-300 text-slate-950' %}
+  {% set accent_badge = 'bg-cyan-400/15 text-cyan-300 border-cyan-400/30' %}
+  {% set accent_border = 'border-cyan-400' %}
+  {% set hero_grad = 'from-cyan-950/45 via-slate-900/85 to-[#050811]' %}
+{% elif theme == 'light' %}
+  {% set accent_bg = 'bg-slate-900 hover:bg-slate-800 text-white' %}
+  {% set accent_badge = 'bg-slate-900/10 text-slate-900 border-slate-300' %}
+  {% set accent_border = 'border-slate-900' %}
+  {% set hero_grad = 'from-slate-200 via-white to-slate-50' %}
+{% else %}
+  {% set accent_bg = 'bg-emerald-400 hover:bg-emerald-300 text-slate-950' %}
+  {% set accent_badge = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' %}
+  {% set accent_border = 'border-emerald-400' %}
+  {% set hero_grad = 'from-emerald-950/40 via-slate-900/85 to-[#050811]' %}
+{% endif %}
+
+<html lang="en" class="{% if not is_light %}dark{% endif %}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,76 +47,77 @@
   <style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: #050811;
+      background-color: {{ '#f8fafc' if is_light else '#050811' }};
     }
     .font-mono {
       font-family: 'JetBrains Mono', monospace;
     }
-    .bg-grid {
-      background-size: 40px 40px;
-      background-image: 
-        linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-    }
   </style>
 </head>
-<body class="text-slate-100 min-h-screen pb-36 bg-grid relative overflow-x-hidden">
+<body class="{{ 'text-slate-900' if is_light else 'text-slate-100' }} min-h-screen pb-36 relative overflow-x-hidden">
 
   <!-- Offline Status Banner -->
   <div
     id="offlineBanner"
     class="hidden bg-amber-400 text-slate-950 text-center py-2.5 px-4 text-xs font-extrabold sticky top-0 z-50 shadow-lg"
   >
-    ⚡ Offline Mode Active — You are browsing {{ store.store_name }}'s saved catalog with 0MB data!
+    ⚡ Offline Mode Active — Browsing {{ store.store_name }}'s saved catalog with 0MB data!
   </div>
 
   <!-- Toast Popup -->
   <div
     id="storeToast"
-    class="fixed top-5 right-5 z-50 hidden bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"
+    class="fixed top-5 right-5 z-50 hidden {{ accent_bg }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"
   ></div>
 
+  <!-- Optional Store Cover Banner -->
+  {% if store.banner_data %}
+  <div class="w-full h-44 sm:h-60 overflow-hidden relative bg-slate-950">
+    <img src="{{ store.banner_data }}" alt="{{ store.store_name }} Banner" class="w-full h-full object-cover" />
+    <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+  </div>
+  {% endif %}
+
   <!-- Storefront Hero Header -->
-  <header class="relative border-b border-white/10 bg-gradient-to-b from-emerald-950/35 via-slate-900/85 to-[#050811]">
+  <header class="relative border-b {{ 'border-slate-200' if is_light else 'border-white/10' }} bg-gradient-to-b {{ hero_grad }}">
     <div class="max-w-5xl mx-auto px-4 py-8 sm:py-10">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         
-        <!-- Left: Store Logo / Avatar + Details -->
+        <!-- Left: Seller Profile Picture / Avatar + Store Info -->
         <div class="flex items-start sm:items-center gap-4">
           {% if store.logo_data %}
             <img
               src="{{ store.logo_data }}"
               alt="{{ store.store_name }}"
-              class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-400/50 shadow-xl shadow-emerald-500/20 shrink-0"
+              class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 {{ accent_border }} shadow-2xl shrink-0"
             />
           {% else %}
-            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-2xl sm:text-3xl shadow-xl shadow-emerald-500/20 shrink-0">
+            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl {{ accent_bg }} flex items-center justify-center font-black text-3xl shadow-2xl shrink-0">
               {{ store.store_name[:1]|upper }}
             </div>
           {% endif %}
 
           <div>
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full">
+              <span class="text-[11px] font-bold border {{ accent_badge }} px-2.5 py-0.5 rounded-full">
                 {{ store.category }}
               </span>
+              <span class="text-[11px] font-semibold {{ 'text-slate-600' if is_light else 'text-slate-400' }}">
+                🌍 {{ store.country or 'Global' }}
+              </span>
               {% if store.momo_name %}
-                <span class="text-[11px] font-bold text-amber-300 bg-amber-400/10 border border-amber-400/25 px-2.5 py-0.5 rounded-full">
-                  ✓ Verified MoMo: {{ store.momo_name }}
-                </span>
-              {% else %}
-                <span class="text-[11px] font-semibold text-slate-400">
-                  ✓ Verified Varsell Merchant
+                <span class="text-[11px] font-bold text-amber-500 bg-amber-400/10 border border-amber-400/25 px-2.5 py-0.5 rounded-full">
+                  ✓ Verified: {{ store.momo_name }}
                 </span>
               {% endif %}
             </div>
 
-            <h1 class="text-2xl sm:text-4xl font-extrabold text-white mt-1.5 tracking-tight">
+            <h1 class="text-2xl sm:text-4xl font-extrabold {{ 'text-slate-950' if is_light else 'text-white' }} mt-1.5 tracking-tight">
               {{ store.store_name }}
             </h1>
 
             {% if store.bio %}
-              <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed">
+              <p class="text-xs sm:text-sm {{ 'text-slate-600' if is_light else 'text-slate-300' }} mt-1 max-w-xl leading-relaxed">
                 {{ store.bio }}
               </p>
             {% endif %}
@@ -93,7 +129,7 @@
           <button
             type="button"
             onclick="installStoreApp()"
-            class="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-extrabold px-4 py-3 rounded-2xl transition flex items-center gap-1.5"
+            class="border {{ accent_badge }} text-xs font-extrabold px-4 py-3 rounded-2xl transition flex items-center gap-1.5"
           >
             <span>📲</span>
             <span>Save Offline</span>
@@ -102,7 +138,7 @@
           <a
             href="https://wa.me/{{ store.whatsapp_number }}?text={{ ('Hi ' ~ store.store_name ~ '! I am browsing your Varsell store and have a quick question.')|urlencode }}"
             target="_blank"
-            class="inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/15 text-xs font-bold px-4 py-3 rounded-2xl transition"
+            class="inline-flex items-center justify-center gap-2 {{ 'bg-slate-900 text-white' if is_light else 'bg-white/10 hover:bg-white/15 text-white border border-white/15' }} text-xs font-bold px-4 py-3 rounded-2xl transition"
           >
             <span>💬</span>
             <span>Chat Seller</span>
@@ -119,7 +155,7 @@
           id="productSearch"
           onkeyup="filterProducts()"
           placeholder="🔍 Search products or prices in {{ store.store_name }}..."
-          class="w-full sm:max-w-md bg-slate-950/90 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400 transition"
+          class="w-full sm:max-w-md {{ 'bg-white border-slate-300 text-slate-900' if is_light else 'bg-slate-950/90 border-white/15 text-white' }} border rounded-2xl px-4 py-3 text-sm focus:outline-none transition"
         />
       </div>
       {% endif %}
@@ -133,10 +169,9 @@
         {% for p in products %}
         <div
           data-name="{{ p.product_name|lower }} {{ p.description|lower }} {{ p.price }}"
-          class="product-card bg-slate-900/90 border border-white/10 rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group hover:border-emerald-500/40 transition"
+          class="product-card {{ 'bg-white border-slate-200' if is_light else 'bg-slate-900/90 border-white/10' }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group transition"
         >
           <div>
-            <!-- Product Image Container -->
             <div class="relative h-60 bg-slate-950 overflow-hidden">
               <img
                 src="{{ p.image_data }}"
@@ -148,25 +183,24 @@
                   Sold Out
                 </span>
               {% else %}
-                <span class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-white/10 text-emerald-400 text-[11px] font-extrabold px-2.5 py-1 rounded-full">
+                <span class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-white/10 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-full">
                   ● Available
                 </span>
               {% endif %}
             </div>
 
-            <!-- Product Title, Price & Description -->
             <div class="p-5">
               <div class="flex items-start justify-between gap-2">
-                <h2 class="text-lg font-extrabold text-white leading-snug">
+                <h2 class="text-lg font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} leading-snug">
                   {{ p.product_name }}
                 </h2>
-                <span class="shrink-0 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-extrabold text-sm px-3 py-1 rounded-xl">
+                <span class="shrink-0 border {{ accent_badge }} font-extrabold text-sm px-3 py-1 rounded-xl">
                   {{ p.currency }} {{ "%.2f"|format(p.price) }}
                 </span>
               </div>
 
               {% if p.description %}
-                <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                <p class="text-xs {{ 'text-slate-600' if is_light else 'text-slate-400' }} mt-2 leading-relaxed">
                   {{ p.description }}
                 </p>
               {% endif %}
@@ -180,14 +214,14 @@
                 <button
                   type="button"
                   onclick='addToCart({{ p.id }}, {{ p.product_name|tojson }}, {{ p.price }}, {{ p.currency|tojson }})'
-                  class="bg-white/5 hover:bg-white/10 text-white text-xs font-extrabold py-3 px-3 rounded-2xl border border-white/10 transition"
+                  class="{{ 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300' if is_light else 'bg-white/5 hover:bg-white/10 text-white border-white/10' }} text-xs font-extrabold py-3 px-3 rounded-2xl border transition"
                 >
                   + Add to Bag
                 </button>
                 <button
                   type="button"
                   onclick='quickBuyNow({{ p.id }}, {{ p.product_name|tojson }}, {{ p.price }}, {{ p.currency|tojson }})'
-                  class="bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 text-xs font-extrabold py-3 px-3 rounded-2xl text-center transition shadow-lg shadow-emerald-500/20"
+                  class="{{ accent_bg }} text-xs font-extrabold py-3 px-3 rounded-2xl text-center transition shadow-lg"
                 >
                   Buy Now →
                 </button>
@@ -196,7 +230,7 @@
               <button
                 type="button"
                 disabled
-                class="w-full bg-white/5 text-slate-500 text-xs font-bold py-3 rounded-2xl cursor-not-allowed border border-white/5"
+                class="w-full bg-slate-500/10 text-slate-400 text-xs font-bold py-3 rounded-2xl cursor-not-allowed"
               >
                 Currently Out of Stock
               </button>
@@ -206,9 +240,8 @@
         {% endfor %}
       </div>
     {% else %}
-      <!-- Empty Store State -->
-      <div class="bg-slate-900/60 border border-white/10 rounded-3xl p-14 text-center">
-        <h3 class="text-xl font-extrabold text-white">New products coming soon!</h3>
+      <div class="{{ 'bg-white border-slate-200' if is_light else 'bg-slate-900/60 border-white/10' }} border rounded-3xl p-14 text-center">
+        <h3 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">New products coming soon!</h3>
         <p class="text-xs sm:text-sm text-slate-400 mt-1">
           {{ store.store_name }} is updating its catalog. Check back shortly or chat with the seller on WhatsApp.
         </p>
@@ -217,7 +250,7 @@
   </main>
 
   <!-- Viral Varsell Footer -->
-  <footer class="max-w-5xl mx-auto px-4 py-12 text-center border-t border-white/10 mt-8">
+  <footer class="max-w-5xl mx-auto px-4 py-12 text-center border-t {{ 'border-slate-200' if is_light else 'border-white/10' }} mt-8">
     <a
       href="/"
       class="inline-flex items-center gap-2.5 bg-slate-900 hover:bg-slate-800 border border-white/10 px-4 py-2.5 rounded-full text-xs text-slate-300 transition shadow-lg"
@@ -227,15 +260,15 @@
       </span>
       <span>
         Powered by <strong class="text-white">Varsell</strong> —
-        <span class="text-emerald-400 underline">Get your free MoMo & WhatsApp store in 60s</span>
+        <span class="text-emerald-400 underline">Launch your free global online store in 60s</span>
       </span>
     </a>
   </footer>
 
-  <!-- Floating Glassmorphic Checkout Bag Bar -->
+  <!-- Floating Checkout Bag Bar -->
   <div
     id="cartBar"
-    class="hidden fixed bottom-4 inset-x-4 max-w-3xl mx-auto bg-slate-900/95 backdrop-blur-2xl border-2 border-emerald-400 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-40"
+    class="hidden fixed bottom-4 inset-x-4 max-w-3xl mx-auto bg-slate-900/95 text-white backdrop-blur-2xl border-2 {{ accent_border }} rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-40"
   >
     <div>
       <span id="cartCount" class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">
@@ -250,32 +283,31 @@
       <button
         type="button"
         onclick="clearCart()"
-        class="text-xs font-bold text-slate-400 hover:text-white px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 transition"
+        class="text-xs font-bold text-slate-300 hover:text-white px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 transition"
       >
         Clear Bag
       </button>
       <button
         type="button"
         onclick="openCheckoutModal()"
-        class="flex-1 sm:flex-initial bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-sm px-6 py-3.5 rounded-2xl shadow-xl transition"
+        class="flex-1 sm:flex-initial {{ accent_bg }} font-extrabold text-sm px-6 py-3.5 rounded-2xl shadow-xl transition"
       >
-        Proceed to MoMo / WhatsApp Order →
+        Proceed to Order & Checkout →
       </button>
     </div>
   </div>
 
-  <!-- Ghana MoMo & Delivery Zone Checkout Modal -->
+  <!-- Global Payment & Delivery Checkout Modal -->
   <div
     id="checkoutModal"
     class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
   >
-    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+    <div class="bg-slate-900 text-slate-100 border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       
-      <!-- Modal Header -->
       <div class="flex items-center justify-between border-b border-white/10 pb-3">
         <div>
           <span class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">
-            Express Ghana Checkout
+            Express Global Checkout
           </span>
           <h3 class="text-xl font-extrabold text-white">Complete Your Order</h3>
         </div>
@@ -288,7 +320,7 @@
         </button>
       </div>
 
-      <!-- Selected Items Summary inside Modal -->
+      <!-- Order Summary -->
       <div class="bg-slate-950/80 border border-white/10 rounded-2xl p-3.5 space-y-2">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Order Summary</span>
@@ -298,26 +330,26 @@
       </div>
 
       {% if store.momo_number %}
-      <!-- Official Merchant MoMo Payment Card -->
+      <!-- Universal Merchant Payment Details Card -->
       <div class="bg-amber-400/10 border border-amber-400/30 rounded-2xl p-4 space-y-2">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
-            💛 Official Merchant MoMo
+            💳 {{ store.payment_method_label or 'Direct Merchant Payment' }}
           </span>
           <button
             type="button"
-            onclick="copyMoMo('{{ store.momo_number }}')"
+            onclick="copyPaymentDetail('{{ store.momo_number }}')"
             class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-[11px] px-3 py-1 rounded-lg transition"
           >
-            Copy MoMo Number
+            Copy Details
           </button>
         </div>
-        <p class="text-xl font-mono font-extrabold text-white tracking-wider">
+        <p class="text-xl font-mono font-extrabold text-white tracking-wider break-all">
           {{ store.momo_number }}
         </p>
         {% if store.momo_name %}
           <p class="text-xs text-amber-200">
-            Registered Name: <strong>{{ store.momo_name }}</strong>
+            Verified Account Name: <strong>{{ store.momo_name }}</strong>
           </p>
         {% endif %}
       </div>
@@ -332,34 +364,34 @@
           <input
             type="text"
             id="buyerName"
-            placeholder="e.g. Ama Mensah"
+            placeholder="e.g. Alex Johnson"
             class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
           />
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase text-slate-300 mb-1">
-            Delivery Zone / Dispatch Mode *
+            Shipping / Delivery Option *
           </label>
           <select
             id="deliveryZone"
             class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
           >
-            <option value="Accra / Tema Dispatch Rider">🛵 Accra / Tema Dispatch Rider</option>
-            <option value="Kumasi / Takoradi / Regional VIP Parcel">🚌 Regional VIP / STC Bus Parcel</option>
-            <option value="Campus Delivery (Legon / KNUST / UPSA)">🎓 Campus Delivery (Legon / KNUST / UPSA)</option>
+            <option value="Local Express / Same-Day Delivery">🛵 Local Express / Same-Day Delivery</option>
+            <option value="Nationwide Courier / Inter-City Shipping">🚚 Nationwide Courier / Inter-City Shipping</option>
+            <option value="International Shipping">✈️ International / Cross-Border Shipping</option>
             <option value="Direct Store Pickup">🏪 Direct Store Pickup</option>
           </select>
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase text-slate-300 mb-1">
-            Exact Delivery Town / Landmark *
+            Delivery Address / City / Landmark *
           </label>
           <input
             type="text"
             id="buyerLocation"
-            placeholder="e.g. East Legon, near American House"
+            placeholder="Enter your city, street address, or landmark..."
             class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
           />
         </div>
@@ -372,37 +404,36 @@
             id="paymentMethod"
             class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
           >
-            <option value="Mobile Money (MTN / Telecel / AT)">💛 Mobile Money (MTN / Telecel / AT)</option>
-            <option value="Cash or MoMo on Delivery">💵 Cash / MoMo on Delivery</option>
+            <option value="{{ store.payment_method_label or 'Direct Instant Transfer / Mobile Money' }}">
+              💳 {{ store.payment_method_label or 'Direct Instant Transfer / Mobile Money' }}
+            </option>
+            <option value="Bank / Card Transfer">🏦 Bank / Card Transfer</option>
+            <option value="Payment on Delivery">💵 Cash / Payment on Delivery</option>
           </select>
         </div>
       </div>
 
-      <!-- Final Send to WhatsApp Button -->
       <button
         type="button"
         onclick="checkoutWhatsApp()"
-        class="w-full bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold py-3.5 rounded-2xl text-sm shadow-xl transition"
+        class="w-full {{ accent_bg }} font-extrabold py-3.5 rounded-2xl text-sm shadow-xl transition"
       >
         Send Final Order to WhatsApp →
       </button>
     </div>
   </div>
 
-  <!-- Storefront Interactive JavaScript -->
   <script>
     const sellerWhatsApp = "{{ store.whatsapp_number }}";
     const storeName = {{ store.store_name|tojson }};
     let cart = [];
 
-    // 1. Register Offline Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js');
       });
     }
 
-    // 2. Handle Native PWA App Installation
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -419,7 +450,6 @@
       }
     }
 
-    // 3. Shopping Bag Logic
     function addToCart(id, name, price, currency) {
       const existing = cart.find(item => item.id === id);
       if (existing) {
@@ -473,9 +503,9 @@
       totalEl.textContent = `Total: ${currency} ${total.toFixed(2)}`;
     }
 
-    function copyMoMo(num) {
+    function copyPaymentDetail(num) {
       navigator.clipboard.writeText(num);
-      showStoreToast("Merchant MoMo Number copied!");
+      showStoreToast("Payment details copied!");
     }
 
     function showStoreToast(msg) {
@@ -508,7 +538,6 @@
       document.getElementById("cartTotal").textContent = `Total: ${currency} ${totalAmount.toFixed(2)}`;
     }
 
-    // 4. WhatsApp Order Formatter
     function checkoutWhatsApp() {
       if (cart.length === 0) return;
 
@@ -528,8 +557,8 @@
       });
 
       lines.push(`\n💰 *Total Order: ${currency} ${total.toFixed(2)}*`);
-      lines.push(`🚚 *Delivery Mode:* ${deliveryZone}`);
-      lines.push(`📍 *Location:* ${buyerLocation}`);
+      lines.push(`🚚 *Shipping:* ${deliveryZone}`);
+      lines.push(`📍 *Address / Location:* ${buyerLocation}`);
       lines.push(`💳 *Payment:* ${paymentMethod}`);
       lines.push(`\nPlease confirm availability and delivery details!`);
 
@@ -538,7 +567,6 @@
       closeCheckoutModal();
     }
 
-    // 5. Live Store Search Filter
     function filterProducts() {
       const searchInput = document.getElementById("productSearch");
       if (!searchInput) return;
@@ -550,7 +578,6 @@
       });
     }
 
-    // 6. Real-Time Offline Status Detection
     function updateOnlineStatus() {
       const banner = document.getElementById('offlineBanner');
       if (!navigator.onLine) {
