@@ -23,11 +23,11 @@ if DATABASE_URL.startswith("postgres://"):
 
 IS_POSTGRES = bool(DATABASE_URL and psycopg2)
 
-# Reserved system routes so a seller doesn't accidentally overwrite app routes
 RESERVED_SLUGS = {
     "login", "logout", "dashboard", "admin", "admin-logout", "create-store",
-    "change-key", "change-store-name", "update-store", "add-product",
-    "manifest.json", "sw.js", "icon.svg", "sitemap.xml", "robots.txt", "store"
+    "change-key", "change-store-name", "update-store", "update-theme",
+    "update-avatar", "add-product", "manifest.json", "sw.js", "icon.svg",
+    "sitemap.xml", "robots.txt", "store"
 }
 
 
@@ -74,16 +74,29 @@ def init_db():
                 category TEXT DEFAULT 'General',
                 bio TEXT DEFAULT '',
                 logo_data TEXT DEFAULT '',
+                banner_data TEXT DEFAULT '',
+                theme_color TEXT DEFAULT 'emerald',
+                country TEXT DEFAULT 'Global',
+                default_currency TEXT DEFAULT 'USD',
+                payment_method_label TEXT DEFAULT 'Mobile Money / Instant Transfer',
                 momo_number TEXT DEFAULT '',
                 momo_name TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS logo_data TEXT DEFAULT ''")
-        conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS momo_number TEXT DEFAULT ''")
-        conn.execute("ALTER TABLE stores ADD COLUMN IF NOT EXISTS momo_name TEXT DEFAULT ''")
+        new_cols = [
+            ("logo_data", "TEXT DEFAULT ''"),
+            ("banner_data", "TEXT DEFAULT ''"),
+            ("theme_color", "TEXT DEFAULT 'emerald'"),
+            ("country", "TEXT DEFAULT 'Global'"),
+            ("default_currency", "TEXT DEFAULT 'USD'"),
+            ("payment_method_label", "TEXT DEFAULT 'Mobile Money / Instant Transfer'"),
+            ("momo_number", "TEXT DEFAULT ''"),
+            ("momo_name", "TEXT DEFAULT ''")
+        ]
+        for col_name, col_def in new_cols:
+            conn.execute(f"ALTER TABLE stores ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
 
-        # Alias table remembers every old store name/slug so old links never break
         conn.execute("""
             CREATE TABLE IF NOT EXISTS store_aliases (
                 id SERIAL PRIMARY KEY,
@@ -100,7 +113,7 @@ def init_db():
                 store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
                 product_name TEXT NOT NULL,
                 price REAL NOT NULL,
-                currency TEXT DEFAULT 'GHS',
+                currency TEXT DEFAULT 'USD',
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
                 in_stock INTEGER DEFAULT 1,
@@ -118,14 +131,28 @@ def init_db():
                 category TEXT DEFAULT 'General',
                 bio TEXT DEFAULT '',
                 logo_data TEXT DEFAULT '',
+                banner_data TEXT DEFAULT '',
+                theme_color TEXT DEFAULT 'emerald',
+                country TEXT DEFAULT 'Global',
+                default_currency TEXT DEFAULT 'USD',
+                payment_method_label TEXT DEFAULT 'Mobile Money / Instant Transfer',
                 momo_number TEXT DEFAULT '',
                 momo_name TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        for col in ["logo_data", "momo_number", "momo_name"]:
+        for col_name, col_def in [
+            ("logo_data", "TEXT DEFAULT ''"),
+            ("banner_data", "TEXT DEFAULT ''"),
+            ("theme_color", "TEXT DEFAULT 'emerald'"),
+            ("country", "TEXT DEFAULT 'Global'"),
+            ("default_currency", "TEXT DEFAULT 'USD'"),
+            ("payment_method_label", "TEXT DEFAULT 'Mobile Money / Instant Transfer'"),
+            ("momo_number", "TEXT DEFAULT ''"),
+            ("momo_name", "TEXT DEFAULT ''")
+        ]:
             try:
-                conn.execute(f"ALTER TABLE stores ADD COLUMN {col} TEXT DEFAULT ''")
+                conn.execute(f"ALTER TABLE stores ADD COLUMN {col_name} {col_def}")
             except Exception:
                 pass
 
@@ -146,7 +173,7 @@ def init_db():
                 store_id INTEGER NOT NULL,
                 product_name TEXT NOT NULL,
                 price REAL NOT NULL,
-                currency TEXT DEFAULT 'GHS',
+                currency TEXT DEFAULT 'USD',
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
                 in_stock INTEGER DEFAULT 1,
@@ -173,22 +200,45 @@ def normalize_key(raw_key):
 
 
 def create_slug(store_name):
-    slug = re.sub(r"[^a-zA-Z0-9\s-]", "", store_name).strip().lower()
+    clean_name = re.sub(r"\.com|\.gh|\.net|\.org|\.store", "", store_name.lower())
+    slug = re.sub(r"[^a-zA-Z0-9\s-]", "", clean_name).strip().lower()
     slug = re.sub(r"[\s-]+", "-", slug)
     if not slug or slug in RESERVED_SLUGS:
         slug = f"{slug or 'shop'}-store"
     return slug
 
 
-def clean_whatsapp_number(number):
+def clean_international_whatsapp(number, country_code=""):
+    """Formats phone numbers globally using selected country dial code or full international digits"""
     cleaned = re.sub(r"[^\d]", "", number)
-    if len(cleaned) == 10 and cleaned.startswith("0"):
-        cleaned = "233" + cleaned[1:]
+    dial = re.sub(r"[^\d]", "", country_code)
+
+    if not cleaned:
+        return ""
+
+    if dial:
+        if cleaned.startswith("0"):
+            cleaned = dial + cleaned[1:]
+        elif not cleaned.startswith(dial) and len(cleaned) <= 10:
+            cleaned = dial + cleaned
+    else:
+        if len(cleaned) == 10 and cleaned.startswith("0"):
+            cleaned = "233" + cleaned[1:]
     return cleaned
 
 
+def encode_uploaded_image(file_obj):
+    """Converts an uploaded image file to a Base64 data URI"""
+    if file_obj and file_obj.filename != "":
+        file_bytes = file_obj.read()
+        if file_bytes:
+            mime_type = file_obj.mimetype or "image/jpeg"
+            b64_encoded = base64.b64encode(file_bytes).decode("utf-8")
+            return f"data:{mime_type};base64,{b64_encoded}"
+    return ""
+
+
 def save_alias_if_needed(conn, store_id, old_slug, old_name):
-    """Saves previous slug & name in store_aliases so old links always redirect to the new name"""
     existing = conn.execute(
         "SELECT id FROM store_aliases WHERE old_slug = ?", (old_slug,)
     ).fetchone()
@@ -200,19 +250,10 @@ def save_alias_if_needed(conn, store_id, old_slug, old_name):
 
 
 def find_store_by_any_identifier(conn, identifier):
-    """
-    Smart Store Resolver:
-    1. Exact slug match
-    2. Normalized slug match (e.g. 'Zayn Luxury' -> 'zayn-luxury')
-    3. Case-insensitive Store Name match
-    4. Compact/no-dash match (e.g. 'zaynluxury' matches 'zayn-luxury')
-    5. Old slug/name alias match (redirects to newest store_slug)
-    """
     raw = identifier.strip()
     slug_candidate = create_slug(raw)
     compact_candidate = re.sub(r"[^a-z0-9]", "", raw.lower())
 
-    # 1. Exact or normalized slug match
     store = conn.execute(
         "SELECT * FROM stores WHERE store_slug = ? OR store_slug = ?",
         (raw.lower(), slug_candidate)
@@ -220,7 +261,6 @@ def find_store_by_any_identifier(conn, identifier):
     if store:
         return store, False
 
-    # 2. Direct Store Name match (case-insensitive)
     store = conn.execute(
         "SELECT * FROM stores WHERE LOWER(store_name) = ?",
         (raw.lower(),)
@@ -228,7 +268,6 @@ def find_store_by_any_identifier(conn, identifier):
     if store:
         return store, True
 
-    # 3. Check old aliases (if the user renamed their store earlier)
     alias = conn.execute(
         "SELECT store_id FROM store_aliases WHERE old_slug = ? OR old_slug = ? OR LOWER(old_name) = ?",
         (raw.lower(), slug_candidate, raw.lower())
@@ -238,7 +277,6 @@ def find_store_by_any_identifier(conn, identifier):
         if store:
             return store, True
 
-    # 4. Compact / fuzzy match across all stores (e.g. typing 'kofidrip' finds 'kofi-drip')
     if compact_candidate:
         all_stores = conn.execute("SELECT * FROM stores").fetchall()
         for s in all_stores:
@@ -250,7 +288,7 @@ def find_store_by_any_identifier(conn, identifier):
     return None, False
 
 
-# --- PWA, OFFLINE & GOOGLE SEO ROUTES ---
+# --- PWA, OFFLINE & SEO ROUTES ---
 
 @app.route("/icon.svg")
 def app_icon():
@@ -271,9 +309,9 @@ def app_icon():
 @app.route("/manifest.json")
 def manifest():
     return jsonify({
-        "name": "Varsell — Cloud Stores & WhatsApp Commerce",
+        "name": "Varsell — Global Social & WhatsApp Store Platform",
         "short_name": "Varsell",
-        "description": "Launch and browse online stores even offline. Built for WhatsApp & MoMo commerce.",
+        "description": "Launch and customize your online store in 60 seconds. Works offline worldwide.",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#04070f",
@@ -292,7 +330,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-offline-v3';
+const CACHE_NAME = 'varsell-global-v4';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -343,17 +381,12 @@ self.addEventListener('fetch', (event) => {
 @app.route("/robots.txt")
 def robots_txt():
     host = request.host_url.rstrip("/")
-    lines = [
-        "User-agent: *",
-        "Allow: /",
-        f"Sitemap: {host}/sitemap.xml"
-    ]
+    lines = ["User-agent: *", "Allow: /", f"Sitemap: {host}/sitemap.xml"]
     return Response("\n".join(lines), mimetype="text/plain")
 
 
 @app.route("/sitemap.xml")
 def sitemap_xml():
-    """Dynamically lists every store's latest custom link so Google indexes new store names fast"""
     host = request.host_url.rstrip("/")
     conn = get_db_connection()
     stores = conn.execute("SELECT store_slug FROM stores ORDER BY id DESC").fetchall()
@@ -377,15 +410,15 @@ def index():
     if q:
         like_q = f"%{q.lower()}%"
         recent_stores = conn.execute(
-            """SELECT store_name, store_slug, category, bio, logo_data, momo_name
+            """SELECT store_name, store_slug, category, bio, logo_data, momo_name, country, theme_color
                FROM stores
-               WHERE LOWER(store_name) LIKE ? OR LOWER(store_slug) LIKE ? OR LOWER(category) LIKE ?
+               WHERE LOWER(store_name) LIKE ? OR LOWER(store_slug) LIKE ? OR LOWER(category) LIKE ? OR LOWER(country) LIKE ?
                ORDER BY id DESC LIMIT 24""",
-            (like_q, like_q, like_q)
+            (like_q, like_q, like_q, like_q)
         ).fetchall()
     else:
         recent_stores = conn.execute(
-            "SELECT store_name, store_slug, category, bio, logo_data, momo_name FROM stores ORDER BY id DESC LIMIT 12"
+            "SELECT store_name, store_slug, category, bio, logo_data, momo_name, country, theme_color FROM stores ORDER BY id DESC LIMIT 12"
         ).fetchall()
     conn.close()
     return render_template("index.html", recent_stores=recent_stores, search_query=q)
@@ -394,12 +427,18 @@ def index():
 @app.route("/create-store", methods=["POST"])
 def create_store():
     store_name = request.form.get("store_name", "").strip()
+    country_code = request.form.get("country_code", "233").strip()
     whatsapp_number = request.form.get("whatsapp_number", "").strip()
     custom_key_input = request.form.get("custom_key", "").strip()
     category = request.form.get("category", "General").strip()
     bio = request.form.get("bio", "").strip()
+    country = request.form.get("country", "Global").strip()
+    default_currency = request.form.get("default_currency", "USD").strip()
+    payment_method_label = request.form.get("payment_method_label", "Mobile Money / Instant Transfer").strip()
     momo_number = request.form.get("momo_number", "").strip()
     momo_name = request.form.get("momo_name", "").strip()
+    theme_color = request.form.get("theme_color", "emerald").strip()
+    logo_file = request.files.get("logo_file")
 
     if not store_name or not whatsapp_number:
         flash("Please provide both your Store Name and WhatsApp number.", "error")
@@ -438,12 +477,18 @@ def create_store():
         slug = f"{base_slug}-{counter}"
         counter += 1
 
-    formatted_wa = clean_whatsapp_number(whatsapp_number)
+    formatted_wa = clean_international_whatsapp(whatsapp_number, country_code)
+    logo_data = encode_uploaded_image(logo_file)
 
     conn.execute(
-        """INSERT INTO stores (store_name, store_slug, access_key, whatsapp_number, category, bio, momo_number, momo_name)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (store_name, slug, access_key, formatted_wa, category, bio, momo_number, momo_name)
+        """INSERT INTO stores (
+               store_name, store_slug, access_key, whatsapp_number, category, bio,
+               logo_data, theme_color, country, default_currency, payment_method_label, momo_number, momo_name
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            store_name, slug, access_key, formatted_wa, category, bio,
+            logo_data, theme_color, country, default_currency, payment_method_label, momo_number, momo_name
+        )
     )
     conn.commit()
     conn.close()
@@ -516,7 +561,6 @@ def change_key():
 
 @app.route("/change-store-name", methods=["POST"])
 def change_store_name():
-    """Allows a seller to customize their Store Name and Web Link to any name they want while keeping old links alive"""
     current_key = session.get("store_key")
     if not current_key:
         return redirect(url_for("index"))
@@ -535,10 +579,8 @@ def change_store_name():
         flash("Store Name cannot be empty.", "error")
         return redirect(url_for("dashboard"))
 
-    # Create new slug from custom_slug_input if provided, otherwise from the new store name
     desired_slug = create_slug(custom_slug_input if custom_slug_input else new_store_name)
 
-    # Check if another store already owns this slug
     conflict = conn.execute(
         "SELECT id FROM stores WHERE store_slug = ? AND id != ?",
         (desired_slug, store["id"])
@@ -546,13 +588,11 @@ def change_store_name():
 
     if conflict:
         conn.close()
-        flash(f"The web link '/{desired_slug}' is already taken by another shop. Try adding 'gh', 'shop', or your city!", "error")
+        flash(f"The web link '/{desired_slug}' is already taken by another shop. Try adding your city or 'official'!", "error")
         return redirect(url_for("dashboard"))
 
-    # Save the old slug/name in store_aliases so old links still redirect automatically
     if desired_slug != store["store_slug"]:
         save_alias_if_needed(conn, store["id"], store["store_slug"], store["store_name"])
-        # Remove desired_slug from aliases if this store previously used it
         conn.execute("DELETE FROM store_aliases WHERE old_slug = ? AND store_id = ?", (desired_slug, store["id"]))
 
     conn.execute(
@@ -562,7 +602,65 @@ def change_store_name():
     conn.commit()
     conn.close()
 
-    flash(f"✨ Store renamed to '{new_store_name}'! Your new link is /{desired_slug} (and your old link still redirects automatically!).", "success")
+    flash(f"✨ Store renamed to '{new_store_name}'! Your new link is /{desired_slug} (old links still redirect automatically!).", "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/update-avatar", methods=["POST"])
+def update_avatar():
+    """Dedicated 1-click Profile Picture / Avatar uploader"""
+    current_key = session.get("store_key")
+    if not current_key:
+        return redirect(url_for("index"))
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT id FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    if not store:
+        conn.close()
+        return redirect(url_for("index"))
+
+    logo_file = request.files.get("logo_file")
+    logo_data = encode_uploaded_image(logo_file)
+    if logo_data:
+        conn.execute("UPDATE stores SET logo_data = ? WHERE id = ?", (logo_data, store["id"]))
+        conn.commit()
+        flash("📸 Profile picture updated on your live store!", "success")
+    else:
+        flash("Please choose an image file to upload.", "error")
+
+    conn.close()
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/update-theme", methods=["POST"])
+def update_theme():
+    """Updates Store Theme Look, Profile Picture & Cover Banner"""
+    current_key = session.get("store_key")
+    if not current_key:
+        return redirect(url_for("index"))
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    if not store:
+        conn.close()
+        return redirect(url_for("index"))
+
+    theme_color = request.form.get("theme_color", store.get("theme_color") or "emerald").strip()
+    logo_file = request.files.get("logo_file")
+    banner_file = request.files.get("banner_file")
+    clear_banner = request.form.get("clear_banner") == "1"
+
+    logo_data = encode_uploaded_image(logo_file) or store["logo_data"] or ""
+    banner_data = "" if clear_banner else (encode_uploaded_image(banner_file) or store.get("banner_data") or "")
+
+    conn.execute(
+        "UPDATE stores SET theme_color = ?, logo_data = ?, banner_data = ? WHERE id = ?",
+        (theme_color, logo_data, banner_data, store["id"])
+    )
+    conn.commit()
+    conn.close()
+
+    flash("🎨 Store theme, appearance & profile picture updated!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -580,42 +678,48 @@ def update_store():
 
     store_name = request.form.get("store_name", store["store_name"]).strip() or store["store_name"]
     custom_slug_raw = request.form.get("store_slug", "").strip()
-    whatsapp_number = clean_whatsapp_number(request.form.get("whatsapp_number", store["whatsapp_number"]))
+    whatsapp_number = clean_international_whatsapp(request.form.get("whatsapp_number", store["whatsapp_number"]))
     category = request.form.get("category", store["category"]).strip()
     bio = request.form.get("bio", store["bio"]).strip()
+    country = request.form.get("country", store.get("country") or "Global").strip()
+    default_currency = request.form.get("default_currency", store.get("default_currency") or "USD").strip()
+    payment_method_label = request.form.get("payment_method_label", store.get("payment_method_label") or "Mobile Money / Instant Transfer").strip()
     momo_number = request.form.get("momo_number", store.get("momo_number", "")).strip()
     momo_name = request.form.get("momo_name", store.get("momo_name", "")).strip()
+    theme_color = request.form.get("theme_color", store.get("theme_color") or "emerald").strip()
     logo_file = request.files.get("logo_file")
+    banner_file = request.files.get("banner_file")
 
-    # Determine if slug should update
     new_slug = create_slug(custom_slug_raw) if custom_slug_raw else create_slug(store_name)
     conflict = conn.execute(
         "SELECT id FROM stores WHERE store_slug = ? AND id != ?",
         (new_slug, store["id"])
     ).fetchone()
     if conflict:
-        new_slug = store["store_slug"]  # Keep current slug if conflict
+        new_slug = store["store_slug"]
     elif new_slug != store["store_slug"]:
         save_alias_if_needed(conn, store["id"], store["store_slug"], store["store_name"])
         conn.execute("DELETE FROM store_aliases WHERE old_slug = ? AND store_id = ?", (new_slug, store["id"]))
 
-    logo_data = store["logo_data"] or ""
-    if logo_file and logo_file.filename != "":
-        file_bytes = logo_file.read()
-        mime_type = logo_file.mimetype or "image/jpeg"
-        b64_encoded = base64.b64encode(file_bytes).decode("utf-8")
-        logo_data = f"data:{mime_type};base64,{b64_encoded}"
+    logo_data = encode_uploaded_image(logo_file) or store["logo_data"] or ""
+    banner_data = encode_uploaded_image(banner_file) or store.get("banner_data") or ""
 
     conn.execute(
         """UPDATE stores
-           SET store_name = ?, store_slug = ?, whatsapp_number = ?, category = ?, bio = ?, logo_data = ?, momo_number = ?, momo_name = ?
+           SET store_name = ?, store_slug = ?, whatsapp_number = ?, category = ?, bio = ?,
+               logo_data = ?, banner_data = ?, theme_color = ?, country = ?,
+               default_currency = ?, payment_method_label = ?, momo_number = ?, momo_name = ?
            WHERE id = ?""",
-        (store_name, new_slug, whatsapp_number, category, bio, logo_data, momo_number, momo_name, store["id"])
+        (
+            store_name, new_slug, whatsapp_number, category, bio,
+            logo_data, banner_data, theme_color, country,
+            default_currency, payment_method_label, momo_number, momo_name, store["id"]
+        )
     )
     conn.commit()
     conn.close()
 
-    flash("Store name, web link, MoMo details & branding updated!", "success")
+    flash("Store profile, global settings, look & payment details updated!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -655,28 +759,21 @@ def add_product():
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store = conn.execute("SELECT id FROM stores WHERE access_key = ?", (access_key,)).fetchone()
+    store = conn.execute("SELECT id, default_currency FROM stores WHERE access_key = ?", (access_key,)).fetchone()
     if not store:
         conn.close()
         return redirect(url_for("index"))
 
     product_name = request.form.get("product_name", "").strip()
     price = request.form.get("price", "0").strip()
-    currency = request.form.get("currency", "GHS").strip()
+    currency = request.form.get("currency", store.get("default_currency") or "USD").strip()
     description = request.form.get("description", "").strip()
     image_url = request.form.get("image_url", "").strip()
     image_file = request.files.get("image_file")
 
-    image_data = ""
-    if image_file and image_file.filename != "":
-        file_bytes = image_file.read()
-        mime_type = image_file.mimetype or "image/jpeg"
-        b64_encoded = base64.b64encode(file_bytes).decode("utf-8")
-        image_data = f"data:{mime_type};base64,{b64_encoded}"
-    elif image_url:
-        image_data = image_url
-    else:
-        image_data = "https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product"
+    image_data = encode_uploaded_image(image_file)
+    if not image_data:
+        image_data = image_url if image_url else "https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product"
 
     try:
         numeric_price = float(price)
@@ -825,7 +922,7 @@ def admin_logout():
     return redirect(url_for("index"))
 
 
-# --- SMART DYNAMIC STOREFRONT ROUTES (SUPPORTS /<store_slug> AND /store/<store_slug>) ---
+# --- SMART DYNAMIC STOREFRONT ROUTES ---
 
 @app.route("/store/<store_slug>")
 @app.route("/<store_slug>")
@@ -835,10 +932,8 @@ def view_store(store_slug):
 
     if not store:
         conn.close()
-        # If someone typed an unknown name in the URL, redirect to homepage search for that name
         return redirect(url_for("index", q=store_slug))
 
-    # If accessed via an old store name/slug or unformatted name, redirect cleanly to their current custom link
     if should_redirect and store["store_slug"] != store_slug:
         conn.close()
         return redirect(f"/{store['store_slug']}", code=302)
