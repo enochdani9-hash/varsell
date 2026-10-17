@@ -1,5 +1,58 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+{% set theme = store.theme_color or 'emerald' %}
+{% set is_light = (theme == 'light') %}
+
+{% if theme == 'gold' %}
+  {% set page_bg = '#090703' %}
+  {% set card_bg = 'bg-[#120e06]/90 border-amber-500/20' %}
+  {% set accent_btn = 'bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-amber-500/20' %}
+  {% set accent_text = 'text-amber-400' %}
+  {% set accent_badge = 'bg-amber-400/15 text-amber-300 border-amber-400/30' %}
+  {% set accent_border = 'border-amber-400' %}
+  {% set glow_color = 'bg-amber-500/20' %}
+{% elif theme == 'violet' %}
+  {% set page_bg = '#070412' %}
+  {% set card_bg = 'bg-[#110a26]/90 border-purple-500/25' %}
+  {% set accent_btn = 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white shadow-purple-500/25' %}
+  {% set accent_text = 'text-purple-400' %}
+  {% set accent_badge = 'bg-purple-500/15 text-purple-300 border-purple-400/35' %}
+  {% set accent_border = 'border-purple-400' %}
+  {% set glow_color = 'bg-purple-600/25' %}
+{% elif theme == 'rose' %}
+  {% set page_bg = '#0c0408' %}
+  {% set card_bg = 'bg-[#1a0812]/90 border-rose-500/25' %}
+  {% set accent_btn = 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white shadow-rose-500/25' %}
+  {% set accent_text = 'text-rose-400' %}
+  {% set accent_badge = 'bg-rose-500/15 text-rose-300 border-rose-400/35' %}
+  {% set accent_border = 'border-rose-400' %}
+  {% set glow_color = 'bg-rose-600/25' %}
+{% elif theme == 'ocean' %}
+  {% set page_bg = '#030914' %}
+  {% set card_bg = 'bg-[#07152b]/90 border-cyan-500/25' %}
+  {% set accent_btn = 'bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 shadow-cyan-500/25' %}
+  {% set accent_text = 'text-cyan-400' %}
+  {% set accent_badge = 'bg-cyan-400/15 text-cyan-300 border-cyan-400/35' %}
+  {% set accent_border = 'border-cyan-400' %}
+  {% set glow_color = 'bg-cyan-500/25' %}
+{% elif theme == 'light' %}
+  {% set page_bg = '#f1f5f9' %}
+  {% set card_bg = 'bg-white border-slate-300 text-slate-900' %}
+  {% set accent_btn = 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/15' %}
+  {% set accent_text = 'text-emerald-600' %}
+  {% set accent_badge = 'bg-slate-900/10 text-slate-900 border-slate-300' %}
+  {% set accent_border = 'border-slate-900' %}
+  {% set glow_color = 'bg-emerald-400/10' %}
+{% else %}
+  {% set page_bg = '#050811' %}
+  {% set card_bg = 'bg-slate-900/90 border-white/10' %}
+  {% set accent_btn = 'bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 shadow-emerald-500/20' %}
+  {% set accent_text = 'text-emerald-400' %}
+  {% set accent_badge = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' %}
+  {% set accent_border = 'border-emerald-400' %}
+  {% set glow_color = 'bg-emerald-500/20' %}
+{% endif %}
+
+<html lang="en" class="{% if not is_light %}dark{% endif %}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,11 +63,18 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050811; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: {{ page_bg }};
+    }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
   </style>
 </head>
-<body class="text-slate-100 min-h-screen pb-16">
+<body class="{{ 'text-slate-900' if is_light else 'text-slate-100' }} min-h-screen pb-16 relative overflow-x-hidden">
+
+  <!-- Dynamic Theme Ambient Glows -->
+  <div class="pointer-events-none fixed top-[-140px] left-[-140px] w-[480px] h-[480px] rounded-full {{ glow_color }} blur-[130px] z-0"></div>
+  <div class="pointer-events-none fixed bottom-[-140px] right-[-140px] w-[480px] h-[480px] rounded-full {{ glow_color }} blur-[140px] z-0"></div>
 
   <!-- Offline Status Banner -->
   <div id="offlineBanner" class="hidden bg-amber-400 text-slate-950 text-center py-2 px-4 text-xs font-extrabold sticky top-0 z-50">
@@ -22,10 +82,10 @@
   </div>
 
   <!-- Toast Notification Popup -->
-  <div id="toast" class="fixed top-5 right-5 z-50 hidden bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"></div>
+  <div id="toast" class="fixed top-5 right-5 z-50 hidden {{ accent_btn }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"></div>
 
   <!-- Top Navigation -->
-  <header class="border-b border-white/10 bg-slate-900/75 backdrop-blur-xl sticky top-0 z-40">
+  <header class="border-b {{ 'border-slate-300 bg-white/90' if is_light else 'border-white/10 bg-slate-950/75' }} backdrop-blur-xl sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
       
       <!-- Left: 1-Click Profile Picture Uploader + Store Name -->
@@ -33,13 +93,13 @@
         <form id="quickAvatarForm" action="/update-avatar" method="POST" enctype="multipart/form-data">
           <label class="relative block cursor-pointer group" title="Click to change your Profile Picture">
             {% if store.logo_data %}
-              <img src="{{ store.logo_data }}" alt="Profile" class="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg" />
+              <img src="{{ store.logo_data }}" alt="Profile" class="w-12 h-12 rounded-2xl object-cover border-2 {{ accent_border }} shadow-lg" />
             {% else %}
-              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg">
+              <div class="w-12 h-12 rounded-2xl {{ accent_btn }} flex items-center justify-center font-black text-xl shadow-lg">
                 {{ store.store_name[:1]|upper }}
               </div>
             {% endif %}
-            <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-950 border border-white/20 flex items-center justify-center text-[10px] shadow">
+            <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-950 text-white border border-white/20 flex items-center justify-center text-[10px] shadow">
               📸
             </span>
             <input type="file" name="logo_file" accept="image/*" onchange="document.getElementById('quickAvatarForm').submit()" class="hidden" />
@@ -48,12 +108,12 @@
 
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="font-extrabold text-white text-base sm:text-lg leading-none">{{ store.store_name }}</h1>
-            <span class="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-              {{ store.country or 'Global' }}
+            <h1 class="font-extrabold {{ 'text-slate-950' if is_light else 'text-white' }} text-base sm:text-lg leading-none">{{ store.store_name }}</h1>
+            <span class="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider border {{ accent_badge }} px-2 py-0.5 rounded-full">
+              {{ store.country or 'Global' }} • {{ theme|upper }}
             </span>
           </div>
-          <button type="button" onclick="toggleThemeStudio()" class="text-[11px] text-emerald-400 hover:underline mt-1 block">
+          <button type="button" onclick="toggleThemeStudio()" class="text-[11px] {{ accent_text }} font-bold hover:underline mt-1 block">
             📸 Change Profile Pic or Store Look →
           </button>
         </div>
@@ -64,7 +124,7 @@
         <button
           type="button"
           onclick="toggleThemeStudio()"
-          class="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-400/40 text-purple-200 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition"
+          class="border {{ accent_badge }} text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition"
         >
           🎨 Store Look & Avatar
         </button>
@@ -72,7 +132,7 @@
         <button
           type="button"
           onclick="document.getElementById('flyerModal').classList.remove('hidden')"
-          class="bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/40 text-amber-300 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition"
+          class="bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/40 text-amber-400 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition"
         >
           📲 Status Flyer & QR
         </button>
@@ -80,7 +140,7 @@
         <button
           type="button"
           onclick="toggleProfileEditor()"
-          class="bg-white/5 hover:bg-white/10 border border-white/15 text-xs font-bold text-slate-200 px-3.5 py-2.5 rounded-xl transition"
+          class="{{ 'bg-slate-200 text-slate-900' if is_light else 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15' }} text-xs font-bold px-3.5 py-2.5 rounded-xl transition"
         >
           ⚙️ Global & Payment Setup
         </button>
@@ -88,14 +148,14 @@
         <a
           href="/{{ store.store_slug }}"
           target="_blank"
-          class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20"
+          class="{{ accent_btn }} text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-lg"
         >
           View Store ↗
         </a>
 
         <a
           href="/logout"
-          class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-300 px-3 py-2.5 rounded-xl transition"
+          class="{{ 'bg-slate-200 text-slate-700' if is_light else 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300' }} text-xs font-semibold px-3 py-2.5 rounded-xl transition"
         >
           Lock
         </a>
@@ -104,13 +164,13 @@
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-8 relative z-10">
 
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="p-4 rounded-2xl text-sm font-bold flex items-center gap-2.5 {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-200{% else %}bg-emerald-500/15 border border-emerald-500/40 text-emerald-200{% endif %}">
+          <div class="p-4 rounded-2xl text-sm font-bold flex items-center gap-2.5 {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-300{% else %}border {{ accent_badge }}{% endif %}">
             <span>{% if category == 'error' %}⚠️{% else %}✅{% endif %}</span>
             <span>{{ message }}</span>
           </div>
@@ -119,27 +179,25 @@
     {% endwith %}
 
     <!-- Collapsible Store Appearance, Theme & Profile Picture Studio -->
-    <div id="themeStudioCard" class="hidden bg-slate-900/95 border-2 border-purple-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div id="themeStudioCard" class="hidden bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl p-6 sm:p-8 shadow-2xl">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <span class="text-xs font-bold uppercase tracking-widest text-purple-400">Appearance Studio</span>
+          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Appearance Studio</span>
           <h2 class="text-xl sm:text-2xl font-extrabold text-white">🎨 Customize Your Store Look, Theme & Profile Picture</h2>
         </div>
         <button type="button" onclick="toggleThemeStudio()" class="text-xs text-slate-400 hover:text-white">✕ Close</button>
       </div>
 
       <form action="/update-theme" method="POST" enctype="multipart/form-data" class="space-y-6">
-        <!-- 6 Visual Theme Cards -->
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
-            1. Select Your Storefront Color Theme:
+            1. Click a Theme Below to Transform Your Store & Dashboard:
           </label>
-          {% set current_theme = store.theme_color or 'emerald' %}
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             
             <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="emerald" {% if current_theme == 'emerald' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-emerald-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+              <input type="radio" name="theme_color" value="emerald" {% if theme == 'emerald' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-emerald-400 peer-checked:bg-emerald-950/40 bg-slate-950 rounded-2xl p-3 text-center transition">
                 <div class="w-full h-10 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-600 mb-2"></div>
                 <p class="text-xs font-extrabold text-white">Obsidian Emerald</p>
                 <p class="text-[10px] text-slate-400">Signature Dark</p>
@@ -147,8 +205,8 @@
             </label>
 
             <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="gold" {% if current_theme == 'gold' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-amber-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+              <input type="radio" name="theme_color" value="gold" {% if theme == 'gold' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-amber-400 peer-checked:bg-amber-950/40 bg-slate-950 rounded-2xl p-3 text-center transition">
                 <div class="w-full h-10 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-600 mb-2"></div>
                 <p class="text-xs font-extrabold text-white">Royal Gold</p>
                 <p class="text-[10px] text-slate-400">Luxury Black</p>
@@ -156,8 +214,8 @@
             </label>
 
             <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="violet" {% if current_theme == 'violet' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-purple-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+              <input type="radio" name="theme_color" value="violet" {% if theme == 'violet' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-purple-400 peer-checked:bg-purple-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
                 <div class="w-full h-10 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 mb-2"></div>
                 <p class="text-xs font-extrabold text-white">Cyber Violet</p>
                 <p class="text-[10px] text-slate-400">Modern Neon</p>
@@ -165,8 +223,8 @@
             </label>
 
             <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="rose" {% if current_theme == 'rose' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-rose-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+              <input type="radio" name="theme_color" value="rose" {% if theme == 'rose' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-rose-400 peer-checked:bg-rose-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
                 <div class="w-full h-10 rounded-xl bg-gradient-to-r from-rose-400 to-pink-600 mb-2"></div>
                 <p class="text-xs font-extrabold text-white">Velvet Rose</p>
                 <p class="text-[10px] text-slate-400">Beauty & Drip</p>
@@ -174,8 +232,8 @@
             </label>
 
             <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="ocean" {% if current_theme == 'ocean' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-cyan-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+              <input type="radio" name="theme_color" value="ocean" {% if theme == 'ocean' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-cyan-400 peer-checked:bg-cyan-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
                 <div class="w-full h-10 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 mb-2"></div>
                 <p class="text-xs font-extrabold text-white">Ocean Sapphire</p>
                 <p class="text-[10px] text-slate-400">Tech & Gadgets</p>
@@ -183,7 +241,7 @@
             </label>
 
             <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="light" {% if current_theme == 'light' %}checked{% endif %} class="peer hidden" />
+              <input type="radio" name="theme_color" value="light" {% if theme == 'light' %}checked{% endif %} class="peer hidden" />
               <div class="border-2 border-white/10 peer-checked:border-white bg-slate-950 rounded-2xl p-3 text-center transition">
                 <div class="w-full h-10 rounded-xl bg-gradient-to-r from-white via-slate-100 to-slate-300 mb-2"></div>
                 <p class="text-xs font-extrabold text-white">Pearl Light</p>
@@ -239,19 +297,19 @@
         <div class="flex justify-end">
           <button
             type="submit"
-            class="bg-gradient-to-r from-purple-400 to-emerald-400 hover:from-purple-300 hover:to-emerald-300 text-slate-950 font-extrabold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-xl"
+            class="{{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-xl"
           >
-            Save New Store Look & Profile Picture →
+            Apply New Theme & Save Changes →
           </button>
         </div>
       </form>
     </div>
 
     <!-- Collapsible Global Settings, Custom Link & Payment Editor -->
-    <div id="profileEditorCard" class="hidden bg-slate-900/95 border-2 border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div id="profileEditorCard" class="hidden bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl p-6 sm:p-8 shadow-2xl">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Global Store Configuration</span>
+          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Global Store Configuration</span>
           <h2 class="text-xl font-extrabold text-white">Edit Store Details, Currency & Payment Method</h2>
         </div>
         <button type="button" onclick="toggleProfileEditor()" class="text-xs text-slate-400 hover:text-white">✕ Close</button>
@@ -265,19 +323,19 @@
             name="store_name"
             value="{{ store.store_name }}"
             required
-            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-emerald-300 mb-1.5">Custom Web Link Handle</label>
-          <div class="flex items-center bg-slate-950 border border-emerald-500/30 rounded-2xl px-3.5 py-3 text-sm">
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Custom Web Link Handle</label>
+          <div class="flex items-center bg-slate-950 border border-white/15 rounded-2xl px-3.5 py-3 text-sm">
             <span class="text-slate-500 font-mono text-xs select-none">{{ request.host }}/</span>
             <input
               type="text"
               name="store_slug"
               value="{{ store.store_slug }}"
-              class="flex-1 bg-transparent text-emerald-400 font-mono font-bold focus:outline-none"
+              class="flex-1 bg-transparent {{ accent_text }} font-mono font-bold focus:outline-none"
             />
           </div>
         </div>
@@ -288,9 +346,8 @@
             type="text"
             name="whatsapp_number"
             value="{{ store.whatsapp_number }}"
-            placeholder="e.g. 233541234567 or 15551234567"
             required
-            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
           />
         </div>
 
@@ -301,14 +358,14 @@
               type="text"
               name="country"
               value="{{ store.country or 'Global' }}"
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none"
             />
           </div>
           <div>
             <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Default Currency</label>
             <select
               name="default_currency"
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none"
             >
               {% for curr in ['USD', 'GHS', 'NGN', 'GBP', 'EUR', 'KES', 'ZAR', 'CAD', 'XOF'] %}
                 <option value="{{ curr }}" {% if store.default_currency == curr %}selected{% endif %}>{{ curr }}</option>
@@ -323,8 +380,7 @@
             type="text"
             name="payment_method_label"
             value="{{ store.payment_method_label or 'Mobile Money / Instant Transfer' }}"
-            placeholder="e.g. Mobile Money, Bank Transfer, CashApp, PayPal"
-            class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-400"
+            class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
           />
         </div>
 
@@ -335,8 +391,7 @@
               type="text"
               name="momo_number"
               value="{{ store.momo_number or '' }}"
-              placeholder="Number or @handle"
-              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-amber-400"
+              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none"
             />
           </div>
           <div>
@@ -345,8 +400,7 @@
               type="text"
               name="momo_name"
               value="{{ store.momo_name or '' }}"
-              placeholder="Account Holder Name"
-              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-amber-400"
+              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none"
             />
           </div>
         </div>
@@ -357,7 +411,7 @@
             type="text"
             name="category"
             value="{{ store.category }}"
-            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
           />
         </div>
 
@@ -367,8 +421,7 @@
             type="text"
             name="bio"
             value="{{ store.bio }}"
-            placeholder="e.g. Express local & worldwide shipping"
-            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
           />
         </div>
 
@@ -377,7 +430,7 @@
         <div class="sm:col-span-2 flex justify-end">
           <button
             type="submit"
-            class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-6 py-3 rounded-2xl text-sm transition shadow-lg"
+            class="{{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-sm transition shadow-lg"
           >
             Save Global Store Settings
           </button>
@@ -389,7 +442,7 @@
     <div class="grid md:grid-cols-2 gap-5">
 
       <!-- Left Card: Secret Key -->
-      <div class="bg-slate-900/90 border border-white/10 rounded-3xl p-6 flex flex-col justify-between shadow-xl">
+      <div class="{{ card_bg }} border rounded-3xl p-6 flex flex-col justify-between shadow-xl">
         <div class="flex items-start justify-between gap-3">
           <div>
             <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">Your Store Secret Key (Login Password)</span>
@@ -399,14 +452,14 @@
             <button
               type="button"
               onclick="toggleKeyEditor()"
-              class="bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold px-3 py-2 rounded-xl transition"
+              class="bg-amber-400/10 hover:bg-amber-400/20 text-amber-400 border border-amber-400/30 text-xs font-bold px-3 py-2 rounded-xl transition"
             >
               ✏️ Customize Key
             </button>
             <button
               type="button"
               onclick="showToast('Secret Key copied!', '{{ store.access_key }}')"
-              class="bg-white/5 hover:bg-white/10 text-xs font-bold px-3.5 py-2 rounded-xl border border-white/10 transition"
+              class="{{ 'bg-slate-100 text-slate-800 border-slate-300' if is_light else 'bg-white/5 hover:bg-white/10 text-white border-white/10' }} text-xs font-bold px-3.5 py-2 rounded-xl border transition"
             >
               Copy
             </button>
@@ -414,7 +467,7 @@
         </div>
 
         <form id="keyEditorForm" action="/change-key" method="POST" class="hidden mt-4 pt-4 border-t border-white/10">
-          <label class="block text-xs font-bold text-slate-300 mb-2">Type your new custom Secret Key (min 4 characters):</label>
+          <label class="block text-xs font-bold text-slate-400 mb-2">Type your new custom Secret Key (min 4 characters):</label>
           <div class="flex gap-2">
             <input
               type="text"
@@ -422,7 +475,7 @@
               placeholder="e.g. ZAYN2026"
               required
               minlength="4"
-              class="flex-1 bg-slate-950 border border-amber-400/40 rounded-xl px-3.5 py-2 text-sm text-white font-mono uppercase focus:outline-none focus:border-amber-400"
+              class="flex-1 bg-slate-950 border border-amber-400/40 rounded-xl px-3.5 py-2 text-sm text-white font-mono uppercase focus:outline-none"
             />
             <button
               type="submit"
@@ -435,14 +488,14 @@
       </div>
 
       <!-- Right Card: Clean Store Name & Web Link -->
-      <div class="bg-slate-900/90 border border-white/10 rounded-3xl p-6 flex flex-col justify-between shadow-xl">
+      <div class="{{ card_bg }} border rounded-3xl p-6 flex flex-col justify-between shadow-xl">
         <div class="flex items-start justify-between gap-3">
           <div class="overflow-hidden">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">Your Store Name & Web Link</span>
-              <span class="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">Global Link</span>
+              <span class="text-[10px] font-bold border {{ accent_badge }} px-2 py-0.5 rounded-full">Global Link</span>
             </div>
-            <p class="text-sm sm:text-lg font-mono font-extrabold text-emerald-400 truncate mt-2">
+            <p class="text-sm sm:text-lg font-mono font-extrabold {{ accent_text }} truncate mt-2">
               {{ request.host }}/{{ store.store_slug }}
             </p>
           </div>
@@ -451,14 +504,14 @@
             <button
               type="button"
               onclick="toggleNameEditor()"
-              class="bg-emerald-400/10 hover:bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold px-3 py-2.5 rounded-xl transition"
+              class="border {{ accent_badge }} text-xs font-bold px-3 py-2.5 rounded-xl transition"
             >
               ✏️ Change Store Name
             </button>
             <button
               type="button"
               onclick="showToast('Store Link copied! Share it anywhere.', '{{ request.host_url }}{{ store.store_slug }}')"
-              class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20"
+              class="{{ accent_btn }} text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-lg"
             >
               Copy Link
             </button>
@@ -466,12 +519,12 @@
         </div>
 
         <p class="text-xs text-slate-400 mt-3">
-          💡 Current Store Name: <strong class="text-white">{{ store.store_name }}</strong> • Theme: <strong class="text-emerald-400 uppercase">{{ store.theme_color or 'emerald' }}</strong>
+          💡 Current Store Name: <strong class="{{ 'text-slate-900' if is_light else 'text-white' }}">{{ store.store_name }}</strong> • Active Theme: <strong class="{{ accent_text }} uppercase">{{ theme }}</strong>
         </p>
 
         <form id="nameEditorForm" action="/change-store-name" method="POST" class="hidden mt-4 pt-4 border-t border-white/10 space-y-3">
           <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Enter Your New Store Name:</label>
+            <label class="block text-xs font-bold text-slate-400 mb-1">Enter Your New Store Name:</label>
             <input
               type="text"
               id="newStoreNameInput"
@@ -480,13 +533,13 @@
               oninput="syncSlugPreview(this.value)"
               placeholder="e.g. Zayn Luxury"
               required
-              class="w-full bg-slate-950 border border-emerald-400/40 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+              class="w-full bg-slate-950 border border-white/20 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
             />
           </div>
 
-          <div class="bg-slate-950/90 border border-white/10 rounded-xl px-3.5 py-2 flex items-center justify-between">
+          <div class="bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2 flex items-center justify-between">
             <span class="text-[11px] text-slate-400">New Link Preview:</span>
-            <span class="text-xs font-mono font-bold text-emerald-400">
+            <span class="text-xs font-mono font-bold {{ accent_text }}">
               {{ request.host }}/<span id="newSlugText">{{ store.store_slug }}</span>
             </span>
             <input type="hidden" id="newStoreSlugInput" name="new_store_slug" value="{{ store.store_slug }}" />
@@ -494,7 +547,7 @@
 
           <button
             type="submit"
-            class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs py-2.5 rounded-xl transition"
+            class="w-full {{ accent_btn }} font-extrabold text-xs py-2.5 rounded-xl transition"
           >
             Save New Store Name & Link →
           </button>
@@ -507,30 +560,30 @@
     <div class="grid lg:grid-cols-12 gap-8 items-start">
 
       <!-- Left Column: Post New Product -->
-      <div class="lg:col-span-5 bg-slate-900/90 border border-white/10 rounded-3xl p-6 shadow-2xl">
+      <div class="lg:col-span-5 {{ card_bg }} border rounded-3xl p-6 shadow-2xl">
         <div class="mb-5">
-          <span class="text-[11px] font-bold uppercase tracking-widest text-emerald-400">Inventory Uploader</span>
-          <h2 class="text-xl font-extrabold text-white">Add a New Product</h2>
+          <span class="text-[11px] font-bold uppercase tracking-widest {{ accent_text }}">Inventory Uploader</span>
+          <h2 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">Add a New Product</h2>
         </div>
 
         <form action="/add-product" method="POST" enctype="multipart/form-data" class="space-y-4">
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Product Title *</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Product Title *</label>
             <input
               type="text"
               name="product_name"
               placeholder="e.g. Designer Black Leather Belt"
               required
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
             />
           </div>
 
           <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Currency</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Currency</label>
               <select
                 name="currency"
-                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none"
               >
                 {% set def_curr = store.default_currency or 'GHS' %}
                 {% for c in [('GHS', 'GHS (₵)'), ('USD', 'USD ($)'), ('NGN', 'NGN (₦)'), ('GBP', 'GBP (£)'), ('EUR', 'EUR (€)'), ('KES', 'KES (KSh)'), ('ZAR', 'ZAR (R)'), ('CAD', 'CAD ($)'), ('XOF', 'XOF (CFA)')] %}
@@ -539,24 +592,24 @@
               </select>
             </div>
             <div class="col-span-2">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Price *</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Price *</label>
               <input
                 type="number"
                 step="0.01"
                 name="price"
                 placeholder="e.g. 200"
                 required
-                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Product Photo (From Phone or PC)</label>
-            <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/15 hover:border-emerald-400/60 bg-slate-950/60 rounded-2xl p-4 cursor-pointer transition text-center">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Product Photo (From Phone or PC)</label>
+            <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/15 bg-slate-950/80 rounded-2xl p-4 cursor-pointer transition text-center">
               <img id="imagePreview" class="hidden w-full h-40 object-cover rounded-xl mb-2" />
               <div id="uploadPrompt" class="py-2">
-                <p class="text-xs font-bold text-emerald-400">📸 Click to choose photo from gallery</p>
+                <p class="text-xs font-bold {{ accent_text }}">📸 Click to choose photo from gallery</p>
                 <p class="text-[11px] text-slate-500 mt-0.5">JPG, PNG, or WEBP supported</p>
               </div>
               <input
@@ -575,23 +628,23 @@
               type="url"
               name="image_url"
               placeholder="https://..."
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400"
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-2.5 text-xs text-white focus:outline-none"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Sizes / Details / Description</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Sizes / Details / Description</label>
             <textarea
               name="description"
               rows="2"
               placeholder="e.g. Available sizes, colors, and shipping options..."
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
             ></textarea>
           </div>
 
           <button
             type="submit"
-            class="w-full bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-emerald-500/20"
+            class="w-full {{ accent_btn }} font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg"
           >
             + Publish Product to Store
           </button>
@@ -603,14 +656,14 @@
         <div class="flex items-center justify-between">
           <div>
             <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Store Catalog</span>
-            <h2 class="text-xl font-extrabold text-white">Your Active Products ({{ products|length }})</h2>
+            <h2 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">Your Active Products ({{ products|length }})</h2>
           </div>
         </div>
 
         {% if products %}
           <div class="grid sm:grid-cols-2 gap-5">
             {% for p in products %}
-            <div class="bg-slate-900/90 border border-white/10 rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group">
+            <div class="{{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group">
               <div>
                 <div class="relative overflow-hidden bg-slate-950 h-48">
                   <img
@@ -618,15 +671,15 @@
                     alt="{{ p.product_name }}"
                     class="w-full h-full object-cover group-hover:scale-105 transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
                   />
-                  <span class="absolute top-3 left-3 text-[11px] font-extrabold px-2.5 py-1 rounded-full {% if p.in_stock == 1 %}bg-emerald-500 text-slate-950{% else %}bg-red-500 text-white{% endif %}">
+                  <span class="absolute top-3 left-3 text-[11px] font-extrabold px-2.5 py-1 rounded-full {% if p.in_stock == 1 %}{{ accent_btn }}{% else %}bg-red-500 text-white{% endif %}">
                     {% if p.in_stock == 1 %}● In Stock{% else %}Sold Out{% endif %}
                   </span>
                 </div>
 
                 <div class="p-5">
                   <div class="flex items-start justify-between gap-2">
-                    <h3 class="font-extrabold text-white text-base">{{ p.product_name }}</h3>
-                    <span class="shrink-0 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-extrabold text-xs px-2.5 py-1 rounded-xl">
+                    <h3 class="font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} text-base">{{ p.product_name }}</h3>
+                    <span class="shrink-0 border {{ accent_badge }} font-extrabold text-xs px-2.5 py-1 rounded-xl">
                       {{ p.currency }} {{ "%.2f"|format(p.price) }}
                     </span>
                   </div>
@@ -640,7 +693,7 @@
                 <form action="/toggle-stock/{{ p.id }}" method="POST">
                   <button
                     type="submit"
-                    class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs font-bold py-2.5 rounded-xl transition"
+                    class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold py-2.5 rounded-xl transition"
                   >
                     {% if p.in_stock == 1 %}Mark Sold Out{% else %}Mark In Stock{% endif %}
                   </button>
@@ -659,8 +712,8 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="bg-slate-900/50 border-2 border-dashed border-white/10 rounded-3xl p-12 text-center">
-            <p class="text-base font-bold text-white">Your store catalog is empty</p>
+          <div class="{{ card_bg }} border-2 border-dashed rounded-3xl p-12 text-center">
+            <p class="text-base font-bold {{ 'text-slate-900' if is_light else 'text-white' }}">Your store catalog is empty</p>
             <p class="text-xs text-slate-400 mt-1">Use the uploader on the left to post your first product photo and price.</p>
           </div>
         {% endif %}
@@ -672,11 +725,11 @@
   <!-- WhatsApp Status Flyer & QR Card Modal -->
   <div id="flyerModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="max-w-sm w-full space-y-3">
-      <div class="bg-gradient-to-br from-slate-900 via-[#071318] to-emerald-950 border-2 border-emerald-400/50 rounded-3xl p-7 text-center shadow-2xl relative overflow-hidden">
+      <div class="bg-slate-900 border-2 {{ accent_border }} rounded-3xl p-7 text-center shadow-2xl relative overflow-hidden">
         {% if store.logo_data %}
-          <img src="{{ store.logo_data }}" class="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 border-2 border-emerald-400 shadow-lg" />
+          <img src="{{ store.logo_data }}" class="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 border-2 {{ accent_border }} shadow-lg" />
         {% endif %}
-        <span class="inline-block text-[10px] font-extrabold uppercase tracking-widest bg-emerald-400 text-slate-950 px-3 py-1 rounded-full">
+        <span class="inline-block text-[10px] font-extrabold uppercase tracking-widest {{ accent_btn }} px-3 py-1 rounded-full">
           OFFICIAL ONLINE STORE
         </span>
         <h3 class="text-2xl font-extrabold text-white mt-2">{{ store.store_name }}</h3>
@@ -690,7 +743,7 @@
           />
         </div>
 
-        <p class="text-xs font-mono font-bold text-emerald-300 break-all bg-slate-950/80 border border-white/10 rounded-xl p-2.5">
+        <p class="text-xs font-mono font-bold {{ accent_text }} break-all bg-slate-950/80 border border-white/10 rounded-xl p-2.5">
           {{ request.host }}/{{ store.store_slug }}
         </p>
         <p class="text-[11px] text-slate-400 mt-3">
@@ -701,7 +754,7 @@
       <div class="flex gap-2">
         <button
           onclick="showToast('Store Link copied! Screenshot this flyer for your Status or Story.', '{{ request.host_url }}{{ store.store_slug }}')"
-          class="flex-1 bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs"
+          class="flex-1 {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs"
         >
           📸 Copy Link & Screenshot Flyer
         </button>
@@ -768,7 +821,7 @@
         const prompt = document.getElementById("uploadPrompt");
         preview.src = e.target.result;
         preview.classList.remove("hidden");
-        prompt.innerHTML = `<p class="text-xs font-bold text-emerald-400">✅ Photo Selected (${file.name})</p>`;
+        prompt.innerHTML = `<p class="text-xs font-bold">✅ Photo Selected (${file.name})</p>`;
       };
       reader.readAsDataURL(file);
     }
