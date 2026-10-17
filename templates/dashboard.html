@@ -25,26 +25,50 @@
   <div id="toast" class="fixed top-5 right-5 z-50 hidden bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"></div>
 
   <!-- Top Navigation -->
-  <header class="border-b border-white/10 bg-slate-900/70 backdrop-blur-xl sticky top-0 z-40">
+  <header class="border-b border-white/10 bg-slate-900/75 backdrop-blur-xl sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        {% if store.logo_data %}
-          <img src="{{ store.logo_data }}" alt="Logo" class="w-10 h-10 rounded-xl object-cover border border-emerald-400/40 shadow-lg" />
-        {% else %}
-          <a href="/" class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-lg shadow-lg">
-            {{ store.store_name[:1]|upper }}
-          </a>
-        {% endif %}
+      
+      <!-- Left: 1-Click Profile Picture Uploader + Store Name -->
+      <div class="flex items-center gap-3.5">
+        <form id="quickAvatarForm" action="/update-avatar" method="POST" enctype="multipart/form-data">
+          <label class="relative block cursor-pointer group" title="Click to change your Profile Picture">
+            {% if store.logo_data %}
+              <img src="{{ store.logo_data }}" alt="Profile" class="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg" />
+            {% else %}
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg">
+                {{ store.store_name[:1]|upper }}
+              </div>
+            {% endif %}
+            <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-950 border border-white/20 flex items-center justify-center text-[10px] shadow">
+              📸
+            </span>
+            <input type="file" name="logo_file" accept="image/*" onchange="document.getElementById('quickAvatarForm').submit()" class="hidden" />
+          </label>
+        </form>
+
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-extrabold text-white text-base sm:text-lg leading-none">{{ store.store_name }}</h1>
-            <span class="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">LIVE STORE</span>
+            <span class="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+              {{ store.country or 'Global' }}
+            </span>
           </div>
-          <p class="text-xs text-slate-400 mt-0.5">Varsell Seller Command Center</p>
+          <button type="button" onclick="toggleThemeStudio()" class="text-[11px] text-emerald-400 hover:underline mt-1 block">
+            📸 Change Profile Pic or Store Look →
+          </button>
         </div>
       </div>
 
+      <!-- Right Action Buttons -->
       <div class="flex items-center gap-2 flex-wrap justify-end">
+        <button
+          type="button"
+          onclick="toggleThemeStudio()"
+          class="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-400/40 text-purple-200 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition"
+        >
+          🎨 Store Look & Avatar
+        </button>
+
         <button
           type="button"
           onclick="document.getElementById('flyerModal').classList.remove('hidden')"
@@ -52,13 +76,15 @@
         >
           📲 Status Flyer & QR
         </button>
+
         <button
           type="button"
           onclick="toggleProfileEditor()"
           class="bg-white/5 hover:bg-white/10 border border-white/15 text-xs font-bold text-slate-200 px-3.5 py-2.5 rounded-xl transition"
         >
-          ⚙️ Edit Link & MoMo
+          ⚙️ Global & Payment Setup
         </button>
+
         <a
           href="/{{ store.store_slug }}"
           target="_blank"
@@ -66,6 +92,7 @@
         >
           View Store ↗
         </a>
+
         <a
           href="/logout"
           class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-300 px-3 py-2.5 rounded-xl transition"
@@ -73,6 +100,7 @@
           Lock
         </a>
       </div>
+
     </div>
   </header>
 
@@ -90,12 +118,141 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Collapsible Full Store Branding, Custom Link & MoMo Editor -->
+    <!-- Collapsible Store Appearance, Theme & Profile Picture Studio -->
+    <div id="themeStudioCard" class="hidden bg-slate-900/95 border-2 border-purple-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-purple-400">Appearance Studio</span>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-white">🎨 Customize Your Store Look, Theme & Profile Picture</h2>
+        </div>
+        <button type="button" onclick="toggleThemeStudio()" class="text-xs text-slate-400 hover:text-white">✕ Close</button>
+      </div>
+
+      <form action="/update-theme" method="POST" enctype="multipart/form-data" class="space-y-6">
+        <!-- 6 Visual Theme Cards -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
+            1. Select Your Storefront Color Theme:
+          </label>
+          {% set current_theme = store.theme_color or 'emerald' %}
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="emerald" {% if current_theme == 'emerald' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-emerald-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Obsidian Emerald</p>
+                <p class="text-[10px] text-slate-400">Signature Dark</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="gold" {% if current_theme == 'gold' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-amber-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Royal Gold</p>
+                <p class="text-[10px] text-slate-400">Luxury Black</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="violet" {% if current_theme == 'violet' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-purple-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Cyber Violet</p>
+                <p class="text-[10px] text-slate-400">Modern Neon</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="rose" {% if current_theme == 'rose' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-rose-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-rose-400 to-pink-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Velvet Rose</p>
+                <p class="text-[10px] text-slate-400">Beauty & Drip</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="ocean" {% if current_theme == 'ocean' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-cyan-400 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Ocean Sapphire</p>
+                <p class="text-[10px] text-slate-400">Tech & Gadgets</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="light" {% if current_theme == 'light' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-white bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-white via-slate-100 to-slate-300 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Pearl Light</p>
+                <p class="text-[10px] text-slate-400">Clean White Mode</p>
+              </div>
+            </label>
+
+          </div>
+        </div>
+
+        <!-- Profile Picture + Cover Banner Upload -->
+        <div class="grid sm:grid-cols-2 gap-4 pt-2 border-t border-white/10">
+          <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+            <label class="block text-xs font-bold uppercase text-emerald-300 mb-2">
+              2. Upload Seller Profile Picture / Logo
+            </label>
+            <div class="flex items-center gap-3">
+              {% if store.logo_data %}
+                <img id="studioAvatarPreview" src="{{ store.logo_data }}" class="w-14 h-14 rounded-2xl object-cover border border-emerald-400 shrink-0" />
+              {% else %}
+                <img id="studioAvatarPreview" class="hidden w-14 h-14 rounded-2xl object-cover border border-emerald-400 shrink-0" />
+              {% endif %}
+              <input
+                type="file"
+                name="logo_file"
+                accept="image/*"
+                onchange="previewStudioAvatar(event)"
+                class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-500/20 file:text-emerald-300"
+              />
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-xs font-bold uppercase text-purple-300">
+                3. Store Header Cover Banner (Optional)
+              </label>
+              {% if store.banner_data %}
+              <label class="text-[11px] text-red-400 flex items-center gap-1 cursor-pointer">
+                <input type="checkbox" name="clear_banner" value="1" /> Remove Banner
+              </label>
+              {% endif %}
+            </div>
+            <input
+              type="file"
+              name="banner_file"
+              accept="image/*"
+              class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-purple-500/20 file:text-purple-300"
+            />
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button
+            type="submit"
+            class="bg-gradient-to-r from-purple-400 to-emerald-400 hover:from-purple-300 hover:to-emerald-300 text-slate-950 font-extrabold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-xl"
+          >
+            Save New Store Look & Profile Picture →
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Collapsible Global Settings, Custom Link & Payment Editor -->
     <div id="profileEditorCard" class="hidden bg-slate-900/95 border-2 border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Store & Mobile Money Setup</span>
-          <h2 class="text-xl font-extrabold text-white">Customize Store Name, Web Link & MoMo Details</h2>
+          <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Global Store Configuration</span>
+          <h2 class="text-xl font-extrabold text-white">Edit Store Details, Currency & Payment Method</h2>
         </div>
         <button type="button" onclick="toggleProfileEditor()" class="text-xs text-slate-400 hover:text-white">✕ Close</button>
       </div>
@@ -115,7 +272,7 @@
         <div>
           <label class="block text-xs font-bold uppercase text-emerald-300 mb-1.5">Custom Web Link Handle</label>
           <div class="flex items-center bg-slate-950 border border-emerald-500/30 rounded-2xl px-3.5 py-3 text-sm">
-            <span class="text-slate-500 font-mono text-xs select-none">{{ request.host_url }}</span>
+            <span class="text-slate-500 font-mono text-xs select-none">{{ request.host }}/</span>
             <input
               type="text"
               name="store_slug"
@@ -126,14 +283,72 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Order WhatsApp Number</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">International WhatsApp Number</label>
           <input
             type="text"
             name="whatsapp_number"
             value="{{ store.whatsapp_number }}"
+            placeholder="e.g. 233541234567 or 15551234567"
             required
             class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
           />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Country / Region</label>
+            <input
+              type="text"
+              name="country"
+              value="{{ store.country or 'Global' }}"
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Default Currency</label>
+            <select
+              name="default_currency"
+              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+            >
+              {% for curr in ['USD', 'GHS', 'NGN', 'GBP', 'EUR', 'KES', 'ZAR', 'CAD', 'XOF'] %}
+                <option value="{{ curr }}" {% if store.default_currency == curr %}selected{% endif %}>{{ curr }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Payment Method Label</label>
+          <input
+            type="text"
+            name="payment_method_label"
+            value="{{ store.payment_method_label or 'Mobile Money / Instant Transfer' }}"
+            placeholder="e.g. Mobile Money, Bank Transfer, CashApp, PayPal"
+            class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-400"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Account / MoMo / Handle</label>
+            <input
+              type="text"
+              name="momo_number"
+              value="{{ store.momo_number or '' }}"
+              placeholder="Number or @handle"
+              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-amber-400"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Verified Account Name</label>
+            <input
+              type="text"
+              name="momo_name"
+              value="{{ store.momo_name or '' }}"
+              placeholder="Account Holder Name"
+              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-amber-400"
+            />
+          </div>
         </div>
 
         <div>
@@ -147,54 +362,24 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">MTN / Telecel MoMo Number</label>
-          <input
-            type="text"
-            name="momo_number"
-            value="{{ store.momo_number or '' }}"
-            placeholder="e.g. 0541234567"
-            class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-400"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Registered MoMo Account Name</label>
-          <input
-            type="text"
-            name="momo_name"
-            value="{{ store.momo_name or '' }}"
-            placeholder="e.g. Enoch Daniels"
-            class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-400"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Upload Custom Store Logo</label>
-          <input
-            type="file"
-            name="logo_file"
-            accept="image/*"
-            class="w-full text-xs text-slate-300 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Store Bio / Delivery Information</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Store Bio / Shipping Info</label>
           <input
             type="text"
             name="bio"
             value="{{ store.bio }}"
-            placeholder="e.g. Nationwide delivery across Ghana"
+            placeholder="e.g. Express local & worldwide shipping"
             class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
           />
         </div>
+
+        <input type="hidden" name="theme_color" value="{{ store.theme_color or 'emerald' }}" />
 
         <div class="sm:col-span-2 flex justify-end">
           <button
             type="submit"
             class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-6 py-3 rounded-2xl text-sm transition shadow-lg"
           >
-            Save Store & MoMo Changes
+            Save Global Store Settings
           </button>
         </div>
       </form>
@@ -234,7 +419,7 @@
             <input
               type="text"
               name="new_key"
-              placeholder="e.g. KOFIDRIP2026"
+              placeholder="e.g. ZAYN2026"
               required
               minlength="4"
               class="flex-1 bg-slate-950 border border-amber-400/40 rounded-xl px-3.5 py-2 text-sm text-white font-mono uppercase focus:outline-none focus:border-amber-400"
@@ -249,13 +434,13 @@
         </form>
       </div>
 
-      <!-- Right Card: Clean Store Name & Web Link (With 1-Click Name/Link Customizer) -->
+      <!-- Right Card: Clean Store Name & Web Link -->
       <div class="bg-slate-900/90 border border-white/10 rounded-3xl p-6 flex flex-col justify-between shadow-xl">
         <div class="flex items-start justify-between gap-3">
           <div class="overflow-hidden">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">Your Store Name & Web Link</span>
-              <span class="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">Google Indexed</span>
+              <span class="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">Global Link</span>
             </div>
             <p class="text-sm sm:text-lg font-mono font-extrabold text-emerald-400 truncate mt-2">
               {{ request.host }}/{{ store.store_slug }}
@@ -281,10 +466,9 @@
         </div>
 
         <p class="text-xs text-slate-400 mt-3">
-          💡 Current Store Name: <strong class="text-white">{{ store.store_name }}</strong> — Type <span class="font-mono text-emerald-400">{{ request.host }}/{{ store.store_slug }}</span> in any browser bar to open directly!
+          💡 Current Store Name: <strong class="text-white">{{ store.store_name }}</strong> • Theme: <strong class="text-emerald-400 uppercase">{{ store.theme_color or 'emerald' }}</strong>
         </p>
 
-        <!-- 1-Input Unified Store Name & Link Editor Form -->
         <form id="nameEditorForm" action="/change-store-name" method="POST" class="hidden mt-4 pt-4 border-t border-white/10 space-y-3">
           <div>
             <label class="block text-xs font-bold text-slate-300 mb-1">Enter Your New Store Name:</label>
@@ -294,7 +478,7 @@
               name="new_store_name"
               value="{{ store.store_name }}"
               oninput="syncSlugPreview(this.value)"
-              placeholder="e.g. Enoch Store"
+              placeholder="e.g. Zayn Luxury"
               required
               class="w-full bg-slate-950 border border-emerald-400/40 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
             />
@@ -348,10 +532,10 @@
                 name="currency"
                 class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
               >
-                <option value="GHS">GHS (₵)</option>
-                <option value="NGN">NGN (₦)</option>
-                <option value="USD">USD ($)</option>
-                <option value="KES">KES (KSh)</option>
+                {% set def_curr = store.default_currency or 'GHS' %}
+                {% for c in [('GHS', 'GHS (₵)'), ('USD', 'USD ($)'), ('NGN', 'NGN (₦)'), ('GBP', 'GBP (£)'), ('EUR', 'EUR (€)'), ('KES', 'KES (KSh)'), ('ZAR', 'ZAR (R)'), ('CAD', 'CAD ($)'), ('XOF', 'XOF (CFA)')] %}
+                  <option value="{{ c[0] }}" {% if def_curr == c[0] %}selected{% endif %}>{{ c[1] }}</option>
+                {% endfor %}
               </select>
             </div>
             <div class="col-span-2">
@@ -400,7 +584,7 @@
             <textarea
               name="description"
               rows="2"
-              placeholder="e.g. Size 42, available for immediate rider delivery..."
+              placeholder="e.g. Available sizes, colors, and shipping options..."
               class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
             ></textarea>
           </div>
@@ -489,17 +673,20 @@
   <div id="flyerModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="max-w-sm w-full space-y-3">
       <div class="bg-gradient-to-br from-slate-900 via-[#071318] to-emerald-950 border-2 border-emerald-400/50 rounded-3xl p-7 text-center shadow-2xl relative overflow-hidden">
+        {% if store.logo_data %}
+          <img src="{{ store.logo_data }}" class="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 border-2 border-emerald-400 shadow-lg" />
+        {% endif %}
         <span class="inline-block text-[10px] font-extrabold uppercase tracking-widest bg-emerald-400 text-slate-950 px-3 py-1 rounded-full">
           OFFICIAL ONLINE STORE
         </span>
-        <h3 class="text-2xl font-extrabold text-white mt-3">{{ store.store_name }}</h3>
-        <p class="text-xs text-slate-300 mt-1">{{ store.category }}</p>
+        <h3 class="text-2xl font-extrabold text-white mt-2">{{ store.store_name }}</h3>
+        <p class="text-xs text-slate-300 mt-1">{{ store.category }} • {{ store.country or 'Global' }}</p>
 
-        <div class="bg-white p-3 rounded-2xl inline-block my-5 shadow-xl">
+        <div class="bg-white p-3 rounded-2xl inline-block my-4 shadow-xl">
           <img
             src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ (request.host_url ~ store.store_slug)|urlencode }}"
             alt="Store QR Code"
-            class="w-40 h-40"
+            class="w-36 h-36"
           />
         </div>
 
@@ -507,16 +694,16 @@
           {{ request.host }}/{{ store.store_slug }}
         </p>
         <p class="text-[11px] text-slate-400 mt-3">
-          Scan QR or visit link to browse prices & order straight to WhatsApp • <strong>Powered by Varsell</strong>
+          Scan QR or visit link to browse & order on WhatsApp • <strong>Powered by Varsell</strong>
         </p>
       </div>
 
       <div class="flex gap-2">
         <button
-          onclick="showToast('Store Link copied! Now screenshot this card for your WhatsApp Status.', '{{ request.host_url }}{{ store.store_slug }}')"
+          onclick="showToast('Store Link copied! Screenshot this flyer for your Status or Story.', '{{ request.host_url }}{{ store.store_slug }}')"
           class="flex-1 bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs"
         >
-          📸 Copy Link & Screenshot for Status
+          📸 Copy Link & Screenshot Flyer
         </button>
         <button
           onclick="document.getElementById('flyerModal').classList.add('hidden')"
@@ -545,8 +732,12 @@
       document.getElementById("profileEditorCard").classList.toggle("hidden");
     }
 
+    function toggleThemeStudio() {
+      document.getElementById("themeStudioCard").classList.toggle("hidden");
+    }
+
     function syncSlugPreview(val) {
-      let clean = val.toLowerCase().replace(/\.com|\.gh|\.net/g, '');
+      let clean = val.toLowerCase().replace(/\.com|\.gh|\.net|\.store/g, '');
       const slug = clean
         .replace(/[^a-z0-9\s-]/g, '')
         .trim()
@@ -578,6 +769,18 @@
         preview.src = e.target.result;
         preview.classList.remove("hidden");
         prompt.innerHTML = `<p class="text-xs font-bold text-emerald-400">✅ Photo Selected (${file.name})</p>`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function previewStudioAvatar(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const preview = document.getElementById("studioAvatarPreview");
+        preview.src = e.target.result;
+        preview.classList.remove("hidden");
       };
       reader.readAsDataURL(file);
     }
