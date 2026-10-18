@@ -3,35 +3,59 @@
 {% set is_light = (theme == 'light') %}
 
 {% if theme == 'gold' %}
-  {% set accent_bg = 'bg-amber-400 hover:bg-amber-300 text-slate-950' %}
-  {% set accent_badge = 'bg-amber-400/15 text-amber-300 border-amber-400/30' %}
+  {% set page_bg = '#090703' %}
+  {% set card_bg = 'bg-[#120e06]/90 border-amber-500/25' %}
+  {% set accent_bg = 'bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-amber-500/20' %}
+  {% set accent_text = 'text-amber-400' %}
+  {% set accent_badge = 'bg-amber-400/15 text-amber-300 border-amber-400/35' %}
   {% set accent_border = 'border-amber-400' %}
-  {% set hero_grad = 'from-amber-950/40 via-slate-900/85 to-[#050811]' %}
+  {% set hero_grad = 'from-amber-900/45 via-[#0f0b04] to-[#090703]' %}
+  {% set glow_orb = 'bg-amber-500/20' %}
 {% elif theme == 'violet' %}
-  {% set accent_bg = 'bg-purple-500 hover:bg-purple-400 text-white' %}
-  {% set accent_badge = 'bg-purple-500/15 text-purple-300 border-purple-400/30' %}
+  {% set page_bg = '#070412' %}
+  {% set card_bg = 'bg-[#120a2a]/90 border-purple-500/30' %}
+  {% set accent_bg = 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white shadow-purple-500/25' %}
+  {% set accent_text = 'text-purple-400' %}
+  {% set accent_badge = 'bg-purple-500/15 text-purple-300 border-purple-400/35' %}
   {% set accent_border = 'border-purple-400' %}
-  {% set hero_grad = 'from-purple-950/45 via-slate-900/85 to-[#050811]' %}
+  {% set hero_grad = 'from-purple-900/50 via-[#0d0722] to-[#070412]' %}
+  {% set glow_orb = 'bg-purple-600/25' %}
 {% elif theme == 'rose' %}
-  {% set accent_bg = 'bg-rose-500 hover:bg-rose-400 text-white' %}
-  {% set accent_badge = 'bg-rose-500/15 text-rose-300 border-rose-400/30' %}
+  {% set page_bg = '#0c0408' %}
+  {% set card_bg = 'bg-[#1c0913]/90 border-rose-500/30' %}
+  {% set accent_bg = 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white shadow-rose-500/25' %}
+  {% set accent_text = 'text-rose-400' %}
+  {% set accent_badge = 'bg-rose-500/15 text-rose-300 border-rose-400/35' %}
   {% set accent_border = 'border-rose-400' %}
-  {% set hero_grad = 'from-rose-950/45 via-slate-900/85 to-[#050811]' %}
+  {% set hero_grad = 'from-rose-900/50 via-[#14070e] to-[#0c0408]' %}
+  {% set glow_orb = 'bg-rose-600/25' %}
 {% elif theme == 'ocean' %}
-  {% set accent_bg = 'bg-cyan-400 hover:bg-cyan-300 text-slate-950' %}
-  {% set accent_badge = 'bg-cyan-400/15 text-cyan-300 border-cyan-400/30' %}
+  {% set page_bg = '#030914' %}
+  {% set card_bg = 'bg-[#07162c]/90 border-cyan-500/30' %}
+  {% set accent_bg = 'bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 shadow-cyan-500/25' %}
+  {% set accent_text = 'text-cyan-400' %}
+  {% set accent_badge = 'bg-cyan-400/15 text-cyan-300 border-cyan-400/35' %}
   {% set accent_border = 'border-cyan-400' %}
-  {% set hero_grad = 'from-cyan-950/45 via-slate-900/85 to-[#050811]' %}
+  {% set hero_grad = 'from-cyan-900/50 via-[#051020] to-[#030914]' %}
+  {% set glow_orb = 'bg-cyan-500/25' %}
 {% elif theme == 'light' %}
-  {% set accent_bg = 'bg-slate-900 hover:bg-slate-800 text-white' %}
+  {% set page_bg = '#f8fafc' %}
+  {% set card_bg = 'bg-white border-slate-200 text-slate-900' %}
+  {% set accent_bg = 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/15' %}
+  {% set accent_text = 'text-slate-900' %}
   {% set accent_badge = 'bg-slate-900/10 text-slate-900 border-slate-300' %}
   {% set accent_border = 'border-slate-900' %}
   {% set hero_grad = 'from-slate-200 via-white to-slate-50' %}
+  {% set glow_orb = 'bg-emerald-400/10' %}
 {% else %}
-  {% set accent_bg = 'bg-emerald-400 hover:bg-emerald-300 text-slate-950' %}
+  {% set page_bg = '#050811' %}
+  {% set card_bg = 'bg-slate-900/90 border-emerald-500/20' %}
+  {% set accent_bg = 'bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 shadow-emerald-500/20' %}
+  {% set accent_text = 'text-emerald-400' %}
   {% set accent_badge = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' %}
   {% set accent_border = 'border-emerald-400' %}
-  {% set hero_grad = 'from-emerald-950/40 via-slate-900/85 to-[#050811]' %}
+  {% set hero_grad = 'from-emerald-950/50 via-slate-900/85 to-[#050811]' %}
+  {% set glow_orb = 'bg-emerald-500/20' %}
 {% endif %}
 
 <html lang="en" class="{% if not is_light %}dark{% endif %}">
@@ -47,7 +71,7 @@
   <style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: {{ '#f8fafc' if is_light else '#050811' }};
+      background-color: {{ page_bg }};
     }
     .font-mono {
       font-family: 'JetBrains Mono', monospace;
@@ -55,6 +79,10 @@
   </style>
 </head>
 <body class="{{ 'text-slate-900' if is_light else 'text-slate-100' }} min-h-screen pb-36 relative overflow-x-hidden">
+
+  <!-- Dynamic Theme Ambient Glow Orbs -->
+  <div class="pointer-events-none fixed top-[-120px] left-[-120px] w-[460px] h-[460px] rounded-full {{ glow_orb }} blur-[130px] z-0"></div>
+  <div class="pointer-events-none fixed bottom-[-120px] right-[-120px] w-[460px] h-[460px] rounded-full {{ glow_orb }} blur-[140px] z-0"></div>
 
   <!-- Offline Status Banner -->
   <div
@@ -72,14 +100,14 @@
 
   <!-- Optional Store Cover Banner -->
   {% if store.banner_data %}
-  <div class="w-full h-44 sm:h-60 overflow-hidden relative bg-slate-950">
+  <div class="w-full h-44 sm:h-60 overflow-hidden relative bg-slate-950 z-10">
     <img src="{{ store.banner_data }}" alt="{{ store.store_name }} Banner" class="w-full h-full object-cover" />
     <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
   </div>
   {% endif %}
 
   <!-- Storefront Hero Header -->
-  <header class="relative border-b {{ 'border-slate-200' if is_light else 'border-white/10' }} bg-gradient-to-b {{ hero_grad }}">
+  <header class="relative z-10 border-b {{ 'border-slate-200' if is_light else 'border-white/10' }} bg-gradient-to-b {{ hero_grad }}">
     <div class="max-w-5xl mx-auto px-4 py-8 sm:py-10">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         
@@ -102,11 +130,11 @@
               <span class="text-[11px] font-bold border {{ accent_badge }} px-2.5 py-0.5 rounded-full">
                 {{ store.category }}
               </span>
-              <span class="text-[11px] font-semibold {{ 'text-slate-600' if is_light else 'text-slate-400' }}">
+              <span class="text-[11px] font-semibold {{ 'text-slate-600' if is_light else 'text-slate-300' }}">
                 🌍 {{ store.country or 'Global' }}
               </span>
               {% if store.momo_name %}
-                <span class="text-[11px] font-bold text-amber-500 bg-amber-400/10 border border-amber-400/25 px-2.5 py-0.5 rounded-full">
+                <span class="text-[11px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/25 px-2.5 py-0.5 rounded-full">
                   ✓ Verified: {{ store.momo_name }}
                 </span>
               {% endif %}
@@ -138,7 +166,7 @@
           <a
             href="https://wa.me/{{ store.whatsapp_number }}?text={{ ('Hi ' ~ store.store_name ~ '! I am browsing your Varsell store and have a quick question.')|urlencode }}"
             target="_blank"
-            class="inline-flex items-center justify-center gap-2 {{ 'bg-slate-900 text-white' if is_light else 'bg-white/10 hover:bg-white/15 text-white border border-white/15' }} text-xs font-bold px-4 py-3 rounded-2xl transition"
+            class="inline-flex items-center justify-center gap-2 {{ accent_bg }} text-xs font-extrabold px-4 py-3 rounded-2xl transition shadow-lg"
           >
             <span>💬</span>
             <span>Chat Seller</span>
@@ -163,32 +191,79 @@
   </header>
 
   <!-- Main Store Catalog Grid -->
-  <main class="max-w-5xl mx-auto px-4 py-8">
+  <main class="max-w-5xl mx-auto px-4 py-8 relative z-10">
     {% if products %}
       <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {% for p in products %}
+        {% set imgs = p.image_data.split('|||') %}
         <div
           data-name="{{ p.product_name|lower }} {{ p.description|lower }} {{ p.price }}"
-          class="product-card {{ 'bg-white border-slate-200' if is_light else 'bg-slate-900/90 border-white/10' }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group transition"
+          class="product-card {{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group transition"
         >
           <div>
-            <div class="relative h-60 bg-slate-950 overflow-hidden">
+            <!-- Multi-Image Product Viewer -->
+            <div class="relative h-64 bg-slate-950 overflow-hidden">
               <img
-                src="{{ p.image_data }}"
+                id="prod-img-{{ p.id }}"
+                src="{{ imgs[0] }}"
                 alt="{{ p.product_name }}"
-                class="w-full h-full object-cover group-hover:scale-105 transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
+                onclick='openLightbox({{ imgs|tojson }}, 0)'
+                class="w-full h-full object-cover cursor-zoom-in transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
               />
+
               {% if p.in_stock == 0 %}
                 <span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-md">
                   Sold Out
                 </span>
               {% else %}
-                <span class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-white/10 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-full">
+                <span class="absolute top-3 left-3 {{ accent_bg }} text-[11px] font-extrabold px-2.5 py-1 rounded-full shadow">
                   ● Available
                 </span>
               {% endif %}
+
+              {% if imgs|length > 1 %}
+                <span
+                  id="prod-count-{{ p.id }}"
+                  class="absolute top-3 right-3 bg-black/75 backdrop-blur-md text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full border border-white/15"
+                >
+                  1 / {{ imgs|length }} 📸
+                </span>
+
+                <!-- Prev / Next Image Arrows -->
+                <button
+                  type="button"
+                  onclick='cycleProductImage({{ p.id }}, {{ imgs|tojson }}, -1)'
+                  class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-black flex items-center justify-center border border-white/20 shadow-lg transition"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onclick='cycleProductImage({{ p.id }}, {{ imgs|tojson }}, 1)'
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-black flex items-center justify-center border border-white/20 shadow-lg transition"
+                >
+                  ›
+                </button>
+              {% endif %}
             </div>
 
+            <!-- Multi-Image Thumbnail Strip -->
+            {% if imgs|length > 1 %}
+            <div class="flex items-center gap-1.5 px-4 pt-3 overflow-x-auto">
+              {% for img_url in imgs %}
+              <button
+                type="button"
+                onclick='selectProductImage({{ p.id }}, {{ imgs|tojson }}, {{ loop.index0 }})'
+                class="w-11 h-11 rounded-xl overflow-hidden border-2 {% if loop.index0 == 0 %}{{ accent_border }}{% else %}border-transparent opacity-60 hover:opacity-100{% endif %} shrink-0 transition"
+                id="thumb-{{ p.id }}-{{ loop.index0 }}"
+              >
+                <img src="{{ img_url }}" class="w-full h-full object-cover" />
+              </button>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Product Info -->
             <div class="p-5">
               <div class="flex items-start justify-between gap-2">
                 <h2 class="text-lg font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} leading-snug">
@@ -240,7 +315,10 @@
         {% endfor %}
       </div>
     {% else %}
-      <div class="{{ 'bg-white border-slate-200' if is_light else 'bg-slate-900/60 border-white/10' }} border rounded-3xl p-14 text-center">
+      <div class="{{ card_bg }} border-2 {{ accent_border }} rounded-3xl p-14 text-center shadow-2xl">
+        <span class="inline-block border {{ accent_badge }} text-xs font-extrabold px-3 py-1 rounded-full mb-3">
+          {{ store.store_name }}
+        </span>
         <h3 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">New products coming soon!</h3>
         <p class="text-xs sm:text-sm text-slate-400 mt-1">
           {{ store.store_name }} is updating its catalog. Check back shortly or chat with the seller on WhatsApp.
@@ -249,18 +327,42 @@
     {% endif %}
   </main>
 
+  <!-- Full-Screen Image Lightbox Modal -->
+  <div
+    id="lightboxModal"
+    class="hidden fixed inset-0 bg-black/90 backdrop-blur-lg z-50 flex flex-col items-center justify-center p-4"
+  >
+    <button
+      type="button"
+      onclick="closeLightbox()"
+      class="absolute top-5 right-5 bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2 rounded-xl text-xs"
+    >
+      ✕ Close Photo
+    </button>
+    <img id="lightboxImg" src="" class="max-h-[78vh] max-w-full rounded-2xl object-contain shadow-2xl border border-white/15" />
+    <div id="lightboxControls" class="flex items-center gap-4 mt-4">
+      <button type="button" onclick="stepLightbox(-1)" class="bg-white/10 hover:bg-white/20 text-white font-extrabold px-4 py-2 rounded-xl text-xs">
+        ← Prev Photo
+      </button>
+      <span id="lightboxCounter" class="text-xs font-mono text-slate-300">1 / 1</span>
+      <button type="button" onclick="stepLightbox(1)" class="bg-white/10 hover:bg-white/20 text-white font-extrabold px-4 py-2 rounded-xl text-xs">
+        Next Photo →
+      </button>
+    </div>
+  </div>
+
   <!-- Viral Varsell Footer -->
-  <footer class="max-w-5xl mx-auto px-4 py-12 text-center border-t {{ 'border-slate-200' if is_light else 'border-white/10' }} mt-8">
+  <footer class="max-w-5xl mx-auto px-4 py-12 text-center border-t {{ 'border-slate-200' if is_light else 'border-white/10' }} mt-8 relative z-10">
     <a
       href="/"
-      class="inline-flex items-center gap-2.5 bg-slate-900 hover:bg-slate-800 border border-white/10 px-4 py-2.5 rounded-full text-xs text-slate-300 transition shadow-lg"
+      class="inline-flex items-center gap-2.5 {{ card_bg }} border px-4 py-2.5 rounded-full text-xs transition shadow-lg"
     >
-      <span class="w-5 h-5 rounded-md bg-emerald-400 text-slate-950 font-black flex items-center justify-center">
+      <span class="w-5 h-5 rounded-md {{ accent_bg }} font-black flex items-center justify-center">
         V
       </span>
       <span>
-        Powered by <strong class="text-white">Varsell</strong> —
-        <span class="text-emerald-400 underline">Launch your free global online store in 60s</span>
+        Powered by <strong>Varsell</strong> —
+        <span class="{{ accent_text }} font-bold underline">Launch your free global online store in 60s</span>
       </span>
     </a>
   </footer>
@@ -271,7 +373,7 @@
     class="hidden fixed bottom-4 inset-x-4 max-w-3xl mx-auto bg-slate-900/95 text-white backdrop-blur-2xl border-2 {{ accent_border }} rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-40"
   >
     <div>
-      <span id="cartCount" class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">
+      <span id="cartCount" class="text-[11px] font-extrabold uppercase tracking-wider {{ accent_text }}">
         0 items in shopping bag
       </span>
       <p id="cartTotal" class="text-xl font-extrabold text-white">
@@ -306,7 +408,7 @@
       
       <div class="flex items-center justify-between border-b border-white/10 pb-3">
         <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">
+          <span class="text-[10px] font-extrabold uppercase tracking-widest {{ accent_text }}">
             Express Global Checkout
           </span>
           <h3 class="text-xl font-extrabold text-white">Complete Your Order</h3>
@@ -320,17 +422,15 @@
         </button>
       </div>
 
-      <!-- Order Summary -->
       <div class="bg-slate-950/80 border border-white/10 rounded-2xl p-3.5 space-y-2">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Order Summary</span>
-          <span id="modalTotalText" class="text-xs font-extrabold text-emerald-400"></span>
+          <span id="modalTotalText" class="text-xs font-extrabold {{ accent_text }}"></span>
         </div>
         <div id="modalItemsList" class="space-y-1.5 text-xs text-slate-200 max-h-28 overflow-y-auto"></div>
       </div>
 
       {% if store.momo_number %}
-      <!-- Universal Merchant Payment Details Card -->
       <div class="bg-amber-400/10 border border-amber-400/30 rounded-2xl p-4 space-y-2">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
@@ -355,7 +455,6 @@
       </div>
       {% endif %}
 
-      <!-- Customer Delivery & Payment Form -->
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-bold uppercase text-slate-300 mb-1">
@@ -365,7 +464,7 @@
             type="text"
             id="buyerName"
             placeholder="e.g. Alex Johnson"
-            class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+            class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
           />
         </div>
 
@@ -375,7 +474,7 @@
           </label>
           <select
             id="deliveryZone"
-            class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+            class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
           >
             <option value="Local Express / Same-Day Delivery">🛵 Local Express / Same-Day Delivery</option>
             <option value="Nationwide Courier / Inter-City Shipping">🚚 Nationwide Courier / Inter-City Shipping</option>
@@ -392,7 +491,7 @@
             type="text"
             id="buyerLocation"
             placeholder="Enter your city, street address, or landmark..."
-            class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+            class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
           />
         </div>
 
@@ -402,7 +501,7 @@
           </label>
           <select
             id="paymentMethod"
-            class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+            class="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
           >
             <option value="{{ store.payment_method_label or 'Direct Instant Transfer / Mobile Money' }}">
               💳 {{ store.payment_method_label or 'Direct Instant Transfer / Mobile Money' }}
@@ -427,11 +526,63 @@
     const sellerWhatsApp = "{{ store.whatsapp_number }}";
     const storeName = {{ store.store_name|tojson }};
     let cart = [];
+    const productSlideIndex = {};
+    let lightboxImages = [];
+    let lightboxIndex = 0;
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js');
       });
+    }
+
+    // Multi-Image Product Gallery Functions
+    function selectProductImage(prodId, imgs, idx) {
+      productSlideIndex[prodId] = idx;
+      const mainImg = document.getElementById(`prod-img-${prodId}`);
+      const countBadge = document.getElementById(`prod-count-${prodId}`);
+      if (mainImg) {
+        mainImg.src = imgs[idx];
+        mainImg.onclick = () => openLightbox(imgs, idx);
+      }
+      if (countBadge) {
+        countBadge.textContent = `${idx + 1} / ${imgs.length} 📸`;
+      }
+      imgs.forEach((_, i) => {
+        const thumb = document.getElementById(`thumb-${prodId}-${i}`);
+        if (thumb) {
+          thumb.style.opacity = (i === idx) ? "1" : "0.6";
+        }
+      });
+    }
+
+    function cycleProductImage(prodId, imgs, step) {
+      const current = productSlideIndex[prodId] || 0;
+      const next = (current + step + imgs.length) % imgs.length;
+      selectProductImage(prodId, imgs, next);
+    }
+
+    function openLightbox(imgs, startIndex) {
+      lightboxImages = imgs;
+      lightboxIndex = startIndex || 0;
+      updateLightboxView();
+      document.getElementById("lightboxModal").classList.remove("hidden");
+    }
+
+    function closeLightbox() {
+      document.getElementById("lightboxModal").classList.add("hidden");
+    }
+
+    function stepLightbox(step) {
+      if (!lightboxImages.length) return;
+      lightboxIndex = (lightboxIndex + step + lightboxImages.length) % lightboxImages.length;
+      updateLightboxView();
+    }
+
+    function updateLightboxView() {
+      document.getElementById("lightboxImg").src = lightboxImages[lightboxIndex];
+      document.getElementById("lightboxCounter").textContent = `${lightboxIndex + 1} / ${lightboxImages.length}`;
+      document.getElementById("lightboxControls").style.display = lightboxImages.length > 1 ? "flex" : "none";
     }
 
     let deferredPrompt;
