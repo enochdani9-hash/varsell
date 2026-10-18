@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import sqlite3
 import secrets
 import string
@@ -26,8 +27,8 @@ IS_POSTGRES = bool(DATABASE_URL and psycopg2)
 RESERVED_SLUGS = {
     "login", "logout", "dashboard", "admin", "admin-logout", "create-store",
     "change-key", "change-store-name", "update-store", "update-theme",
-    "update-avatar", "add-product", "manifest.json", "sw.js", "icon.svg",
-    "sitemap.xml", "robots.txt", "store"
+    "update-avatar", "add-product", "edit-product", "manifest.json",
+    "sw.js", "icon.svg", "sitemap.xml", "robots.txt", "store"
 }
 
 
@@ -75,6 +76,7 @@ def init_db():
                 bio TEXT DEFAULT '',
                 logo_data TEXT DEFAULT '',
                 banner_data TEXT DEFAULT '',
+                bg_image_data TEXT DEFAULT '',
                 theme_color TEXT DEFAULT 'emerald',
                 country TEXT DEFAULT 'Global',
                 default_currency TEXT DEFAULT 'USD',
@@ -84,9 +86,10 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        new_cols = [
+        store_cols = [
             ("logo_data", "TEXT DEFAULT ''"),
             ("banner_data", "TEXT DEFAULT ''"),
+            ("bg_image_data", "TEXT DEFAULT ''"),
             ("theme_color", "TEXT DEFAULT 'emerald'"),
             ("country", "TEXT DEFAULT 'Global'"),
             ("default_currency", "TEXT DEFAULT 'USD'"),
@@ -94,7 +97,7 @@ def init_db():
             ("momo_number", "TEXT DEFAULT ''"),
             ("momo_name", "TEXT DEFAULT ''")
         ]
-        for col_name, col_def in new_cols:
+        for col_name, col_def in store_cols:
             conn.execute(f"ALTER TABLE stores ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
 
         conn.execute("""
@@ -116,10 +119,12 @@ def init_db():
                 currency TEXT DEFAULT 'USD',
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
+                extra_images TEXT DEFAULT '[]',
                 in_stock INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS extra_images TEXT DEFAULT '[]'")
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS stores (
@@ -132,6 +137,7 @@ def init_db():
                 bio TEXT DEFAULT '',
                 logo_data TEXT DEFAULT '',
                 banner_data TEXT DEFAULT '',
+                bg_image_data TEXT DEFAULT '',
                 theme_color TEXT DEFAULT 'emerald',
                 country TEXT DEFAULT 'Global',
                 default_currency TEXT DEFAULT 'USD',
@@ -144,6 +150,7 @@ def init_db():
         for col_name, col_def in [
             ("logo_data", "TEXT DEFAULT ''"),
             ("banner_data", "TEXT DEFAULT ''"),
+            ("bg_image_data", "TEXT DEFAULT ''"),
             ("theme_color", "TEXT DEFAULT 'emerald'"),
             ("country", "TEXT DEFAULT 'Global'"),
             ("default_currency", "TEXT DEFAULT 'USD'"),
@@ -176,16 +183,55 @@ def init_db():
                 currency TEXT DEFAULT 'USD',
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
+                extra_images TEXT DEFAULT '[]',
                 in_stock INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE
             )
         """)
+        try:
+            conn.execute("ALTER TABLE products ADD COLUMN extra_images TEXT DEFAULT '[]'")
+        except Exception:
+            pass
+
     conn.commit()
     conn.close()
 
 
 init_db()
+
+
+@app.template_filter("product_images")
+def product_images_filter(product):
+    """Returns a clean list of all images for a product (supports 1 or many images seamlessly)"""
+    images = []
+    extra_raw = ""
+    try:
+        extra_raw = product["extra_images"]
+    except (KeyError, IndexError, TypeError):
+        extra_raw = ""
+
+    if extra_raw:
+        try:
+            parsed = json.loads(extra_raw)
+            if isinstance(parsed, list):
+                images = [img for img in parsed if img]
+        except Exception:
+            pass
+
+    primary = ""
+    try:
+        primary = product["image_data"]
+    except (KeyError, IndexError, TypeError):
+        primary = ""
+
+    if primary and primary not in images:
+        images.insert(0, primary)
+
+    if not images:
+        images = ["https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product"]
+
+    return images
 
 
 def generate_access_key():
@@ -209,7 +255,6 @@ def create_slug(store_name):
 
 
 def clean_international_whatsapp(number, country_code=""):
-    """Formats phone numbers globally using selected country dial code or full international digits"""
     cleaned = re.sub(r"[^\d]", "", number)
     dial = re.sub(r"[^\d]", "", country_code)
 
@@ -228,14 +273,22 @@ def clean_international_whatsapp(number, country_code=""):
 
 
 def encode_uploaded_image(file_obj):
-    """Converts an uploaded image file to a Base64 data URI"""
-    if file_obj and file_obj.filename != "":
+    if file_obj and getattr(file_obj, "filename", "") != "":
         file_bytes = file_obj.read()
         if file_bytes:
             mime_type = file_obj.mimetype or "image/jpeg"
             b64_encoded = base64.b64encode(file_bytes).decode("utf-8")
             return f"data:{mime_type};base64,{b64_encoded}"
     return ""
+
+
+def encode_multiple_images(file_list):
+    encoded_list = []
+    for f in file_list:
+        data_uri = encode_uploaded_image(f)
+        if data_uri:
+            encoded_list.append(data_uri)
+    return encoded_list
 
 
 def save_alias_if_needed(conn, store_id, old_slug, old_name):
@@ -330,7 +383,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v4';
+const CACHE_NAME = 'varsell-global-v5';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -608,7 +661,6 @@ def change_store_name():
 
 @app.route("/update-avatar", methods=["POST"])
 def update_avatar():
-    """Dedicated 1-click Profile Picture / Avatar uploader"""
     current_key = session.get("store_key")
     if not current_key:
         return redirect(url_for("index"))
@@ -634,7 +686,7 @@ def update_avatar():
 
 @app.route("/update-theme", methods=["POST"])
 def update_theme():
-    """Updates Store Theme Look, Profile Picture & Cover Banner"""
+    """Updates Store Theme Look, Profile Picture, Cover Banner & Custom Full-Page Background Image"""
     current_key = session.get("store_key")
     if not current_key:
         return redirect(url_for("index"))
@@ -645,22 +697,38 @@ def update_theme():
         conn.close()
         return redirect(url_for("index"))
 
-    theme_color = request.form.get("theme_color", store.get("theme_color") or "emerald").strip()
+    theme_color = request.form.get("theme_color", store["theme_color"] or "emerald").strip()
     logo_file = request.files.get("logo_file")
     banner_file = request.files.get("banner_file")
+    bg_image_file = request.files.get("bg_image_file")
+    bg_image_url = request.form.get("bg_image_url", "").strip()
+
     clear_banner = request.form.get("clear_banner") == "1"
+    clear_bg_image = request.form.get("clear_bg_image") == "1"
 
     logo_data = encode_uploaded_image(logo_file) or store["logo_data"] or ""
-    banner_data = "" if clear_banner else (encode_uploaded_image(banner_file) or store.get("banner_data") or "")
+    banner_data = "" if clear_banner else (encode_uploaded_image(banner_file) or store["banner_data"] or "")
+
+    uploaded_bg = encode_uploaded_image(bg_image_file)
+    if clear_bg_image:
+        bg_image_data = ""
+    elif uploaded_bg:
+        bg_image_data = uploaded_bg
+    elif bg_image_url:
+        bg_image_data = bg_image_url
+    else:
+        bg_image_data = store["bg_image_data"] or ""
 
     conn.execute(
-        "UPDATE stores SET theme_color = ?, logo_data = ?, banner_data = ? WHERE id = ?",
-        (theme_color, logo_data, banner_data, store["id"])
+        """UPDATE stores
+           SET theme_color = ?, logo_data = ?, banner_data = ?, bg_image_data = ?
+           WHERE id = ?""",
+        (theme_color, logo_data, banner_data, bg_image_data, store["id"])
     )
     conn.commit()
     conn.close()
 
-    flash("🎨 Store theme, appearance & profile picture updated!", "success")
+    flash("🎨 Store theme, custom background image & profile picture updated!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -681,14 +749,12 @@ def update_store():
     whatsapp_number = clean_international_whatsapp(request.form.get("whatsapp_number", store["whatsapp_number"]))
     category = request.form.get("category", store["category"]).strip()
     bio = request.form.get("bio", store["bio"]).strip()
-    country = request.form.get("country", store.get("country") or "Global").strip()
-    default_currency = request.form.get("default_currency", store.get("default_currency") or "USD").strip()
-    payment_method_label = request.form.get("payment_method_label", store.get("payment_method_label") or "Mobile Money / Instant Transfer").strip()
-    momo_number = request.form.get("momo_number", store.get("momo_number", "")).strip()
-    momo_name = request.form.get("momo_name", store.get("momo_name", "")).strip()
-    theme_color = request.form.get("theme_color", store.get("theme_color") or "emerald").strip()
-    logo_file = request.files.get("logo_file")
-    banner_file = request.files.get("banner_file")
+    country = request.form.get("country", store["country"] or "Global").strip()
+    default_currency = request.form.get("default_currency", store["default_currency"] or "USD").strip()
+    payment_method_label = request.form.get("payment_method_label", store["payment_method_label"] or "Mobile Money / Instant Transfer").strip()
+    momo_number = request.form.get("momo_number", store["momo_number"] or "").strip()
+    momo_name = request.form.get("momo_name", store["momo_name"] or "").strip()
+    theme_color = request.form.get("theme_color", store["theme_color"] or "emerald").strip()
 
     new_slug = create_slug(custom_slug_raw) if custom_slug_raw else create_slug(store_name)
     conflict = conn.execute(
@@ -701,25 +767,22 @@ def update_store():
         save_alias_if_needed(conn, store["id"], store["store_slug"], store["store_name"])
         conn.execute("DELETE FROM store_aliases WHERE old_slug = ? AND store_id = ?", (new_slug, store["id"]))
 
-    logo_data = encode_uploaded_image(logo_file) or store["logo_data"] or ""
-    banner_data = encode_uploaded_image(banner_file) or store.get("banner_data") or ""
-
     conn.execute(
         """UPDATE stores
            SET store_name = ?, store_slug = ?, whatsapp_number = ?, category = ?, bio = ?,
-               logo_data = ?, banner_data = ?, theme_color = ?, country = ?,
-               default_currency = ?, payment_method_label = ?, momo_number = ?, momo_name = ?
+               theme_color = ?, country = ?, default_currency = ?, payment_method_label = ?,
+               momo_number = ?, momo_name = ?
            WHERE id = ?""",
         (
             store_name, new_slug, whatsapp_number, category, bio,
-            logo_data, banner_data, theme_color, country,
-            default_currency, payment_method_label, momo_number, momo_name, store["id"]
+            theme_color, country, default_currency, payment_method_label,
+            momo_number, momo_name, store["id"]
         )
     )
     conn.commit()
     conn.close()
 
-    flash("Store profile, global settings, look & payment details updated!", "success")
+    flash("Store profile, global settings & payment details updated!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -766,14 +829,28 @@ def add_product():
 
     product_name = request.form.get("product_name", "").strip()
     price = request.form.get("price", "0").strip()
-    currency = request.form.get("currency", store.get("default_currency") or "USD").strip()
+    currency = request.form.get("currency", store["default_currency"] or "USD").strip()
     description = request.form.get("description", "").strip()
     image_url = request.form.get("image_url", "").strip()
-    image_file = request.files.get("image_file")
 
-    image_data = encode_uploaded_image(image_file)
-    if not image_data:
-        image_data = image_url if image_url else "https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product"
+    # Collect multiple uploaded files
+    uploaded_files = request.files.getlist("image_files")
+    if not uploaded_files or (len(uploaded_files) == 1 and uploaded_files[0].filename == ""):
+        single_fallback = request.files.get("image_file")
+        uploaded_files = [single_fallback] if single_fallback else []
+
+    all_images = encode_multiple_images(uploaded_files)
+
+    # Support comma-separated or single image URLs as well
+    if image_url:
+        for url_part in [u.strip() for u in image_url.split(",") if u.strip()]:
+            all_images.append(url_part)
+
+    if not all_images:
+        all_images = ["https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product"]
+
+    primary_image = all_images[0]
+    extra_images_json = json.dumps(all_images)
 
     try:
         numeric_price = float(price)
@@ -781,14 +858,80 @@ def add_product():
         numeric_price = 0.0
 
     conn.execute(
-        """INSERT INTO products (store_id, product_name, price, currency, description, image_data)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (store["id"], product_name, numeric_price, currency, description, image_data)
+        """INSERT INTO products (store_id, product_name, price, currency, description, image_data, extra_images)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (store["id"], product_name, numeric_price, currency, description, primary_image, extra_images_json)
     )
     conn.commit()
     conn.close()
 
-    flash("Product published to your live store!", "success")
+    flash(f"Product published with {len(all_images)} photo(s)!", "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/edit-product/<int:product_id>", methods=["POST"])
+def edit_product(product_id):
+    """Allows sellers to edit their product ad (title, price, currency, description) and add or replace photos"""
+    access_key = session.get("store_key")
+    if not access_key:
+        return redirect(url_for("index"))
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT id FROM stores WHERE access_key = ?", (access_key,)).fetchone()
+    if not store:
+        conn.close()
+        return redirect(url_for("index"))
+
+    product = conn.execute(
+        "SELECT * FROM products WHERE id = ? AND store_id = ?",
+        (product_id, store["id"])
+    ).fetchone()
+
+    if not product:
+        conn.close()
+        flash("Product not found.", "error")
+        return redirect(url_for("dashboard"))
+
+    product_name = request.form.get("product_name", product["product_name"]).strip() or product["product_name"]
+    currency = request.form.get("currency", product["currency"]).strip() or product["currency"]
+    description = request.form.get("description", product["description"]).strip()
+    price_raw = request.form.get("price", str(product["price"])).strip()
+    image_action = request.form.get("image_action", "append").strip()  # 'append' or 'replace'
+    new_image_url = request.form.get("image_url", "").strip()
+
+    try:
+        numeric_price = float(price_raw)
+    except ValueError:
+        numeric_price = product["price"]
+
+    existing_images = product_images_filter(product)
+    new_files = request.files.getlist("edit_image_files")
+    new_encoded = encode_multiple_images(new_files)
+    if new_image_url:
+        for url_part in [u.strip() for u in new_image_url.split(",") if u.strip()]:
+            new_encoded.append(url_part)
+
+    if new_encoded:
+        if image_action == "replace":
+            final_images = new_encoded
+        else:
+            final_images = existing_images + new_encoded
+    else:
+        final_images = existing_images
+
+    primary_image = final_images[0]
+    extra_images_json = json.dumps(final_images)
+
+    conn.execute(
+        """UPDATE products
+           SET product_name = ?, price = ?, currency = ?, description = ?, image_data = ?, extra_images = ?
+           WHERE id = ? AND store_id = ?""",
+        (product_name, numeric_price, currency, description, primary_image, extra_images_json, product_id, store["id"])
+    )
+    conn.commit()
+    conn.close()
+
+    flash(f"✅ '{product_name}' ad and photos updated!", "success")
     return redirect(url_for("dashboard"))
 
 
