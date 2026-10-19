@@ -36,7 +36,7 @@
   {% set glow_color = 'bg-cyan-500/25' %}
 {% elif theme == 'light' %}
   {% set page_bg = '#f1f5f9' %}
-  {% set card_bg = 'bg-white/95 border-slate-300 text-slate-900' %}
+  {% set card_bg = 'bg-white border-slate-300 text-slate-900' %}
   {% set accent_btn = 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/15' %}
   {% set accent_text = 'text-emerald-600' %}
   {% set accent_badge = 'bg-slate-900/10 text-slate-900 border-slate-300' %}
@@ -61,37 +61,42 @@
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <title>{{ store.store_name }} — Varsell Command Center</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+    rel="stylesheet"
+  />
   <style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: {{ page_bg }};
-      {% if store.bg_image_data %}
-      background-image: linear-gradient(to bottom, rgba(5, 8, 17, 0.72), rgba(5, 8, 17, 0.88)), url('{{ store.bg_image_data }}');
-      background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
-      {% endif %}
     }
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
   </style>
 </head>
-<body class="{{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-slate-100' }} min-h-screen pb-16 relative overflow-x-hidden">
+<body class="{{ 'text-slate-900' if is_light else 'text-slate-100' }} min-h-screen pb-20 relative overflow-x-hidden">
 
   <!-- Dynamic Theme Ambient Glows -->
   <div class="pointer-events-none fixed top-[-140px] left-[-140px] w-[480px] h-[480px] rounded-full {{ glow_color }} blur-[130px] z-0"></div>
   <div class="pointer-events-none fixed bottom-[-140px] right-[-140px] w-[480px] h-[480px] rounded-full {{ glow_color }} blur-[140px] z-0"></div>
 
   <!-- Offline Status Banner -->
-  <div id="offlineBanner" class="hidden bg-amber-400 text-slate-950 text-center py-2 px-4 text-xs font-extrabold sticky top-0 z-50">
-    ⚡ Offline Mode Active — Viewing cached seller dashboard
+  <div
+    id="offlineBanner"
+    class="hidden bg-amber-400 text-slate-950 text-center py-2.5 px-4 text-xs font-extrabold sticky top-0 z-50 shadow-md"
+  >
+    ⚡ Offline Mode Active — Viewing cached seller command center
   </div>
 
   <!-- Toast Notification Popup -->
-  <div id="toast" class="fixed top-5 right-5 z-50 hidden {{ accent_btn }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"></div>
+  <div
+    id="toast"
+    class="fixed top-5 right-5 z-50 hidden {{ accent_btn }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"
+  ></div>
 
-  <!-- Top Navigation -->
-  <header class="border-b {{ 'border-slate-300 bg-white/90' if is_light and not store.bg_image_data else 'border-white/10 bg-slate-950/80' }} backdrop-blur-xl sticky top-0 z-40">
+  <!-- Top Sticky Navigation Bar -->
+  <header class="border-b {{ 'border-slate-300 bg-white/90' if is_light else 'border-white/10 bg-slate-950/75' }} backdrop-blur-xl sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
       
       <!-- Left: 1-Click Profile Picture Uploader + Store Name -->
@@ -99,7 +104,11 @@
         <form id="quickAvatarForm" action="/update-avatar" method="POST" enctype="multipart/form-data">
           <label class="relative block cursor-pointer group" title="Click to change your Profile Picture">
             {% if store.logo_data %}
-              <img src="{{ store.logo_data }}" alt="Profile" class="w-12 h-12 rounded-2xl object-cover border-2 {{ accent_border }} shadow-lg" />
+              <img
+                src="{{ store.logo_data }}"
+                alt="Profile"
+                class="w-12 h-12 rounded-2xl object-cover border-2 {{ accent_border }} shadow-lg group-hover:opacity-90 transition"
+              />
             {% else %}
               <div class="w-12 h-12 rounded-2xl {{ accent_btn }} flex items-center justify-center font-black text-xl shadow-lg">
                 {{ store.store_name[:1]|upper }}
@@ -108,19 +117,31 @@
             <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-950 text-white border border-white/20 flex items-center justify-center text-[10px] shadow">
               📸
             </span>
-            <input type="file" name="logo_file" accept="image/*" onchange="document.getElementById('quickAvatarForm').submit()" class="hidden" />
+            <input
+              type="file"
+              name="logo_file"
+              accept="image/*"
+              onchange="document.getElementById('quickAvatarForm').submit()"
+              class="hidden"
+            />
           </label>
         </form>
 
         <div>
-          <div class="flex items-center gap-2">
-            <h1 class="font-extrabold {{ 'text-slate-950' if is_light and not store.bg_image_data else 'text-white' }} text-base sm:text-lg leading-none">{{ store.store_name }}</h1>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="font-extrabold {{ 'text-slate-950' if is_light else 'text-white' }} text-base sm:text-lg leading-none">
+              {{ store.store_name }}
+            </h1>
             <span class="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider border {{ accent_badge }} px-2 py-0.5 rounded-full">
               {{ store.country or 'Global' }} • {{ theme|upper }}
             </span>
           </div>
-          <button type="button" onclick="toggleThemeStudio()" class="text-[11px] {{ accent_text }} font-bold hover:underline mt-1 block">
-            🖼️ Change Background, Theme or Profile Pic →
+          <button
+            type="button"
+            onclick="toggleThemeStudio()"
+            class="text-[11px] {{ accent_text }} font-bold hover:underline mt-1 block text-left"
+          >
+            📸 Change Profile Pic or Store Look →
           </button>
         </div>
       </div>
@@ -132,7 +153,7 @@
           onclick="toggleThemeStudio()"
           class="border {{ accent_badge }} text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition"
         >
-          🎨 Store Look & Background
+          🎨 Store Look & Avatar
         </button>
 
         <button
@@ -146,9 +167,17 @@
         <button
           type="button"
           onclick="toggleProfileEditor()"
-          class="{{ 'bg-slate-200 text-slate-900' if is_light and not store.bg_image_data else 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15' }} text-xs font-bold px-3.5 py-2.5 rounded-xl transition"
+          class="{{ 'bg-slate-200 text-slate-900' if is_light else 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15' }} text-xs font-bold px-3.5 py-2.5 rounded-xl transition"
         >
           ⚙️ Global & Payment Setup
+        </button>
+
+        <button
+          type="button"
+          onclick="document.getElementById('dashHelpModal').classList.remove('hidden')"
+          class="{{ 'bg-slate-200 text-slate-900' if is_light else 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15' }} text-xs font-bold px-3 py-2.5 rounded-xl transition"
+        >
+          ❓ Help
         </button>
 
         <a
@@ -161,7 +190,7 @@
 
         <a
           href="/logout"
-          class="{{ 'bg-slate-200 text-slate-700' if is_light and not store.bg_image_data else 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300' }} text-xs font-semibold px-3 py-2.5 rounded-xl transition"
+          class="{{ 'bg-slate-200 text-slate-700' if is_light else 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300' }} text-xs font-semibold px-3 py-2.5 rounded-xl transition"
         >
           Lock
         </a>
@@ -170,13 +199,26 @@
     </div>
   </header>
 
+  <!-- Main Dashboard Workspace -->
   <main class="max-w-6xl mx-auto px-4 py-8 space-y-8 relative z-10">
 
-    <!-- Flash Messages -->
+    <!-- New Store Welcome Alert Banner -->
+    {% if new_store_alert %}
+    <div class="bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-transparent border-2 {{ accent_border }} rounded-3xl p-6 shadow-xl">
+      <h2 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">
+        🎉 Congratulations! Your Global Varsell Store is Live!
+      </h2>
+      <p class="text-xs sm:text-sm {{ 'text-slate-700' if is_light else 'text-slate-200' }} mt-1">
+        Save your <strong>Secret Key</strong> below so you can log in anytime. You can upload multiple photos per product, customize your theme, or rename your store link whenever you want!
+      </p>
+    </div>
+    {% endif %}
+
+    <!-- Flash Alerts -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="p-4 rounded-2xl text-sm font-bold flex items-center gap-2.5 backdrop-blur-xl {% if category == 'error' %}bg-red-500/20 border border-red-500/40 text-red-200{% else %}border {{ accent_badge }}{% endif %}">
+          <div class="p-4 rounded-2xl text-sm font-bold flex items-center gap-2.5 {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-300{% else %}border {{ accent_badge }}{% endif %}">
             <span>{% if category == 'error' %}⚠️{% else %}✅{% endif %}</span>
             <span>{{ message }}</span>
           </div>
@@ -184,17 +226,29 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Collapsible Store Appearance, Theme, Profile Pic & Custom Background Studio -->
-    <div id="themeStudioCard" class="hidden bg-slate-900/95 backdrop-blur-2xl text-white border-2 {{ accent_border }} rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <!-- Collapsible Store Appearance, Theme & Profile Picture Studio -->
+    <div
+      id="themeStudioCard"
+      class="hidden bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl p-6 sm:p-8 shadow-2xl"
+    >
       <div class="flex items-center justify-between mb-6">
         <div>
-          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Appearance & Background Studio</span>
-          <h2 class="text-xl sm:text-2xl font-extrabold text-white">🎨 Customize Your Store Theme, Profile Pic & Background Image</h2>
+          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Appearance Studio</span>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-white">
+            🎨 Customize Your Store Look, Theme & Profile Picture
+          </h2>
         </div>
-        <button type="button" onclick="toggleThemeStudio()" class="text-xs text-slate-400 hover:text-white">✕ Close</button>
+        <button
+          type="button"
+          onclick="toggleThemeStudio()"
+          class="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5"
+        >
+          ✕ Close
+        </button>
       </div>
 
       <form action="/update-theme" method="POST" enctype="multipart/form-data" class="space-y-6">
+        <!-- 6 Visual Theme Cards -->
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
             1. Click a Theme Below to Transform Your Store & Dashboard:
@@ -258,39 +312,43 @@
           </div>
         </div>
 
-        <!-- Profile Picture + Cover Banner + Custom Full-Page Background Image -->
-        <div class="grid md:grid-cols-3 gap-4 pt-3 border-t border-white/10">
-          
-          <!-- 2. Profile Picture -->
+        <!-- Profile Picture + Cover Banner Upload -->
+        <div class="grid sm:grid-cols-2 gap-4 pt-2 border-t border-white/10">
           <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
             <label class="block text-xs font-bold uppercase text-emerald-300 mb-2">
-              2. Profile Picture / Logo
+              2. Upload Seller Profile Picture / Logo
             </label>
             <div class="flex items-center gap-3">
               {% if store.logo_data %}
-                <img id="studioAvatarPreview" src="{{ store.logo_data }}" class="w-12 h-12 rounded-2xl object-cover border border-emerald-400 shrink-0" />
+                <img
+                  id="studioAvatarPreview"
+                  src="{{ store.logo_data }}"
+                  class="w-14 h-14 rounded-2xl object-cover border border-emerald-400 shrink-0"
+                />
               {% else %}
-                <img id="studioAvatarPreview" class="hidden w-12 h-12 rounded-2xl object-cover border border-emerald-400 shrink-0" />
+                <img
+                  id="studioAvatarPreview"
+                  class="hidden w-14 h-14 rounded-2xl object-cover border border-emerald-400 shrink-0"
+                />
               {% endif %}
               <input
                 type="file"
                 name="logo_file"
                 accept="image/*"
                 onchange="previewStudioAvatar(event)"
-                class="w-full text-xs text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-500/20 file:text-emerald-300"
+                class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-500/20 file:text-emerald-300"
               />
             </div>
           </div>
 
-          <!-- 3. Top Header Banner -->
           <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
             <div class="flex items-center justify-between mb-2">
               <label class="block text-xs font-bold uppercase text-purple-300">
-                3. Top Cover Banner
+                3. Store Header Cover Banner (Optional)
               </label>
               {% if store.banner_data %}
               <label class="text-[11px] text-red-400 flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" name="clear_banner" value="1" /> Remove
+                <input type="checkbox" name="clear_banner" value="1" /> Remove Banner
               </label>
               {% endif %}
             </div>
@@ -298,36 +356,9 @@
               type="file"
               name="banner_file"
               accept="image/*"
-              class="w-full text-xs text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-purple-500/20 file:text-purple-300"
+              class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-purple-500/20 file:text-purple-300"
             />
           </div>
-
-          <!-- 4. Custom Full-Page Background Image -->
-          <div class="bg-slate-950 border-2 border-amber-400/30 rounded-2xl p-4">
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-xs font-bold uppercase text-amber-300">
-                4. Store Background Image ✨
-              </label>
-              {% if store.bg_image_data %}
-              <label class="text-[11px] text-red-400 flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" name="clear_bg_image" value="1" /> Remove BG
-              </label>
-              {% endif %}
-            </div>
-            <input
-              type="file"
-              name="bg_image_file"
-              accept="image/*"
-              class="w-full text-xs text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-amber-400/20 file:text-amber-300 mb-2"
-            />
-            <input
-              type="url"
-              name="bg_image_url"
-              placeholder="Or paste background image URL..."
-              class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-[11px] text-white focus:outline-none"
-            />
-          </div>
-
         </div>
 
         <div class="flex justify-end">
@@ -335,20 +366,29 @@
             type="submit"
             class="{{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-xl"
           >
-            Apply Background, Theme & Save Changes →
+            Apply New Theme & Save Changes →
           </button>
         </div>
       </form>
     </div>
 
     <!-- Collapsible Global Settings, Custom Link & Payment Editor -->
-    <div id="profileEditorCard" class="hidden bg-slate-900/95 backdrop-blur-2xl text-white border-2 {{ accent_border }} rounded-3xl p-6 sm:p-8 shadow-2xl">
+    <div
+      id="profileEditorCard"
+      class="hidden bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl p-6 sm:p-8 shadow-2xl"
+    >
       <div class="flex items-center justify-between mb-6">
         <div>
           <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Global Store Configuration</span>
           <h2 class="text-xl font-extrabold text-white">Edit Store Details, Currency & Payment Method</h2>
         </div>
-        <button type="button" onclick="toggleProfileEditor()" class="text-xs text-slate-400 hover:text-white">✕ Close</button>
+        <button
+          type="button"
+          onclick="toggleProfileEditor()"
+          class="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5"
+        >
+          ✕ Close
+        </button>
       </div>
 
       <form action="/update-store" method="POST" enctype="multipart/form-data" class="grid sm:grid-cols-2 gap-4">
@@ -478,11 +518,15 @@
     <div class="grid md:grid-cols-2 gap-5">
 
       <!-- Left Card: Secret Key -->
-      <div class="{{ card_bg }} backdrop-blur-xl border rounded-3xl p-6 flex flex-col justify-between shadow-xl">
+      <div class="{{ card_bg }} border rounded-3xl p-6 flex flex-col justify-between shadow-xl">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">Your Store Secret Key (Login Password)</span>
-            <p class="text-2xl sm:text-3xl font-mono font-extrabold text-amber-400 mt-2 tracking-wider">{{ store.access_key }}</p>
+            <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">
+              Your Store Secret Key (Login Password)
+            </span>
+            <p class="text-2xl sm:text-3xl font-mono font-extrabold text-amber-400 mt-2 tracking-wider">
+              {{ store.access_key }}
+            </p>
           </div>
           <div class="flex items-center gap-2">
             <button
@@ -495,7 +539,7 @@
             <button
               type="button"
               onclick="showToast('Secret Key copied!', '{{ store.access_key }}')"
-              class="bg-white/5 hover:bg-white/10 text-white border-white/10 text-xs font-bold px-3.5 py-2 rounded-xl border transition"
+              class="{{ 'bg-slate-100 text-slate-800 border-slate-300' if is_light else 'bg-white/5 hover:bg-white/10 text-white border-white/10' }} text-xs font-bold px-3.5 py-2 rounded-xl border transition"
             >
               Copy
             </button>
@@ -503,12 +547,14 @@
         </div>
 
         <form id="keyEditorForm" action="/change-key" method="POST" class="hidden mt-4 pt-4 border-t border-white/10">
-          <label class="block text-xs font-bold text-slate-400 mb-2">Type your new custom Secret Key (min 4 characters):</label>
+          <label class="block text-xs font-bold text-slate-400 mb-2">
+            Type your new custom Secret Key (min 4 characters):
+          </label>
           <div class="flex gap-2">
             <input
               type="text"
               name="new_key"
-              placeholder="e.g. ZAYN2026"
+              placeholder="e.g. CHRIS2026"
               required
               minlength="4"
               class="flex-1 bg-slate-950 border border-amber-400/40 rounded-xl px-3.5 py-2 text-sm text-white font-mono uppercase focus:outline-none"
@@ -524,12 +570,16 @@
       </div>
 
       <!-- Right Card: Clean Store Name & Web Link -->
-      <div class="{{ card_bg }} backdrop-blur-xl border rounded-3xl p-6 flex flex-col justify-between shadow-xl">
+      <div class="{{ card_bg }} border rounded-3xl p-6 flex flex-col justify-between shadow-xl">
         <div class="flex items-start justify-between gap-3">
           <div class="overflow-hidden">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">Your Store Name & Web Link</span>
-              <span class="text-[10px] font-bold border {{ accent_badge }} px-2 py-0.5 rounded-full">Global Link</span>
+              <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">
+                Your Store Name & Web Link
+              </span>
+              <span class="text-[10px] font-bold border {{ accent_badge }} px-2 py-0.5 rounded-full">
+                Global Link
+              </span>
             </div>
             <p class="text-sm sm:text-lg font-mono font-extrabold {{ accent_text }} truncate mt-2">
               {{ request.host }}/{{ store.store_slug }}
@@ -555,7 +605,7 @@
         </div>
 
         <p class="text-xs text-slate-400 mt-3">
-          💡 Current Store Name: <strong class="text-white">{{ store.store_name }}</strong> • Active Theme: <strong class="{{ accent_text }} uppercase">{{ theme }}</strong>
+          💡 Current Store Name: <strong class="{{ 'text-slate-900' if is_light else 'text-white' }}">{{ store.store_name }}</strong> • Active Theme: <strong class="{{ accent_text }} uppercase">{{ theme }}</strong>
         </p>
 
         <form id="nameEditorForm" action="/change-store-name" method="POST" class="hidden mt-4 pt-4 border-t border-white/10 space-y-3">
@@ -567,7 +617,7 @@
               name="new_store_name"
               value="{{ store.store_name }}"
               oninput="syncSlugPreview(this.value)"
-              placeholder="e.g. Zayn Luxury"
+              placeholder="e.g. Chris G Swiss Belts"
               required
               class="w-full bg-slate-950 border border-white/20 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
             />
@@ -592,19 +642,21 @@
 
     </div>
 
-    <!-- Main Workspace: Add Product Form (Multi-Photo) + Live Inventory -->
+    <!-- Main Workspace: Add Product Form + Live Inventory -->
     <div class="grid lg:grid-cols-12 gap-8 items-start">
 
       <!-- Left Column: Post New Product (Supports Multiple Photos) -->
-      <div class="lg:col-span-5 {{ card_bg }} backdrop-blur-xl border rounded-3xl p-6 shadow-2xl">
+      <div class="lg:col-span-5 {{ card_bg }} border rounded-3xl p-6 shadow-2xl">
         <div class="mb-5">
-          <span class="text-[11px] font-bold uppercase tracking-widest {{ accent_text }}">Multi-Photo Inventory Uploader</span>
-          <h2 class="text-xl font-extrabold text-white">Add a New Product</h2>
+          <span class="text-[11px] font-bold uppercase tracking-widest {{ accent_text }}">Multi-Photo Uploader</span>
+          <h2 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">Add a New Product</h2>
         </div>
 
         <form action="/add-product" method="POST" enctype="multipart/form-data" class="space-y-4">
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Product Title *</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              Product Title *
+            </label>
             <input
               type="text"
               name="product_name"
@@ -616,7 +668,9 @@
 
           <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Currency</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Currency
+              </label>
               <select
                 name="currency"
                 class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none"
@@ -628,7 +682,9 @@
               </select>
             </div>
             <div class="col-span-2">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Price *</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Price *
+              </label>
               <input
                 type="number"
                 step="0.01"
@@ -640,61 +696,51 @@
             </div>
           </div>
 
-          <!-- Multi-Photo Upload Dropzone -->
+          <!-- Multi-Photo Dropzone with Live Thumbnail Grid Preview -->
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                Product Photos (Add 1 or Multiple) *
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">
+                Product Photos (Select 1 or Multiple)
               </label>
-              <button
-                type="button"
-                onclick="document.getElementById('multiImageInput').click()"
-                class="text-[11px] font-extrabold {{ accent_text }} hover:underline"
-              >
-                + Add Another Photo
-              </button>
+              <span class="text-[10px] font-bold {{ accent_text }}">📸 Multi-Select Ready</span>
             </div>
-
-            <div
-              onclick="document.getElementById('multiImageInput').click()"
-              class="flex flex-col items-center justify-center border-2 border-dashed border-white/20 hover:border-amber-400/60 bg-slate-950/80 rounded-2xl p-4 cursor-pointer transition text-center"
-            >
-              <!-- Multi-Photo Preview Grid -->
+            <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/15 hover:border-white/30 bg-slate-950/80 rounded-2xl p-4 cursor-pointer transition text-center">
               <div id="multiPreviewGrid" class="hidden grid grid-cols-3 gap-2 w-full mb-3"></div>
-
               <div id="uploadPrompt" class="py-2">
-                <p class="text-xs font-bold {{ accent_text }}">📸 Click to select 1 or more photos</p>
-                <p class="text-[11px] text-slate-400 mt-0.5">You can select multiple photos or tap again to add more!</p>
+                <p class="text-xs font-bold {{ accent_text }}">📸 Click to select 1 or more photos from gallery</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Select multiple photos to show front, side, and close-up angles</p>
               </div>
-            </div>
-
-            <input
-              type="file"
-              id="multiImageInput"
-              name="image_files"
-              accept="image/*"
-              multiple
-              onchange="handleMultiFiles(event)"
-              class="hidden"
-            />
+              <input
+                type="file"
+                name="image_files"
+                accept="image/*"
+                multiple
+                onchange="previewMultipleImages(event)"
+                class="hidden"
+              />
+            </label>
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Or Paste Image Link(s) (Comma-separated)</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Or Paste Image URL(s) (Comma-separated)
+            </label>
             <input
               type="text"
               name="image_url"
-              placeholder="https://..."
+              placeholder="https://image1.jpg, https://image2.jpg"
               class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-2.5 text-xs text-white focus:outline-none"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Sizes / Details / Description</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              Sizes / Details / Description
+            </label>
             <textarea
               name="description"
               rows="3"
-              placeholder="e.g. Crafted from 100% genuine leather, available sizes & delivery details..."
+              placeholder="e.g. **Genuine Leather Belt** — Available sizes, colors, and delivery info..."
               class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
             ></textarea>
           </div>
@@ -708,103 +754,125 @@
         </form>
       </div>
 
-      <!-- Right Column: Live Products Grid (With Multi-Image Slider & Edit Ad Button) -->
+      <!-- Right Column: Live Products Grid (With Multi-Photo Slider & Full Product Editor) -->
       <div class="lg:col-span-7 space-y-4">
         <div class="flex items-center justify-between">
           <div>
             <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Store Catalog</span>
-            <h2 class="text-xl font-extrabold text-white">Your Active Products ({{ products|length }})</h2>
+            <h2 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">
+              Your Active Products ({{ products|length }})
+            </h2>
           </div>
         </div>
 
         {% if products %}
           <div class="grid sm:grid-cols-2 gap-5">
             {% for p in products %}
-            {% set imgs = p|product_images %}
-            <div class="{{ card_bg }} backdrop-blur-xl border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group">
+            {% set img_ list = p.images_list if p.images_list is defined else [p.image_data] %}
+            {% set img_count = img_list|length %}
+            <div class="{{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group">
               <div>
-                <!-- Interactive Multi-Image Carousel on Card -->
+                <!-- Product Image Slider Container -->
                 <div class="relative overflow-hidden bg-slate-950 h-52">
                   <img
-                    id="dash-img-{{ p.id }}"
-                    src="{{ imgs[0] }}"
+                    id="dashSlideImg-{{ p.id }}"
+                    src="{{ img_list[0] }}"
                     alt="{{ p.product_name }}"
-                    class="w-full h-full object-cover transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
+                    data-idx="0"
+                    data-images='{{ img_list|tojson }}'
+                    onclick="openDashLightbox('dashSlideImg-{{ p.id }}', {{ p.product_name|tojson }})"
+                    class="w-full h-full object-cover cursor-zoom-in transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
                   />
 
-                  <span class="absolute top-3 left-3 text-[11px] font-extrabold px-2.5 py-1 rounded-full {% if p.in_stock == 1 %}{{ accent_btn }}{% else %}bg-red-500 text-white{% endif %}">
+                  <!-- Stock Status Pill -->
+                  <span class="absolute top-3 left-3 text-[11px] font-extrabold px-2.5 py-1 rounded-full shadow {% if p.in_stock == 1 %}{{ accent_btn }}{% else %}bg-red-500 text-white{% endif %}">
                     {% if p.in_stock == 1 %}● In Stock{% else %}Sold Out{% endif %}
                   </span>
 
-                  {% if imgs|length > 1 %}
-                    <span id="dash-count-{{ p.id }}" class="absolute top-3 right-3 bg-black/75 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-white/15">
-                      📸 1 / {{ imgs|length }}
-                    </span>
-                    <button
-                      type="button"
-                      onclick='stepSlide("dash", {{ p.id }}, -1, {{ imgs|tojson }})'
-                      class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-black flex items-center justify-center text-sm shadow-lg"
-                    >
-                      ‹
-                    </button>
-                    <button
-                      type="button"
-                      onclick='stepSlide("dash", {{ p.id }}, 1, {{ imgs|tojson }})'
-                      class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-black flex items-center justify-center text-sm shadow-lg"
-                    >
-                      ›
-                    </button>
+                  <!-- Photo Counter Badge -->
+                  <span
+                    id="dashSlideBadge-{{ p.id }}"
+                    class="absolute top-3 right-3 bg-slate-950/85 backdrop-blur border border-white/15 text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full"
+                  >
+                    📸 1/{{ img_count }}
+                  </span>
+
+                  {% if img_count > 1 %}
+                  <!-- Prev / Next Slider Arrows -->
+                  <button
+                    type="button"
+                    onclick="stepSlide('dashSlideImg-{{ p.id }}', 'dashSlideBadge-{{ p.id }}', -1)"
+                    class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    onclick="stepSlide('dashSlideImg-{{ p.id }}', 'dashSlideBadge-{{ p.id }}', 1)"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+                  >
+                    ›
+                  </button>
                   {% endif %}
                 </div>
 
-                <!-- Thumbnail Strip if Multiple Photos -->
-                {% if imgs|length > 1 %}
+                <!-- Mini Thumbnail Strip (Appears when a product has multiple images) -->
+                {% if img_count > 1 %}
                 <div class="flex items-center gap-1.5 px-4 pt-3 overflow-x-auto">
-                  {% for img_src in imgs %}
-                    <img
-                      src="{{ img_src }}"
-                      onclick='setSlide("dash", {{ p.id }}, {{ loop.index0 }}, {{ imgs|tojson }})'
-                      class="w-9 h-9 rounded-lg object-cover border border-white/20 cursor-pointer hover:opacity-100 opacity-80 shrink-0"
-                    />
+                  {% for img_url in img_list %}
+                  <img
+                    src="{{ img_url }}"
+                    onclick="jumpSlide('dashSlideImg-{{ p.id }}', 'dashSlideBadge-{{ p.id }}', {{ loop.index0 }})"
+                    class="w-10 h-10 rounded-lg object-cover border border-white/20 hover:border-amber-400 cursor-pointer shrink-0 transition"
+                  />
                   {% endfor %}
                 </div>
                 {% endif %}
 
+                <!-- Product Title, Price & Formatted Description -->
                 <div class="p-5">
                   <div class="flex items-start justify-between gap-2">
-                    <h3 class="font-extrabold text-white text-base">{{ p.product_name }}</h3>
+                    <h3 class="font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} text-base">
+                      {{ p.product_name }}
+                    </h3>
                     <span class="shrink-0 border {{ accent_badge }} font-extrabold text-xs px-2.5 py-1 rounded-xl">
                       {{ p.currency }} {{ "%.2f"|format(p.price) }}
                     </span>
                   </div>
                   {% if p.description %}
-                    <p class="text-xs text-slate-300 mt-1.5 line-clamp-2">{{ p.description }}</p>
+                    <div class="text-xs text-slate-400 mt-1.5 line-clamp-3 leading-relaxed">
+                      {{ p.description|format_desc }}
+                    </div>
                   {% endif %}
                 </div>
               </div>
 
-              <!-- Action Buttons: Edit Ad / Photos + Mark Sold Out + Delete -->
+              <!-- Action Buttons: Edit Product / Update Photos + Stock Toggle + Delete -->
               <div class="p-5 pt-0 space-y-2">
                 <button
                   type="button"
-                  onclick='openEditProductModal({{ p.id }}, {{ p.product_name|tojson }}, {{ p.price }}, {{ p.currency|tojson }}, {{ (p.description or "")|tojson }}, {{ imgs|tojson }})'
-                  class="w-full border {{ accent_badge }} hover:opacity-90 text-xs font-extrabold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
+                  onclick="toggleProductEditor({{ p.id }})"
+                  class="w-full border {{ accent_badge }} text-xs font-extrabold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
                 >
                   <span>✏️</span>
-                  <span>Edit Ad / Add or Change Photos</span>
+                  <span>Edit Product / Update Photos ({{ img_count }})</span>
                 </button>
 
                 <div class="grid grid-cols-2 gap-2">
                   <form action="/toggle-stock/{{ p.id }}" method="POST">
                     <button
                       type="submit"
-                      class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold py-2.5 rounded-xl transition text-white"
+                      class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold py-2.5 rounded-xl transition"
                     >
                       {% if p.in_stock == 1 %}Mark Sold Out{% else %}Mark In Stock{% endif %}
                     </button>
                   </form>
 
-                  <form action="/delete-product/{{ p.id }}" method="POST">
+                  <form
+                    action="/delete-product/{{ p.id }}"
+                    method="POST"
+                    onsubmit="return confirm('Delete {{ p.product_name }} permanently?');"
+                  >
                     <button
                       type="submit"
                       class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold py-2.5 rounded-xl transition"
@@ -813,14 +881,144 @@
                     </button>
                   </form>
                 </div>
+
+                <!-- Collapsible Product & Multi-Photo Editor Form -->
+                <form
+                  id="editProductForm-{{ p.id }}"
+                  action="/edit-product/{{ p.id }}"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  class="hidden mt-3 pt-4 border-t border-white/15 space-y-3 text-left"
+                >
+                  <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-extrabold uppercase tracking-wider {{ accent_text }}">
+                      Editing Product & Photos
+                    </span>
+                    <button
+                      type="button"
+                      onclick="toggleProductEditor({{ p.id }})"
+                      class="text-[11px] text-slate-400 hover:text-white"
+                    >
+                      ✕ Close
+                    </button>
+                  </div>
+
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Product Title</label>
+                    <input
+                      type="text"
+                      name="product_name"
+                      value="{{ p.product_name }}"
+                      required
+                      class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
+                    />
+                  </div>
+
+                  <div class="grid grid-cols-3 gap-2">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-300 mb-1">Currency</label>
+                      <select
+                        name="currency"
+                        class="w-full bg-slate-950 border border-white/15 rounded-xl px-2 py-2 text-xs text-white"
+                      >
+                        {% for c in ['GHS', 'USD', 'NGN', 'GBP', 'EUR', 'KES', 'ZAR', 'CAD', 'XOF'] %}
+                          <option value="{{ c }}" {% if p.currency == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-span-2">
+                      <label class="block text-[11px] font-bold text-slate-300 mb-1">Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="price"
+                        value="{{ p.price }}"
+                        required
+                        class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Description</label>
+                    <textarea
+                      name="description"
+                      rows="2"
+                      class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
+                    >{{ p.description }}</textarea>
+                  </div>
+
+                  <!-- Current Photos Checklist (Uncheck to remove any individual photo) -->
+                  <div class="bg-slate-950/90 border border-white/10 rounded-xl p-2.5">
+                    <span class="block text-[10px] font-bold uppercase text-slate-400 mb-2">
+                      Current Photos (Uncheck any photo to remove it):
+                    </span>
+                    <div class="grid grid-cols-4 gap-2">
+                      {% for img_url in img_list %}
+                      <label class="relative cursor-pointer block">
+                        <img
+                          src="{{ img_url }}"
+                          class="w-full h-12 object-cover rounded-lg border border-white/20"
+                        />
+                        <input
+                          type="checkbox"
+                          name="keep_image_idx"
+                          value="{{ loop.index0 }}"
+                          checked
+                          class="absolute top-1 right-1 accent-emerald-400 w-3.5 h-3.5"
+                        />
+                      </label>
+                      {% endfor %}
+                    </div>
+                  </div>
+
+                  <!-- Upload New or Additional Photos -->
+                  <div class="bg-slate-950/90 border border-white/10 rounded-xl p-2.5 space-y-2">
+                    <label class="block text-[10px] font-bold uppercase {{ accent_text }}">
+                      Upload New / Additional Photos:
+                    </label>
+                    <select
+                      name="photo_mode"
+                      class="w-full bg-slate-900 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                    >
+                      <option value="append">➕ Add new photo(s) to current photos</option>
+                      <option value="replace">🔄 Replace all current photos with new upload</option>
+                    </select>
+                    <input
+                      type="file"
+                      name="image_files"
+                      accept="image/*"
+                      multiple
+                      class="w-full text-[11px] text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-white/10 file:text-white"
+                    />
+                    <input
+                      type="text"
+                      name="image_url"
+                      placeholder="Or paste new image URL(s)..."
+                      class="w-full bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    class="w-full {{ accent_btn }} font-extrabold text-xs py-2.5 rounded-xl transition shadow-md"
+                  >
+                    💾 Save Product & Photo Updates
+                  </button>
+                </form>
+
               </div>
             </div>
             {% endfor %}
           </div>
         {% else %}
-          <div class="{{ card_bg }} backdrop-blur-xl border-2 border-dashed rounded-3xl p-12 text-center">
-            <p class="text-base font-bold text-white">Your store catalog is empty</p>
-            <p class="text-xs text-slate-400 mt-1">Use the uploader on the left to post your first product photo and price.</p>
+          <div class="{{ card_bg }} border-2 border-dashed rounded-3xl p-12 text-center">
+            <p class="text-base font-bold {{ 'text-slate-900' if is_light else 'text-white' }}">
+              Your store catalog is empty
+            </p>
+            <p class="text-xs text-slate-400 mt-1">
+              Use the multi-photo uploader on the left to post your first product photo and price.
+            </p>
           </div>
         {% endif %}
       </div>
@@ -828,129 +1026,58 @@
     </div>
   </main>
 
-  <!-- Edit Product / Ad & Photos Modal -->
-  <div id="editProductModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 {{ accent_border }} rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto text-white">
-      <div class="flex items-center justify-between border-b border-white/10 pb-3">
-        <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-widest {{ accent_text }}">Ad & Gallery Editor</span>
-          <h3 class="text-xl font-extrabold text-white">✏️ Edit Product Ad & Photos</h3>
-        </div>
-        <button type="button" onclick="closeEditProductModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
-      </div>
-
-      <form id="editProductForm" method="POST" enctype="multipart/form-data" class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Product Title *</label>
-          <input
-            type="text"
-            id="editProductName"
-            name="product_name"
-            required
-            class="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
-          />
-        </div>
-
-        <div class="grid grid-cols-3 gap-3">
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Currency</label>
-            <select
-              id="editProductCurrency"
-              name="currency"
-              class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"
-            >
-              {% for c in ['GHS', 'USD', 'NGN', 'GBP', 'EUR', 'KES', 'ZAR', 'CAD', 'XOF'] %}
-                <option value="{{ c }}">{{ c }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-span-2">
-            <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Price *</label>
-            <input
-              type="number"
-              step="0.01"
-              id="editProductPrice"
-              name="price"
-              required
-              class="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Product Description / Details</label>
-          <textarea
-            id="editProductDesc"
-            name="description"
-            rows="3"
-            class="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
-          ></textarea>
-        </div>
-
-        <!-- Current Photos Preview -->
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-3.5 space-y-2">
-          <span class="text-[11px] font-bold uppercase text-slate-400 block">Current Product Photos:</span>
-          <div id="editExistingPhotos" class="flex items-center gap-2 overflow-x-auto pb-1"></div>
-        </div>
-
-        <!-- Upload Additional or Replacement Photos -->
-        <div class="bg-slate-950 border border-white/15 rounded-2xl p-4 space-y-3">
-          <label class="block text-xs font-bold uppercase {{ accent_text }}">
-            📸 Update or Add More Photos (Optional)
-          </label>
-
-          <div class="flex items-center gap-4 text-xs">
-            <label class="flex items-center gap-1.5 cursor-pointer">
-              <input type="radio" name="image_action" value="append" checked />
-              <span><strong>Add</strong> to existing photos</span>
-            </label>
-            <label class="flex items-center gap-1.5 cursor-pointer">
-              <input type="radio" name="image_action" value="replace" />
-              <span><strong>Replace</strong> all old photos</span>
-            </label>
-          </div>
-
-          <input
-            type="file"
-            name="edit_image_files"
-            accept="image/*"
-            multiple
-            class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-white/10 file:text-white"
-          />
-
-          <input
-            type="text"
-            name="image_url"
-            placeholder="Or paste new image URL(s)..."
-            class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-          />
-        </div>
-
-        <div class="flex gap-2 pt-2">
-          <button
-            type="submit"
-            class="flex-1 {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs sm:text-sm shadow-lg"
-          >
-            Save Ad & Photo Updates →
-          </button>
-          <button
-            type="button"
-            onclick="closeEditProductModal()"
-            class="bg-white/10 text-white font-bold px-4 py-3 rounded-2xl text-xs"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+  <!-- Full-Screen Dashboard Image Lightbox Modal -->
+  <div
+    id="dashLightboxModal"
+    class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4"
+  >
+    <div class="max-w-2xl w-full flex items-center justify-between mb-3">
+      <p id="dashLightboxTitle" class="text-sm font-extrabold text-white truncate"></p>
+      <button
+        type="button"
+        onclick="closeDashLightbox()"
+        class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-1.5 rounded-full"
+      >
+        ✕ Close
+      </button>
+    </div>
+    <div class="relative max-w-2xl w-full flex items-center justify-center">
+      <img
+        id="dashLightboxImg"
+        src=""
+        class="max-h-[78vh] w-auto rounded-2xl object-contain border border-white/15 shadow-2xl"
+      />
+      <button
+        id="dashLightboxPrev"
+        type="button"
+        onclick="stepDashLightbox(-1)"
+        class="absolute left-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center"
+      >
+        ‹
+      </button>
+      <button
+        id="dashLightboxNext"
+        type="button"
+        onclick="stepDashLightbox(1)"
+        class="absolute right-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center"
+      >
+        ›
+      </button>
     </div>
   </div>
 
   <!-- WhatsApp Status Flyer & QR Card Modal -->
-  <div id="flyerModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+  <div
+    id="flyerModal"
+    class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
     <div class="max-w-sm w-full space-y-3">
       <div class="bg-slate-900 border-2 {{ accent_border }} rounded-3xl p-7 text-center shadow-2xl relative overflow-hidden">
         {% if store.logo_data %}
-          <img src="{{ store.logo_data }}" class="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 border-2 {{ accent_border }} shadow-lg" />
+          <img
+            src="{{ store.logo_data }}"
+            class="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 border-2 {{ accent_border }} shadow-lg"
+          />
         {% endif %}
         <span class="inline-block text-[10px] font-extrabold uppercase tracking-widest {{ accent_btn }} px-3 py-1 rounded-full">
           OFFICIAL ONLINE STORE
@@ -976,12 +1103,14 @@
 
       <div class="flex gap-2">
         <button
+          type="button"
           onclick="showToast('Store Link copied! Screenshot this flyer for your Status or Story.', '{{ request.host_url }}{{ store.store_slug }}')"
           class="flex-1 {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs"
         >
           📸 Copy Link & Screenshot Flyer
         </button>
         <button
+          type="button"
           onclick="document.getElementById('flyerModal').classList.add('hidden')"
           class="bg-white/10 text-white font-bold px-4 py-3 rounded-2xl text-xs"
         >
@@ -991,9 +1120,62 @@
     </div>
   </div>
 
+  <!-- Seller Dashboard Help Guide Modal -->
+  <div
+    id="dashHelpModal"
+    class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
+    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto text-white">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-widest {{ accent_text }}">Seller Command Guide</span>
+          <h3 class="text-xl font-extrabold text-white">❓ How to Manage Your Varsell Store</h3>
+        </div>
+        <button
+          type="button"
+          onclick="document.getElementById('dashHelpModal').classList.add('hidden')"
+          class="text-slate-400 hover:text-white text-sm"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold {{ accent_text }} mb-1">📸 How to Upload Multiple Photos or Update Product Images</p>
+          <p>When adding a product, select multiple photos from your phone or PC gallery at once. To add more photos or replace an existing product's image later, click <strong>"✏️ Edit Product / Update Photos"</strong> on that product card!</p>
+        </div>
+
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold text-amber-300 mb-1">🎨 How to Change Your Store Theme & Profile Picture</p>
+          <p>Click <strong>"🎨 Store Look & Avatar"</strong> at the top of your dashboard (or tap the camera icon on your profile picture) to switch between 6 themes and upload your logo or cover banner.</p>
+        </div>
+
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold text-emerald-400 mb-1">🔗 How to Rename Your Store Without Losing Customers</p>
+          <p>Click <strong>"✏️ Change Store Name"</strong> on your Store Link card. Even after you rename your shop, anyone clicking your old link will be redirected to your new link automatically!</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onclick="document.getElementById('dashHelpModal').classList.add('hidden')"
+        class="w-full {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs"
+      >
+        Got It!
+      </button>
+    </div>
+  </div>
+
+  <!-- Dashboard Interactive JavaScript -->
   <script>
+    let dashLightboxImages = [];
+    let dashLightboxIdx = 0;
+
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
     }
 
     function toggleKeyEditor() {
@@ -1010,6 +1192,59 @@
 
     function toggleThemeStudio() {
       document.getElementById("themeStudioCard").classList.toggle("hidden");
+    }
+
+    function toggleProductEditor(productId) {
+      const form = document.getElementById(`editProductForm-${productId}`);
+      if (form) form.classList.toggle("hidden");
+    }
+
+    // Multi-Photo Slider Controls
+    function stepSlide(imgId, badgeId, delta) {
+      const imgEl = document.getElementById(imgId);
+      const badgeEl = document.getElementById(badgeId);
+      if (!imgEl) return;
+      const images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      if (images.length <= 1) return;
+      let currentIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
+      currentIdx = (currentIdx + delta + images.length) % images.length;
+      imgEl.src = images[currentIdx];
+      imgEl.setAttribute("data-idx", currentIdx);
+      if (badgeEl) badgeEl.textContent = `📸 ${currentIdx + 1}/${images.length}`;
+    }
+
+    function jumpSlide(imgId, badgeId, targetIdx) {
+      const imgEl = document.getElementById(imgId);
+      const badgeEl = document.getElementById(badgeId);
+      if (!imgEl) return;
+      const images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      if (targetIdx < 0 || targetIdx >= images.length) return;
+      imgEl.src = images[targetIdx];
+      imgEl.setAttribute("data-idx", targetIdx);
+      if (badgeEl) badgeEl.textContent = `📸 ${targetIdx + 1}/${images.length}`;
+    }
+
+    // Full-Screen Lightbox inside Dashboard
+    function openDashLightbox(imgId, title) {
+      const imgEl = document.getElementById(imgId);
+      if (!imgEl) return;
+      dashLightboxImages = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      dashLightboxIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
+      document.getElementById("dashLightboxTitle").textContent = title;
+      document.getElementById("dashLightboxImg").src = dashLightboxImages[dashLightboxIdx];
+      document.getElementById("dashLightboxPrev").style.display = dashLightboxImages.length > 1 ? "flex" : "none";
+      document.getElementById("dashLightboxNext").style.display = dashLightboxImages.length > 1 ? "flex" : "none";
+      document.getElementById("dashLightboxModal").classList.remove("hidden");
+    }
+
+    function stepDashLightbox(delta) {
+      if (dashLightboxImages.length <= 1) return;
+      dashLightboxIdx = (dashLightboxIdx + delta + dashLightboxImages.length) % dashLightboxImages.length;
+      document.getElementById("dashLightboxImg").src = dashLightboxImages[dashLightboxIdx];
+    }
+
+    function closeDashLightbox() {
+      document.getElementById("dashLightboxModal").classList.add("hidden");
     }
 
     function syncSlugPreview(val) {
@@ -1035,97 +1270,28 @@
       }, 2800);
     }
 
-    // Multi-File Accumulator so users can select multiple photos at once OR tap "+ Add Another Photo" repeatedly
-    let accumulatedFiles = new DataTransfer();
-
-    function handleMultiFiles(event) {
-      const files = event.target.files;
-      for (let i = 0; i < files.length; i++) {
-        accumulatedFiles.items.add(files[i]);
-      }
-      document.getElementById("multiImageInput").files = accumulatedFiles.files;
-      renderMultiPreviews();
-    }
-
-    function removeQueuedFile(index) {
-      const updated = new DataTransfer();
-      for (let i = 0; i < accumulatedFiles.files.length; i++) {
-        if (i !== index) updated.items.add(accumulatedFiles.files[i]);
-      }
-      accumulatedFiles = updated;
-      document.getElementById("multiImageInput").files = accumulatedFiles.files;
-      renderMultiPreviews();
-    }
-
-    function renderMultiPreviews() {
+    // Live Multi-Photo Thumbnail Grid Preview
+    function previewMultipleImages(event) {
+      const files = Array.from(event.target.files || []);
       const grid = document.getElementById("multiPreviewGrid");
       const prompt = document.getElementById("uploadPrompt");
+      if (!files.length) return;
+
       grid.innerHTML = "";
-
-      if (accumulatedFiles.files.length === 0) {
-        grid.classList.add("hidden");
-        prompt.innerHTML = `<p class="text-xs font-bold">📸 Click to select 1 or more photos</p>`;
-        return;
-      }
-
       grid.classList.remove("hidden");
-      Array.from(accumulatedFiles.files).forEach((file, idx) => {
+
+      files.forEach((file) => {
         const reader = new FileReader();
         reader.onload = function(e) {
-          const wrap = document.createElement("div");
-          wrap.className = "relative h-20 rounded-xl overflow-hidden border border-white/20";
-          wrap.innerHTML = `
-            <img src="${e.target.result}" class="w-full h-full object-cover" />
-            <button type="button" onclick="event.stopPropagation(); removeQueuedFile(${idx})" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">✕</button>
-          `;
-          grid.appendChild(wrap);
+          const img = document.createElement("img");
+          img.src = e.target.result;
+          img.className = "w-full h-24 object-cover rounded-xl border border-white/20 shadow";
+          grid.appendChild(img);
         };
         reader.readAsDataURL(file);
       });
 
-      prompt.innerHTML = `<p class="text-xs font-extrabold text-emerald-400">✅ ${accumulatedFiles.files.length} Photo(s) Ready — Tap here to add even more!</p>`;
-    }
-
-    // Product Card Image Slider
-    const slideIndexMap = {};
-    function stepSlide(prefix, id, delta, imgs) {
-      const key = `${prefix}-${id}`;
-      const current = slideIndexMap[key] || 0;
-      const next = (current + delta + imgs.length) % imgs.length;
-      setSlide(prefix, id, next, imgs);
-    }
-
-    function setSlide(prefix, id, index, imgs) {
-      const key = `${prefix}-${id}`;
-      slideIndexMap[key] = index;
-      const imgEl = document.getElementById(`${prefix}-img-${id}`);
-      const countEl = document.getElementById(`${prefix}-count-${id}`);
-      if (imgEl) imgEl.src = imgs[index];
-      if (countEl) countEl.textContent = `📸 ${index + 1} / ${imgs.length}`;
-    }
-
-    // Edit Product Modal Logic
-    function openEditProductModal(id, name, price, currency, desc, imgs) {
-      document.getElementById("editProductForm").action = `/edit-product/${id}`;
-      document.getElementById("editProductName").value = name;
-      document.getElementById("editProductPrice").value = price;
-      document.getElementById("editProductCurrency").value = currency;
-      document.getElementById("editProductDesc").value = desc;
-
-      const container = document.getElementById("editExistingPhotos");
-      container.innerHTML = "";
-      imgs.forEach((src, i) => {
-        const img = document.createElement("img");
-        img.src = src;
-        img.className = "w-14 h-14 rounded-xl object-cover border border-white/20 shrink-0";
-        container.appendChild(img);
-      });
-
-      document.getElementById("editProductModal").classList.remove("hidden");
-    }
-
-    function closeEditProductModal() {
-      document.getElementById("editProductModal").classList.add("hidden");
+      prompt.innerHTML = `<p class="text-xs font-extrabold text-emerald-400">✅ ${files.length} Photo(s) Selected & Ready to Publish</p>`;
     }
 
     function previewStudioAvatar(event) {
