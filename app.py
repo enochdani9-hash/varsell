@@ -126,6 +126,8 @@ def init_db():
                 store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
                 product_name TEXT NOT NULL,
                 price REAL NOT NULL,
+                compare_price REAL DEFAULT 0,
+                badge_text TEXT DEFAULT '',
                 currency TEXT DEFAULT 'USD',
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
@@ -135,6 +137,8 @@ def init_db():
             )
         """)
         conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS images_json TEXT DEFAULT '[]'")
+        conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS compare_price REAL DEFAULT 0")
+        conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS badge_text TEXT DEFAULT ''")
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS stores (
@@ -188,6 +192,8 @@ def init_db():
                 store_id INTEGER NOT NULL,
                 product_name TEXT NOT NULL,
                 price REAL NOT NULL,
+                compare_price REAL DEFAULT 0,
+                badge_text TEXT DEFAULT '',
                 currency TEXT DEFAULT 'USD',
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
@@ -197,10 +203,15 @@ def init_db():
                 FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE
             )
         """)
-        try:
-            conn.execute("ALTER TABLE products ADD COLUMN images_json TEXT DEFAULT '[]'")
-        except Exception:
-            pass
+        for col_name, col_def in [
+            ("images_json", "TEXT DEFAULT '[]'"),
+            ("compare_price", "REAL DEFAULT 0"),
+            ("badge_text", "TEXT DEFAULT ''")
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE products ADD COLUMN {col_name} {col_def}")
+            except Exception:
+                pass
 
     conn.commit()
     conn.close()
@@ -258,7 +269,7 @@ def encode_uploaded_image(file_obj):
 
 
 def hydrate_products(product_rows):
-    """Ensures every product dictionary has an `images_list` array with all its photos"""
+    """Hydrates multi-image list and calculates discount percentages automatically"""
     hydrated = []
     for row in product_rows:
         p = dict(row)
@@ -277,6 +288,21 @@ def hydrate_products(product_rows):
             imgs = ["https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product"]
         p["images_list"] = imgs
         p["image_data"] = imgs[0]
+
+        # Calculate discount percentage and savings amount if compare_price > price
+        price_val = float(p.get("price") or 0.0)
+        compare_val = float(p.get("compare_price") or 0.0)
+        p["compare_price"] = compare_val
+        p["badge_text"] = (p.get("badge_text") or "").strip()
+
+        if compare_val > price_val and price_val > 0:
+            pct = int(round(((compare_val - price_val) / compare_val) * 100))
+            p["discount_percent"] = max(1, min(99, pct))
+            p["savings_amount"] = compare_val - price_val
+        else:
+            p["discount_percent"] = 0
+            p["savings_amount"] = 0.0
+
         hydrated.append(p)
     return hydrated
 
@@ -373,7 +399,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v5';
+const CACHE_NAME = 'varsell-global-v6';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -808,11 +834,12 @@ def add_product():
 
     product_name = request.form.get("product_name", "").strip()
     price = request.form.get("price", "0").strip()
+    compare_price = request.form.get("compare_price", "0").strip()
+    badge_text = request.form.get("badge_text", "").strip()
     currency = request.form.get("currency", store.get("default_currency") or "USD").strip()
     description = request.form.get("description", "").strip()
     image_url = request.form.get("image_url", "").strip()
 
-    # Collect multiple uploaded photos
     uploaded_files = request.files.getlist("image_files")
     if not uploaded_files:
         single_file = request.files.get("image_file")
@@ -825,7 +852,6 @@ def add_product():
         if encoded:
             images_list.append(encoded)
 
-    # Also support one or more comma-separated image URLs
     if image_url:
         for url_part in image_url.split(","):
             clean_url = url_part.strip()
@@ -843,10 +869,20 @@ def add_product():
     except ValueError:
         numeric_price = 0.0
 
+    try:
+        numeric_compare = float(compare_price) if compare_price else 0.0
+    except ValueError:
+        numeric_compare = 0.0
+
     conn.execute(
-        """INSERT INTO products (store_id, product_name, price, currency, description, image_data, images_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (store["id"], product_name, numeric_price, currency, description, primary_image, images_json_str)
+        """INSERT INTO products (
+               store_id, product_name, price, compare_price, badge_text,
+               currency, description, image_data, images_json
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            store["id"], product_name, numeric_price, numeric_compare, badge_text,
+            currency, description, primary_image, images_json_str
+        )
     )
     conn.commit()
     conn.close()
@@ -857,7 +893,6 @@ def add_product():
 
 @app.route("/edit-product/<int:product_id>", methods=["POST"])
 def edit_product(product_id):
-    """Allows sellers to update product details, replace photos, or add more photos to an existing product"""
     access_key = session.get("store_key")
     if not access_key:
         return redirect(url_for("index"))
@@ -883,8 +918,10 @@ def edit_product(product_id):
     new_name = request.form.get("product_name", product["product_name"]).strip() or product["product_name"]
     new_currency = request.form.get("currency", product["currency"]).strip() or product["currency"]
     new_description = request.form.get("description", product["description"]).strip()
+    new_badge = request.form.get("badge_text", "").strip()
     price_raw = request.form.get("price", str(product["price"])).strip()
-    photo_mode = request.form.get("photo_mode", "append").strip()  # 'append' or 'replace'
+    compare_raw = request.form.get("compare_price", "0").strip()
+    photo_mode = request.form.get("photo_mode", "append").strip()
     new_image_url = request.form.get("image_url", "").strip()
 
     try:
@@ -892,7 +929,11 @@ def edit_product(product_id):
     except ValueError:
         new_price = product["price"]
 
-    # Determine which existing images the seller kept (via checkboxes)
+    try:
+        new_compare = float(compare_raw) if compare_raw else 0.0
+    except ValueError:
+        new_compare = 0.0
+
     kept_indices = request.form.getlist("keep_image_idx")
     existing_images = []
     for idx_str in kept_indices:
@@ -903,7 +944,6 @@ def edit_product(product_id):
         except ValueError:
             pass
 
-    # Process newly uploaded files
     uploaded_files = request.files.getlist("image_files")
     new_images = []
     for f in uploaded_files:
@@ -917,7 +957,6 @@ def edit_product(product_id):
             if clean_url:
                 new_images.append(clean_url)
 
-    # Combine or replace photos based on seller's choice
     if new_images:
         if photo_mode == "replace":
             final_images = new_images
@@ -934,14 +973,19 @@ def edit_product(product_id):
 
     conn.execute(
         """UPDATE products
-           SET product_name = ?, price = ?, currency = ?, description = ?, image_data = ?, images_json = ?
+           SET product_name = ?, price = ?, compare_price = ?, badge_text = ?,
+               currency = ?, description = ?, image_data = ?, images_json = ?
            WHERE id = ? AND store_id = ?""",
-        (new_name, new_price, new_currency, new_description, primary_image, images_json_str, product_id, store["id"])
+        (
+            new_name, new_price, new_compare, new_badge,
+            new_currency, new_description, primary_image, images_json_str,
+            product_id, store["id"]
+        )
     )
     conn.commit()
     conn.close()
 
-    flash(f"✨ Updated '{new_name}' ({len(final_images)} photo(s) active)!", "success")
+    flash(f"✨ Updated '{new_name}'!", "success")
     return redirect(url_for("dashboard"))
 
 
