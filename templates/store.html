@@ -111,7 +111,6 @@
     <div class="max-w-5xl mx-auto px-4 py-8 sm:py-10">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         
-        <!-- Left: Seller Profile Picture / Avatar + Store Info -->
         <div class="flex items-start sm:items-center gap-4">
           {% if store.logo_data %}
             <img
@@ -152,7 +151,6 @@
           </div>
         </div>
 
-        <!-- Right: Save Offline + Direct WhatsApp Chat -->
         <div class="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
@@ -175,7 +173,6 @@
 
       </div>
 
-      <!-- Live Search Filter Bar -->
       {% if products|length > 1 %}
       <div class="mt-6">
         <input
@@ -195,19 +192,21 @@
     {% if products %}
       <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {% for p in products %}
-        {% set imgs = p.image_data.split('|||') %}
+        {% set img_count = p.images_list|length %}
         <div
           data-name="{{ p.product_name|lower }} {{ p.description|lower }} {{ p.price }}"
           class="product-card {{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group transition"
         >
           <div>
-            <!-- Multi-Image Product Viewer -->
-            <div class="relative h-64 bg-slate-950 overflow-hidden">
+            <!-- Multi-Photo Customer Slider -->
+            <div class="relative h-60 bg-slate-950 overflow-hidden">
               <img
-                id="prod-img-{{ p.id }}"
-                src="{{ imgs[0] }}"
+                id="storeSlideImg-{{ p.id }}"
+                src="{{ p.images_list[0] }}"
                 alt="{{ p.product_name }}"
-                onclick='openLightbox({{ imgs|tojson }}, 0)'
+                data-idx="0"
+                data-images='{{ p.images_list|tojson }}'
+                onclick="openLightbox('storeSlideImg-{{ p.id }}', {{ p.product_name|tojson }})"
                 class="w-full h-full object-cover cursor-zoom-in transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
               />
 
@@ -221,49 +220,45 @@
                 </span>
               {% endif %}
 
-              {% if imgs|length > 1 %}
-                <span
-                  id="prod-count-{{ p.id }}"
-                  class="absolute top-3 right-3 bg-black/75 backdrop-blur-md text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full border border-white/15"
-                >
-                  1 / {{ imgs|length }} 📸
-                </span>
+              <!-- Photo Counter Badge -->
+              {% if img_count > 1 %}
+              <span
+                id="storeSlideBadge-{{ p.id }}"
+                class="absolute top-3 right-3 bg-slate-950/85 backdrop-blur border border-white/15 text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full"
+              >
+                📸 1/{{ img_count }}
+              </span>
 
-                <!-- Prev / Next Image Arrows -->
-                <button
-                  type="button"
-                  onclick='cycleProductImage({{ p.id }}, {{ imgs|tojson }}, -1)'
-                  class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-black flex items-center justify-center border border-white/20 shadow-lg transition"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  onclick='cycleProductImage({{ p.id }}, {{ imgs|tojson }}, 1)'
-                  class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-black flex items-center justify-center border border-white/20 shadow-lg transition"
-                >
-                  ›
-                </button>
+              <button
+                type="button"
+                onclick="stepStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', -1)"
+                class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                onclick="stepStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', 1)"
+                class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+              >
+                ›
+              </button>
               {% endif %}
             </div>
 
-            <!-- Multi-Image Thumbnail Strip -->
-            {% if imgs|length > 1 %}
-            <div class="flex items-center gap-1.5 px-4 pt-3 overflow-x-auto">
-              {% for img_url in imgs %}
-              <button
-                type="button"
-                onclick='selectProductImage({{ p.id }}, {{ imgs|tojson }}, {{ loop.index0 }})'
-                class="w-11 h-11 rounded-xl overflow-hidden border-2 {% if loop.index0 == 0 %}{{ accent_border }}{% else %}border-transparent opacity-60 hover:opacity-100{% endif %} shrink-0 transition"
-                id="thumb-{{ p.id }}-{{ loop.index0 }}"
-              >
-                <img src="{{ img_url }}" class="w-full h-full object-cover" />
-              </button>
+            <!-- Clickable Thumbnail Strip -->
+            {% if img_count > 1 %}
+            <div class="flex items-center gap-1.5 px-5 pt-3 overflow-x-auto">
+              {% for img_url in p.images_list %}
+              <img
+                src="{{ img_url }}"
+                onclick="jumpStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', {{ loop.index0 }})"
+                class="w-11 h-11 rounded-xl object-cover border border-white/20 hover:border-amber-400 cursor-pointer shrink-0 transition"
+              />
               {% endfor %}
             </div>
             {% endif %}
 
-            <!-- Product Info -->
             <div class="p-5">
               <div class="flex items-start justify-between gap-2">
                 <h2 class="text-lg font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} leading-snug">
@@ -275,9 +270,9 @@
               </div>
 
               {% if p.description %}
-                <p class="text-xs {{ 'text-slate-600' if is_light else 'text-slate-400' }} mt-2 leading-relaxed">
-                  {{ p.description }}
-                </p>
+                <div class="text-xs {{ 'text-slate-600' if is_light else 'text-slate-300' }} mt-2 leading-relaxed">
+                  {{ p.description|format_desc }}
+                </div>
               {% endif %}
             </div>
           </div>
@@ -330,23 +325,35 @@
   <!-- Full-Screen Image Lightbox Modal -->
   <div
     id="lightboxModal"
-    class="hidden fixed inset-0 bg-black/90 backdrop-blur-lg z-50 flex flex-col items-center justify-center p-4"
+    class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4"
   >
-    <button
-      type="button"
-      onclick="closeLightbox()"
-      class="absolute top-5 right-5 bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2 rounded-xl text-xs"
-    >
-      ✕ Close Photo
-    </button>
-    <img id="lightboxImg" src="" class="max-h-[78vh] max-w-full rounded-2xl object-contain shadow-2xl border border-white/15" />
-    <div id="lightboxControls" class="flex items-center gap-4 mt-4">
-      <button type="button" onclick="stepLightbox(-1)" class="bg-white/10 hover:bg-white/20 text-white font-extrabold px-4 py-2 rounded-xl text-xs">
-        ← Prev Photo
+    <div class="max-w-2xl w-full flex items-center justify-between mb-3">
+      <p id="lightboxTitle" class="text-sm font-extrabold text-white truncate"></p>
+      <button
+        type="button"
+        onclick="closeLightbox()"
+        class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-1.5 rounded-full"
+      >
+        ✕ Close
       </button>
-      <span id="lightboxCounter" class="text-xs font-mono text-slate-300">1 / 1</span>
-      <button type="button" onclick="stepLightbox(1)" class="bg-white/10 hover:bg-white/20 text-white font-extrabold px-4 py-2 rounded-xl text-xs">
-        Next Photo →
+    </div>
+    <div class="relative max-w-2xl w-full flex items-center justify-center">
+      <img id="lightboxImg" src="" class="max-h-[78vh] w-auto rounded-2xl object-contain border border-white/15 shadow-2xl" />
+      <button
+        id="lightboxPrev"
+        type="button"
+        onclick="stepLightbox(-1)"
+        class="absolute left-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center"
+      >
+        ‹
+      </button>
+      <button
+        id="lightboxNext"
+        type="button"
+        onclick="stepLightbox(1)"
+        class="absolute right-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center"
+      >
+        ›
       </button>
     </div>
   </div>
@@ -526,9 +533,8 @@
     const sellerWhatsApp = "{{ store.whatsapp_number }}";
     const storeName = {{ store.store_name|tojson }};
     let cart = [];
-    const productSlideIndex = {};
     let lightboxImages = [];
-    let lightboxIndex = 0;
+    let lightboxIdx = 0;
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -536,53 +542,52 @@
       });
     }
 
-    // Multi-Image Product Gallery Functions
-    function selectProductImage(prodId, imgs, idx) {
-      productSlideIndex[prodId] = idx;
-      const mainImg = document.getElementById(`prod-img-${prodId}`);
-      const countBadge = document.getElementById(`prod-count-${prodId}`);
-      if (mainImg) {
-        mainImg.src = imgs[idx];
-        mainImg.onclick = () => openLightbox(imgs, idx);
-      }
-      if (countBadge) {
-        countBadge.textContent = `${idx + 1} / ${imgs.length} 📸`;
-      }
-      imgs.forEach((_, i) => {
-        const thumb = document.getElementById(`thumb-${prodId}-${i}`);
-        if (thumb) {
-          thumb.style.opacity = (i === idx) ? "1" : "0.6";
-        }
-      });
+    // Storefront Multi-Photo Slider Controls
+    function stepStoreSlide(imgId, badgeId, delta) {
+      const imgEl = document.getElementById(imgId);
+      const badgeEl = document.getElementById(badgeId);
+      if (!imgEl) return;
+      const images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      if (images.length <= 1) return;
+      let currentIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
+      currentIdx = (currentIdx + delta + images.length) % images.length;
+      imgEl.src = images[currentIdx];
+      imgEl.setAttribute("data-idx", currentIdx);
+      if (badgeEl) badgeEl.textContent = `📸 ${currentIdx + 1}/${images.length}`;
     }
 
-    function cycleProductImage(prodId, imgs, step) {
-      const current = productSlideIndex[prodId] || 0;
-      const next = (current + step + imgs.length) % imgs.length;
-      selectProductImage(prodId, imgs, next);
+    function jumpStoreSlide(imgId, badgeId, targetIdx) {
+      const imgEl = document.getElementById(imgId);
+      const badgeEl = document.getElementById(badgeId);
+      if (!imgEl) return;
+      const images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      if (targetIdx < 0 || targetIdx >= images.length) return;
+      imgEl.src = images[targetIdx];
+      imgEl.setAttribute("data-idx", targetIdx);
+      if (badgeEl) badgeEl.textContent = `📸 ${targetIdx + 1}/${images.length}`;
     }
 
-    function openLightbox(imgs, startIndex) {
-      lightboxImages = imgs;
-      lightboxIndex = startIndex || 0;
-      updateLightboxView();
+    // Full-Screen Lightbox Viewer
+    function openLightbox(imgId, title) {
+      const imgEl = document.getElementById(imgId);
+      if (!imgEl) return;
+      lightboxImages = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      lightboxIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
+      document.getElementById("lightboxTitle").textContent = title;
+      document.getElementById("lightboxImg").src = lightboxImages[lightboxIdx];
+      document.getElementById("lightboxPrev").style.display = lightboxImages.length > 1 ? "flex" : "none";
+      document.getElementById("lightboxNext").style.display = lightboxImages.length > 1 ? "flex" : "none";
       document.getElementById("lightboxModal").classList.remove("hidden");
+    }
+
+    function stepLightbox(delta) {
+      if (lightboxImages.length <= 1) return;
+      lightboxIdx = (lightboxIdx + delta + lightboxImages.length) % lightboxImages.length;
+      document.getElementById("lightboxImg").src = lightboxImages[lightboxIdx];
     }
 
     function closeLightbox() {
       document.getElementById("lightboxModal").classList.add("hidden");
-    }
-
-    function stepLightbox(step) {
-      if (!lightboxImages.length) return;
-      lightboxIndex = (lightboxIndex + step + lightboxImages.length) % lightboxImages.length;
-      updateLightboxView();
-    }
-
-    function updateLightboxView() {
-      document.getElementById("lightboxImg").src = lightboxImages[lightboxIndex];
-      document.getElementById("lightboxCounter").textContent = `${lightboxIndex + 1} / ${lightboxImages.length}`;
-      document.getElementById("lightboxControls").style.display = lightboxImages.length > 1 ? "flex" : "none";
     }
 
     let deferredPrompt;
