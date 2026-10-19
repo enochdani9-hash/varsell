@@ -209,7 +209,7 @@
         🎉 Congratulations! Your Global Varsell Store is Live!
       </h2>
       <p class="text-xs sm:text-sm {{ 'text-slate-700' if is_light else 'text-slate-200' }} mt-1">
-        Save your <strong>Secret Key</strong> below so you can log in anytime. You can upload multiple photos per product, customize your theme, or rename your store link whenever you want!
+        Save your <strong>Secret Key</strong> below so you can log in anytime. You can upload multiple photos per product, add strike-through discount prices, or customize your theme whenever you want!
       </p>
     </div>
     {% endif %}
@@ -248,7 +248,6 @@
       </div>
 
       <form action="/update-theme" method="POST" enctype="multipart/form-data" class="space-y-6">
-        <!-- 6 Visual Theme Cards -->
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
             1. Click a Theme Below to Transform Your Store & Dashboard:
@@ -312,7 +311,6 @@
           </div>
         </div>
 
-        <!-- Profile Picture + Cover Banner Upload -->
         <div class="grid sm:grid-cols-2 gap-4 pt-2 border-t border-white/10">
           <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
             <label class="block text-xs font-bold uppercase text-emerald-300 mb-2">
@@ -645,10 +643,10 @@
     <!-- Main Workspace: Add Product Form + Live Inventory -->
     <div class="grid lg:grid-cols-12 gap-8 items-start">
 
-      <!-- Left Column: Post New Product (Supports Multiple Photos) -->
+      <!-- Left Column: Post New Product (With Multi-Photo + Discount Slash Pricing + Urgency Badges) -->
       <div class="lg:col-span-5 {{ card_bg }} border rounded-3xl p-6 shadow-2xl">
         <div class="mb-5">
-          <span class="text-[11px] font-bold uppercase tracking-widest {{ accent_text }}">Multi-Photo Uploader</span>
+          <span class="text-[11px] font-bold uppercase tracking-widest {{ accent_text }}">Multi-Photo & Promo Uploader</span>
           <h2 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">Add a New Product</h2>
         </div>
 
@@ -666,14 +664,15 @@
             />
           </div>
 
-          <div class="grid grid-cols-3 gap-3">
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+          <!-- Selling Price + Original / Compare Price (For Strike-Through Discount) -->
+          <div class="grid grid-cols-12 gap-2.5">
+            <div class="col-span-4">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                 Currency
               </label>
               <select
                 name="currency"
-                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none"
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-2.5 py-3 text-xs sm:text-sm text-white focus:outline-none"
               >
                 {% set def_curr = store.default_currency or 'GHS' %}
                 {% for c in [('GHS', 'GHS (₵)'), ('USD', 'USD ($)'), ('NGN', 'NGN (₦)'), ('GBP', 'GBP (£)'), ('EUR', 'EUR (€)'), ('KES', 'KES (KSh)'), ('ZAR', 'ZAR (R)'), ('CAD', 'CAD ($)'), ('XOF', 'XOF (CFA)')] %}
@@ -681,19 +680,62 @@
                 {% endfor %}
               </select>
             </div>
-            <div class="col-span-2">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Price *
+
+            <div class="col-span-4">
+              <label class="block text-[11px] font-bold uppercase tracking-wider {{ accent_text }} mb-1">
+                Selling Price *
               </label>
               <input
                 type="number"
                 step="0.01"
+                id="newSellPrice"
                 name="price"
+                oninput="previewDiscountBadge()"
                 placeholder="e.g. 150"
                 required
-                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
+                class="w-full bg-slate-950 border border-white/15 rounded-2xl px-3 py-3 text-sm text-white font-bold focus:outline-none"
               />
             </div>
+
+            <div class="col-span-4">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-rose-400 mb-1">
+                Old Price (Slash)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                id="newComparePrice"
+                name="compare_price"
+                oninput="previewDiscountBadge()"
+                placeholder="e.g. 200"
+                class="w-full bg-slate-950 border border-rose-500/30 rounded-2xl px-3 py-3 text-sm text-slate-300 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <!-- Live Discount Calculation Preview Pill -->
+          <div id="liveDiscountPreview" class="hidden bg-rose-500/15 border border-rose-500/35 rounded-xl px-3.5 py-2 flex items-center justify-between text-xs">
+            <span class="font-extrabold text-rose-300" id="liveDiscountText">🔥 SAVE 25% OFF Badge Active!</span>
+            <span class="text-[11px] text-slate-300">Auto-calculated</span>
+          </div>
+
+          <!-- Urgency / Promo Badge Selector -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1.5">
+              🔥 Promo / Urgency Badge (Optional)
+            </label>
+            <select
+              name="badge_text"
+              class="w-full bg-slate-950 border border-amber-400/25 rounded-2xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none"
+            >
+              <option value="">No Extra Badge (Standard)</option>
+              <option value="🔥 Hot Deal">🔥 Hot Deal</option>
+              <option value="⚡ Limited Stock">⚡ Limited Stock</option>
+              <option value="🚚 Free Delivery">🚚 Free Delivery</option>
+              <option value="✨ New Arrival">✨ New Arrival</option>
+              <option value="💎 Best Seller">💎 Best Seller</option>
+              <option value="🎁 Promo Offer">🎁 Promo Offer</option>
+            </select>
           </div>
 
           <!-- Multi-Photo Dropzone with Live Thumbnail Grid Preview -->
@@ -754,7 +796,7 @@
         </form>
       </div>
 
-      <!-- Right Column: Live Products Grid (With Multi-Photo Slider & Full Product Editor) -->
+      <!-- Right Column: Live Products Grid (With Multi-Photo Slider, Discount Badges & Full Editor) -->
       <div class="lg:col-span-7 space-y-4">
         <div class="flex items-center justify-between">
           <div>
@@ -768,7 +810,7 @@
         {% if products %}
           <div class="grid sm:grid-cols-2 gap-5">
             {% for p in products %}
-            {% set img_ list = p.images_list if p.images_list is defined else [p.image_data] %}
+            {% set img_list = p.images_list if p.images_list is defined else [p.image_data] %}
             {% set img_count = img_list|length %}
             <div class="{{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group">
               <div>
@@ -784,10 +826,24 @@
                     class="w-full h-full object-cover cursor-zoom-in transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
                   />
 
-                  <!-- Stock Status Pill -->
-                  <span class="absolute top-3 left-3 text-[11px] font-extrabold px-2.5 py-1 rounded-full shadow {% if p.in_stock == 1 %}{{ accent_btn }}{% else %}bg-red-500 text-white{% endif %}">
-                    {% if p.in_stock == 1 %}● In Stock{% else %}Sold Out{% endif %}
-                  </span>
+                  <!-- Top-Left Badges: Stock + Discount % + Custom Urgency Badge -->
+                  <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+                    <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow {% if p.in_stock == 1 %}{{ accent_btn }}{% else %}bg-red-500 text-white{% endif %}">
+                      {% if p.in_stock == 1 %}● In Stock{% else %}Sold Out{% endif %}
+                    </span>
+
+                    {% if p.discount_percent and p.discount_percent > 0 %}
+                    <span class="bg-rose-600 text-white text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow-lg">
+                      🔥 SAVE {{ p.discount_percent }}%
+                    </span>
+                    {% endif %}
+
+                    {% if p.badge_text %}
+                    <span class="bg-slate-950/90 backdrop-blur border border-amber-400/50 text-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                      {{ p.badge_text }}
+                    </span>
+                    {% endif %}
+                  </div>
 
                   <!-- Photo Counter Badge -->
                   <span
@@ -798,7 +854,6 @@
                   </span>
 
                   {% if img_count > 1 %}
-                  <!-- Prev / Next Slider Arrows -->
                   <button
                     type="button"
                     onclick="stepSlide('dashSlideImg-{{ p.id }}', 'dashSlideBadge-{{ p.id }}', -1)"
@@ -816,7 +871,7 @@
                   {% endif %}
                 </div>
 
-                <!-- Mini Thumbnail Strip (Appears when a product has multiple images) -->
+                <!-- Mini Thumbnail Strip -->
                 {% if img_count > 1 %}
                 <div class="flex items-center gap-1.5 px-4 pt-3 overflow-x-auto">
                   {% for img_url in img_list %}
@@ -829,16 +884,31 @@
                 </div>
                 {% endif %}
 
-                <!-- Product Title, Price & Formatted Description -->
+                <!-- Product Title, Strike-Through Price & Formatted Description -->
                 <div class="p-5">
                   <div class="flex items-start justify-between gap-2">
                     <h3 class="font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} text-base">
                       {{ p.product_name }}
                     </h3>
-                    <span class="shrink-0 border {{ accent_badge }} font-extrabold text-xs px-2.5 py-1 rounded-xl">
-                      {{ p.currency }} {{ "%.2f"|format(p.price) }}
-                    </span>
+
+                    <div class="text-right shrink-0">
+                      {% if p.compare_price and p.compare_price > p.price %}
+                        <span class="block text-[11px] font-mono text-slate-500 line-through">
+                          {{ p.currency }} {{ "%.2f"|format(p.compare_price) }}
+                        </span>
+                      {% endif %}
+                      <span class="inline-block border {{ accent_badge }} font-extrabold text-xs px-2.5 py-1 rounded-xl">
+                        {{ p.currency }} {{ "%.2f"|format(p.price) }}
+                      </span>
+                    </div>
                   </div>
+
+                  {% if p.savings_amount and p.savings_amount > 0 %}
+                    <p class="text-[11px] font-bold text-rose-400 mt-1">
+                      🔥 Customers save {{ p.currency }} {{ "%.2f"|format(p.savings_amount) }} ({{ p.discount_percent }}% OFF)
+                    </p>
+                  {% endif %}
+
                   {% if p.description %}
                     <div class="text-xs text-slate-400 mt-1.5 line-clamp-3 leading-relaxed">
                       {{ p.description|format_desc }}
@@ -847,7 +917,7 @@
                 </div>
               </div>
 
-              <!-- Action Buttons: Edit Product / Update Photos + Stock Toggle + Delete -->
+              <!-- Action Buttons: Edit Product / Discount / Photos + Stock Toggle + Delete -->
               <div class="p-5 pt-0 space-y-2">
                 <button
                   type="button"
@@ -855,7 +925,7 @@
                   class="w-full border {{ accent_badge }} text-xs font-extrabold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
                 >
                   <span>✏️</span>
-                  <span>Edit Product / Update Photos ({{ img_count }})</span>
+                  <span>Edit Price, Discount & Photos ({{ img_count }})</span>
                 </button>
 
                 <div class="grid grid-cols-2 gap-2">
@@ -882,7 +952,7 @@
                   </form>
                 </div>
 
-                <!-- Collapsible Product & Multi-Photo Editor Form -->
+                <!-- Collapsible Product, Discount & Multi-Photo Editor Form -->
                 <form
                   id="editProductForm-{{ p.id }}"
                   action="/edit-product/{{ p.id }}"
@@ -892,7 +962,7 @@
                 >
                   <div class="flex items-center justify-between">
                     <span class="text-[11px] font-extrabold uppercase tracking-wider {{ accent_text }}">
-                      Editing Product & Photos
+                      Editing Product, Discount & Photos
                     </span>
                     <button
                       type="button"
@@ -926,17 +996,41 @@
                         {% endfor %}
                       </select>
                     </div>
-                    <div class="col-span-2">
-                      <label class="block text-[11px] font-bold text-slate-300 mb-1">Price</label>
+                    <div>
+                      <label class="block text-[11px] font-bold {{ accent_text }} mb-1">Selling Price</label>
                       <input
                         type="number"
                         step="0.01"
                         name="price"
                         value="{{ p.price }}"
                         required
-                        class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
+                        class="w-full bg-slate-950 border border-white/15 rounded-xl px-2.5 py-2 text-xs text-white font-bold"
                       />
                     </div>
+                    <div>
+                      <label class="block text-[11px] font-bold text-rose-400 mb-1">Old Price (Slash)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="compare_price"
+                        value="{{ p.compare_price if p.compare_price and p.compare_price > 0 else '' }}"
+                        placeholder="e.g. 200"
+                        class="w-full bg-slate-950 border border-rose-500/30 rounded-xl px-2.5 py-2 text-xs text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[11px] font-bold text-amber-300 mb-1">Promo / Urgency Badge</label>
+                    <select
+                      name="badge_text"
+                      class="w-full bg-slate-950 border border-amber-400/30 rounded-xl px-3 py-2 text-xs text-white"
+                    >
+                      <option value="" {% if not p.badge_text %}selected{% endif %}>No Extra Badge</option>
+                      {% for b_opt in ['🔥 Hot Deal', '⚡ Limited Stock', '🚚 Free Delivery', '✨ New Arrival', '💎 Best Seller', '🎁 Promo Offer'] %}
+                        <option value="{{ b_opt }}" {% if p.badge_text == b_opt %}selected{% endif %}>{{ b_opt }}</option>
+                      {% endfor %}
+                    </select>
                   </div>
 
                   <div>
@@ -948,7 +1042,7 @@
                     >{{ p.description }}</textarea>
                   </div>
 
-                  <!-- Current Photos Checklist (Uncheck to remove any individual photo) -->
+                  <!-- Current Photos Checklist -->
                   <div class="bg-slate-950/90 border border-white/10 rounded-xl p-2.5">
                     <span class="block text-[10px] font-bold uppercase text-slate-400 mb-2">
                       Current Photos (Uncheck any photo to remove it):
@@ -1003,7 +1097,7 @@
                     type="submit"
                     class="w-full {{ accent_btn }} font-extrabold text-xs py-2.5 rounded-xl transition shadow-md"
                   >
-                    💾 Save Product & Photo Updates
+                    💾 Save Product, Discount & Photo Updates
                   </button>
                 </form>
 
@@ -1142,18 +1236,18 @@
 
       <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold text-rose-400 mb-1">🔥 How to Add Strike-Through Discount Prices</p>
+          <p>Enter your normal selling price (e.g. <strong>150</strong>) and type a higher number in the <strong>"Old Price (Slash)"</strong> box (e.g. <strong>200</strong>). Varsell automatically crosses out 200 and displays a <strong>🔥 SAVE 25%</strong> badge!</p>
+        </div>
+
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
           <p class="font-extrabold {{ accent_text }} mb-1">📸 How to Upload Multiple Photos or Update Product Images</p>
-          <p>When adding a product, select multiple photos from your phone or PC gallery at once. To add more photos or replace an existing product's image later, click <strong>"✏️ Edit Product / Update Photos"</strong> on that product card!</p>
+          <p>When adding a product, select multiple photos from your gallery at once. To add more photos or replace an existing product's image later, click <strong>"✏️ Edit Price, Discount & Photos"</strong> on that product card!</p>
         </div>
 
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
           <p class="font-extrabold text-amber-300 mb-1">🎨 How to Change Your Store Theme & Profile Picture</p>
-          <p>Click <strong>"🎨 Store Look & Avatar"</strong> at the top of your dashboard (or tap the camera icon on your profile picture) to switch between 6 themes and upload your logo or cover banner.</p>
-        </div>
-
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold text-emerald-400 mb-1">🔗 How to Rename Your Store Without Losing Customers</p>
-          <p>Click <strong>"✏️ Change Store Name"</strong> on your Store Link card. Even after you rename your shop, anyone clicking your old link will be redirected to your new link automatically!</p>
+          <p>Click <strong>"🎨 Store Look & Avatar"</strong> at the top of your dashboard to switch between 6 themes and upload your logo or cover banner.</p>
         </div>
       </div>
 
@@ -1197,6 +1291,22 @@
     function toggleProductEditor(productId) {
       const form = document.getElementById(`editProductForm-${productId}`);
       if (form) form.classList.toggle("hidden");
+    }
+
+    // Live Discount Percentage Calculator in Upload Form
+    function previewDiscountBadge() {
+      const sell = parseFloat(document.getElementById("newSellPrice").value || "0");
+      const compare = parseFloat(document.getElementById("newComparePrice").value || "0");
+      const box = document.getElementById("liveDiscountPreview");
+      const text = document.getElementById("liveDiscountText");
+
+      if (compare > sell && sell > 0) {
+        const pct = Math.max(1, Math.min(99, Math.round(((compare - sell) / compare) * 100)));
+        text.textContent = `🔥 SAVE ${pct}% OFF Badge Active! (Customers save ${(compare - sell).toFixed(2)})`;
+        box.classList.remove("hidden");
+      } else {
+        box.classList.add("hidden");
+      }
     }
 
     // Multi-Photo Slider Controls
