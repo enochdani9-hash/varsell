@@ -67,7 +67,10 @@
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <title>{{ store.store_name }} — Official Store on Varsell</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+    rel="stylesheet"
+  />
   <style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
@@ -192,9 +195,10 @@
     {% if products %}
       <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {% for p in products %}
-        {% set img_count = p.images_list|length %}
+        {% set img_list = p.images_list if p.images_list is defined else [p.image_data] %}
+        {% set img_count = img_list|length %}
         <div
-          data-name="{{ p.product_name|lower }} {{ p.description|lower }} {{ p.price }}"
+          data-name="{{ p.product_name|lower }} {{ p.description|lower }} {{ p.price }} {{ p.badge_text|lower }}"
           class="product-card {{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group transition"
         >
           <div>
@@ -202,25 +206,40 @@
             <div class="relative h-60 bg-slate-950 overflow-hidden">
               <img
                 id="storeSlideImg-{{ p.id }}"
-                src="{{ p.images_list[0] }}"
+                src="{{ img_list[0] }}"
                 alt="{{ p.product_name }}"
                 data-idx="0"
-                data-images='{{ p.images_list|tojson }}'
+                data-images='{{ img_list|tojson }}'
                 onclick="openLightbox('storeSlideImg-{{ p.id }}', {{ p.product_name|tojson }})"
                 class="w-full h-full object-cover cursor-zoom-in transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
               />
 
-              {% if p.in_stock == 0 %}
-                <span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-md">
-                  Sold Out
-                </span>
-              {% else %}
-                <span class="absolute top-3 left-3 {{ accent_bg }} text-[11px] font-extrabold px-2.5 py-1 rounded-full shadow">
-                  ● Available
-                </span>
-              {% endif %}
+              <!-- Top-Left Badges: Stock + Discount % + Custom Urgency Badge -->
+              <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+                {% if p.in_stock == 0 %}
+                  <span class="bg-red-500 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-md">
+                    Sold Out
+                  </span>
+                {% else %}
+                  <span class="{{ accent_bg }} text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                    ● Available
+                  </span>
+                {% endif %}
 
-              <!-- Photo Counter Badge -->
+                {% if p.discount_percent and p.discount_percent > 0 %}
+                  <span class="bg-rose-600 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-lg animate-pulse">
+                    🔥 SAVE {{ p.discount_percent }}%
+                  </span>
+                {% endif %}
+
+                {% if p.badge_text %}
+                  <span class="bg-slate-950/90 backdrop-blur border border-amber-400/50 text-amber-300 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                    {{ p.badge_text }}
+                  </span>
+                {% endif %}
+              </div>
+
+              <!-- Photo Counter Badge & Slider Controls -->
               {% if img_count > 1 %}
               <span
                 id="storeSlideBadge-{{ p.id }}"
@@ -232,14 +251,14 @@
               <button
                 type="button"
                 onclick="stepStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', -1)"
-                class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+                class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
               >
                 ‹
               </button>
               <button
                 type="button"
                 onclick="stepStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', 1)"
-                class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+                class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
               >
                 ›
               </button>
@@ -249,7 +268,7 @@
             <!-- Clickable Thumbnail Strip -->
             {% if img_count > 1 %}
             <div class="flex items-center gap-1.5 px-5 pt-3 overflow-x-auto">
-              {% for img_url in p.images_list %}
+              {% for img_url in img_list %}
               <img
                 src="{{ img_url }}"
                 onclick="jumpStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', {{ loop.index0 }})"
@@ -259,18 +278,33 @@
             </div>
             {% endif %}
 
+            <!-- Product Title, Strike-Through Discount Price & Description -->
             <div class="p-5">
               <div class="flex items-start justify-between gap-2">
                 <h2 class="text-lg font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} leading-snug">
                   {{ p.product_name }}
                 </h2>
-                <span class="shrink-0 border {{ accent_badge }} font-extrabold text-sm px-3 py-1 rounded-xl">
-                  {{ p.currency }} {{ "%.2f"|format(p.price) }}
-                </span>
+
+                <div class="text-right shrink-0">
+                  {% if p.compare_price and p.compare_price > p.price %}
+                    <span class="block text-xs font-mono text-slate-500 line-through">
+                      {{ p.currency }} {{ "%.2f"|format(p.compare_price) }}
+                    </span>
+                  {% endif %}
+                  <span class="inline-block border {{ accent_badge }} font-extrabold text-sm px-3 py-1 rounded-xl">
+                    {{ p.currency }} {{ "%.2f"|format(p.price) }}
+                  </span>
+                </div>
               </div>
 
+              {% if p.savings_amount and p.savings_amount > 0 %}
+                <div class="mt-2 inline-flex items-center gap-1.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 text-[11px] font-extrabold px-2.5 py-0.5 rounded-lg">
+                  <span>🔥 You save {{ p.currency }} {{ "%.2f"|format(p.savings_amount) }} ({{ p.discount_percent }}% OFF)</span>
+                </div>
+              {% endif %}
+
               {% if p.description %}
-                <div class="text-xs {{ 'text-slate-600' if is_light else 'text-slate-300' }} mt-2 leading-relaxed">
+                <div class="text-xs {{ 'text-slate-600' if is_light else 'text-slate-300' }} mt-2.5 leading-relaxed">
                   {{ p.description|format_desc }}
                 </div>
               {% endif %}
@@ -542,7 +576,6 @@
       });
     }
 
-    // Storefront Multi-Photo Slider Controls
     function stepStoreSlide(imgId, badgeId, delta) {
       const imgEl = document.getElementById(imgId);
       const badgeEl = document.getElementById(badgeId);
@@ -567,7 +600,6 @@
       if (badgeEl) badgeEl.textContent = `📸 ${targetIdx + 1}/${images.length}`;
     }
 
-    // Full-Screen Lightbox Viewer
     function openLightbox(imgId, title) {
       const imgEl = document.getElementById(imgId);
       if (!imgEl) return;
