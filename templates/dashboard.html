@@ -3,59 +3,53 @@
 {% set is_light = (theme == 'light') %}
 
 {% if theme == 'gold' %}
-  {% set page_bg = '#090703' %} 
-  {% set card_bg = 'bg-[#120e06]/90 border-amber-500/25 backdrop-blur-xl' %}
+  {% set page_bg = '#090703' %}
+  {% set card_bg = 'bg-[#120e06]/90 border-amber-500/25' %}
   {% set accent_btn = 'bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-amber-500/20' %}
   {% set accent_text = 'text-amber-400' %}
   {% set accent_badge = 'bg-amber-400/15 text-amber-300 border-amber-400/35' %}
   {% set accent_border = 'border-amber-400' %}
-  {% set glow_color = 'bg-amber-500/20' %}
 {% elif theme == 'violet' %}
   {% set page_bg = '#070412' %}
-  {% set card_bg = 'bg-[#110a26]/90 border-purple-500/25 backdrop-blur-xl' %}
+  {% set card_bg = 'bg-[#110a26]/90 border-purple-500/25' %}
   {% set accent_btn = 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white shadow-purple-500/25' %}
   {% set accent_text = 'text-purple-400' %}
   {% set accent_badge = 'bg-purple-500/15 text-purple-300 border-purple-400/35' %}
   {% set accent_border = 'border-purple-400' %}
-  {% set glow_color = 'bg-purple-600/25' %}
 {% elif theme == 'rose' %}
   {% set page_bg = '#0c0408' %}
-  {% set card_bg = 'bg-[#1a0812]/90 border-rose-500/25 backdrop-blur-xl' %}
+  {% set card_bg = 'bg-[#1a0812]/90 border-rose-500/25' %}
   {% set accent_btn = 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white shadow-rose-500/25' %}
   {% set accent_text = 'text-rose-400' %}
   {% set accent_badge = 'bg-rose-500/15 text-rose-300 border-rose-400/35' %}
   {% set accent_border = 'border-rose-400' %}
-  {% set glow_color = 'bg-rose-600/25' %}
 {% elif theme == 'ocean' %}
   {% set page_bg = '#030914' %}
-  {% set card_bg = 'bg-[#07152b]/90 border-cyan-500/25 backdrop-blur-xl' %}
+  {% set card_bg = 'bg-[#07152b]/90 border-cyan-500/25' %}
   {% set accent_btn = 'bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 shadow-cyan-500/25' %}
   {% set accent_text = 'text-cyan-400' %}
   {% set accent_badge = 'bg-cyan-400/15 text-cyan-300 border-cyan-400/35' %}
   {% set accent_border = 'border-cyan-400' %}
-  {% set glow_color = 'bg-cyan-500/25' %}
 {% elif theme == 'light' %}
   {% set page_bg = '#f1f5f9' %}
-  {% set card_bg = 'bg-white/95 border-slate-300 text-slate-900 backdrop-blur-xl' %}
+  {% set card_bg = 'bg-white/95 border-slate-300 text-slate-900' %}
   {% set accent_btn = 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/15' %}
   {% set accent_text = 'text-emerald-600' %}
   {% set accent_badge = 'bg-slate-900/10 text-slate-900 border-slate-300' %}
   {% set accent_border = 'border-slate-900' %}
-  {% set glow_color = 'bg-emerald-400/10' %}
 {% else %}
   {% set page_bg = '#050811' %}
-  {% set card_bg = 'bg-slate-900/90 border-white/10 backdrop-blur-xl' %}
+  {% set card_bg = 'bg-slate-900/90 border-white/10' %}
   {% set accent_btn = 'bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 shadow-emerald-500/20' %}
   {% set accent_text = 'text-emerald-400' %}
   {% set accent_badge = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' %}
   {% set accent_border = 'border-emerald-400' %}
-  {% set glow_color = 'bg-emerald-500/20' %}
 {% endif %}
 
 <html lang="en" class="{% if not is_light %}dark{% endif %}">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <meta name="theme-color" content="#10b981" />
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
@@ -66,14 +60,17 @@
     rel="stylesheet"
   />
   <style>
-    body {
+    html, body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: {{ page_bg }};
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+      -webkit-overflow-scrolling: touch;
       {% if store.bg_image_data %}
-      background-image: linear-gradient(to bottom, rgba(5, 8, 17, 0.72), rgba(5, 8, 17, 0.88)), url('{{ store.bg_image_data }}');
+      background-image: linear-gradient(to bottom, rgba(5, 8, 17, 0.50), rgba(5, 8, 17, 0.78)), url('{{ store.bg_image_data }}');
       background-size: cover;
       background-position: center;
-      background-attachment: fixed;
       {% endif %}
     }
     .font-mono {
@@ -81,11 +78,24 @@
     }
   </style>
 
-  <!-- TOP-LEVEL INTERACTIVE FUNCTIONS (Loads immediately so buttons always click) -->
+  <!-- TOP-LEVEL INTERACTIVE FUNCTIONS + KEEP-ALIVE HEARTBEAT -->
   <script>
     var dashLightboxImages = [];
     var dashLightboxIdx = 0;
 
+    // 1. Ping server every 90 seconds so Render NEVER falls asleep while seller is using the dashboard
+    setInterval(function() {
+      fetch('/ping').catch(function() {});
+    }, 90000);
+
+    // 2. Register Offline Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+
+    // 3. Modal & Drawer Controllers
     function openModal(id) {
       var el = document.getElementById(id);
       if (el) el.classList.remove("hidden");
@@ -121,6 +131,7 @@
       if (form) form.classList.toggle("hidden");
     }
 
+    // 4. Toast Notification & Clipboard
     function showToast(message, textToCopy) {
       if (textToCopy && navigator.clipboard) {
         navigator.clipboard.writeText(textToCopy);
@@ -134,6 +145,7 @@
       }, 2800);
     }
 
+    // 5. Live Store Slug Preview
     function syncSlugPreview(val) {
       var clean = (val || "").toLowerCase().replace(/\.com|\.gh|\.net|\.store/g, "");
       var slug = clean.replace(/[^a-z0-9\s-]/g, "").trim().replace(/[\s-]+/g, "-") || "store";
@@ -143,6 +155,7 @@
       if (previewEl) previewEl.textContent = slug;
     }
 
+    // 6. Live Discount Percentage Calculator
     function previewDiscountBadge() {
       var sellEl = document.getElementById("newSellPrice");
       var compEl = document.getElementById("newComparePrice");
@@ -161,6 +174,7 @@
       }
     }
 
+    // 7. Multi-Photo Slider Controls
     function stepSlide(imgId, badgeId, delta) {
       var imgEl = document.getElementById(imgId);
       var badgeEl = document.getElementById(badgeId);
@@ -185,6 +199,7 @@
       if (badgeEl) badgeEl.textContent = "📸 " + (targetIdx + 1) + "/" + images.length;
     }
 
+    // 8. Full-Screen Image Zoom Lightbox
     function openDashLightbox(imgId, title) {
       var imgEl = document.getElementById(imgId);
       if (!imgEl) return;
@@ -203,6 +218,7 @@
       document.getElementById("dashLightboxImg").src = dashLightboxImages[dashLightboxIdx];
     }
 
+    // 9. Image Upload Previews
     function previewMultipleImages(event) {
       var files = Array.from(event.target.files || []);
       var grid = document.getElementById("multiPreviewGrid");
@@ -217,13 +233,13 @@
         reader.onload = function(e) {
           var img = document.createElement("img");
           img.src = e.target.result;
-          img.className = "w-full h-24 object-cover rounded-xl border border-white/20 shadow";
+          img.className = "w-full h-20 object-cover rounded-xl border border-white/20 shadow";
           grid.appendChild(img);
         };
         reader.readAsDataURL(file);
       });
 
-      prompt.innerHTML = '<p class="text-xs font-extrabold text-emerald-400">✅ ' + files.length + ' Photo(s) Selected & Ready to Publish</p>';
+      prompt.innerHTML = '<p class="text-xs font-extrabold text-emerald-400">✅ ' + files.length + ' Photo(s) Selected & Ready</p>';
     }
 
     function previewStudioAvatar(event) {
@@ -263,40 +279,58 @@
         preview.classList.remove("hidden");
       }
     }
+
+    // 10. Offline Status Banner Detection
+    function updateOnlineStatus() {
+      var banner = document.getElementById("offlineBanner");
+      if (!banner) return;
+      if (!navigator.onLine) {
+        banner.classList.remove("hidden");
+      } else {
+        banner.classList.add("hidden");
+      }
+    }
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+    window.addEventListener("DOMContentLoaded", updateOnlineStatus);
   </script>
 </head>
-<body class="{{ 'text-slate-900' if is_light else 'text-slate-100' }} min-h-screen pb-20 relative overflow-x-hidden">
+<body class="{{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-slate-100' }} min-h-screen pb-20 relative">
 
-  <!-- Dynamic Theme Ambient Glows -->
-  <div class="pointer-events-none fixed top-[-140px] left-[-140px] w-[480px] h-[480px] rounded-full {{ glow_color }} blur-[130px] z-0"></div>
-  <div class="pointer-events-none fixed bottom-[-140px] right-[-140px] w-[480px] h-[480px] rounded-full {{ glow_color }} blur-[140px] z-0"></div>
+  <!-- Offline Status Banner -->
+  <div
+    id="offlineBanner"
+    class="hidden bg-amber-400 text-slate-950 text-center py-2.5 px-4 text-xs font-extrabold sticky top-0 z-50 shadow-md"
+  >
+    ⚡ Offline Mode Active — Viewing cached seller command center
+  </div>
 
   <!-- Toast Notification Popup -->
   <div
     id="toast"
-    class="fixed top-5 right-5 z-50 hidden {{ accent_btn }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"
+    class="fixed top-4 right-4 left-4 sm:left-auto z-50 hidden {{ accent_btn }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all text-center"
   ></div>
 
-  <!-- Top Sticky Navigation Bar -->
-  <header class="border-b {{ 'border-slate-300 bg-white/90' if is_light else 'border-white/10 bg-slate-950/85' }} backdrop-blur-xl sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+  <!-- SLIM STICKY TOP BAR (Fits cleanly on mobile screens without covering content) -->
+  <header class="border-b {{ 'border-slate-300 bg-white/95' if is_light and not store.bg_image_data else 'border-white/10 bg-slate-950/90' }} backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
       
       <!-- Left: 1-Click Profile Picture Uploader + Store Name -->
-      <div class="flex items-center gap-3.5">
-        <form id="quickAvatarForm" action="/update-avatar" method="POST" enctype="multipart/form-data">
-          <label class="relative block cursor-pointer group" title="Click to change your Profile Picture">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <form id="quickAvatarForm" action="/update-avatar" method="POST" enctype="multipart/form-data" class="shrink-0">
+          <label class="relative block cursor-pointer" title="Tap to change Profile Picture">
             {% if store.logo_data %}
               <img
                 src="{{ store.logo_data }}"
                 alt="Profile"
-                class="w-12 h-12 rounded-2xl object-cover border-2 {{ accent_border }} shadow-lg group-hover:opacity-90 transition"
+                class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border-2 {{ accent_border }} shadow-md"
               />
             {% else %}
-              <div class="w-12 h-12 rounded-2xl {{ accent_btn }} flex items-center justify-center font-black text-xl shadow-lg">
+              <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl {{ accent_btn }} flex items-center justify-center font-black text-lg shadow-md">
                 {{ store.store_name[:1]|upper }}
               </div>
             {% endif %}
-            <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-950 text-white border border-white/20 flex items-center justify-center text-[10px] shadow">
+            <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-slate-950 text-white border border-white/20 flex items-center justify-center text-[9px]">
               📸
             </span>
             <input
@@ -309,62 +343,37 @@
           </label>
         </form>
 
-        <div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <h1 class="font-extrabold {{ 'text-slate-950' if is_light else 'text-white' }} text-base sm:text-lg leading-none">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold {{ 'text-slate-950' if is_light and not store.bg_image_data else 'text-white' }} text-sm sm:text-lg truncate">
               {{ store.store_name }}
             </h1>
-            <span class="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider border {{ accent_badge }} px-2 py-0.5 rounded-full">
+            <span class="hidden md:inline-block text-[10px] font-bold uppercase tracking-wider border {{ accent_badge }} px-2 py-0.5 rounded-full shrink-0">
               {{ store.country or 'Global' }} • {{ theme|upper }}
             </span>
           </div>
           <button
             type="button"
             onclick="openModal('themeStudioModal')"
-            class="text-[11px] {{ accent_text }} font-bold hover:underline mt-1 block text-left cursor-pointer"
+            class="text-[11px] {{ accent_text }} font-bold hover:underline truncate block text-left cursor-pointer"
           >
-            📸 Change Profile Pic, Background or Store Look →
+            🎨 Change Look, Avatar or Background →
           </button>
         </div>
       </div>
 
-      <!-- Right Action Buttons -->
-      <div class="flex items-center gap-2 flex-wrap justify-end">
-        <button
-          type="button"
-          onclick="openModal('themeStudioModal')"
-          class="border {{ accent_badge }} text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition cursor-pointer"
-        >
-          🎨 Store Look, Background & Avatar
-        </button>
-
-        <button
-          type="button"
-          onclick="openModal('flyerModal')"
-          class="bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/40 text-amber-400 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition cursor-pointer"
-        >
-          📲 Status Flyer & QR
-        </button>
-
-        <button
-          type="button"
-          onclick="openModal('profileEditorModal')"
-          class="{{ 'bg-slate-200 text-slate-900' if is_light else 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15' }} text-xs font-bold px-3.5 py-2.5 rounded-xl transition cursor-pointer"
-        >
-          ⚙️ Global & Payment Setup
-        </button>
-
+      <!-- Right: Primary Store Actions -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <a
           href="/{{ store.store_slug }}"
           target="_blank"
-          class="{{ accent_btn }} text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-lg"
+          class="{{ accent_btn }} text-xs font-extrabold px-3 sm:px-4 py-2 rounded-xl transition shadow-md"
         >
           View Store ↗
         </a>
-
         <a
           href="/logout"
-          class="{{ 'bg-slate-200 text-slate-700' if is_light else 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300' }} text-xs font-semibold px-3 py-2.5 rounded-xl transition"
+          class="bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 text-xs font-semibold px-2.5 sm:px-3 py-2 rounded-xl transition"
         >
           Lock
         </a>
@@ -374,68 +383,118 @@
   </header>
 
   <!-- Main Dashboard Workspace -->
-  <main class="max-w-6xl mx-auto px-4 py-8 space-y-8 relative z-10">
+  <main class="max-w-6xl mx-auto px-3.5 sm:px-4 py-5 sm:py-8 space-y-6 relative z-10">
+
+    <!-- 4-Button Quick Action Toolbar (Scrolls naturally so it never blocks the screen on mobile) -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+      <button
+        type="button"
+        onclick="openModal('themeStudioModal')"
+        class="{{ card_bg }} border {{ accent_border }} rounded-2xl p-3 text-center hover:opacity-90 transition shadow-lg cursor-pointer"
+      >
+        <span class="block text-base sm:text-lg">🎨</span>
+        <span class="block text-[11px] sm:text-xs font-extrabold text-white mt-0.5 truncate">Look & Background</span>
+      </button>
+
+      <button
+        type="button"
+        onclick="openModal('flyerModal')"
+        class="{{ card_bg }} border border-amber-400/40 rounded-2xl p-3 text-center hover:opacity-90 transition shadow-lg cursor-pointer"
+      >
+        <span class="block text-base sm:text-lg">📲</span>
+        <span class="block text-[11px] sm:text-xs font-extrabold text-amber-300 mt-0.5 truncate">Status Flyer & QR</span>
+      </button>
+
+      <button
+        type="button"
+        onclick="openModal('profileEditorModal')"
+        class="{{ card_bg }} border border-white/15 rounded-2xl p-3 text-center hover:opacity-90 transition shadow-lg cursor-pointer"
+      >
+        <span class="block text-base sm:text-lg">⚙️</span>
+        <span class="block text-[11px] sm:text-xs font-extrabold text-slate-200 mt-0.5 truncate">Global & Payment</span>
+      </button>
+
+      <button
+        type="button"
+        onclick="openModal('dashHelpModal')"
+        class="{{ card_bg }} border border-white/15 rounded-2xl p-3 text-center hover:opacity-90 transition shadow-lg cursor-pointer"
+      >
+        <span class="block text-base sm:text-lg">❓</span>
+        <span class="block text-[11px] sm:text-xs font-extrabold text-emerald-300 mt-0.5 truncate">Seller Help Guide</span>
+      </button>
+    </div>
+
+    <!-- New Store Welcome Alert Banner -->
+    {% if new_store_alert %}
+    <div class="bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-transparent border-2 {{ accent_border }} rounded-3xl p-5 sm:p-6 shadow-xl">
+      <h2 class="text-lg sm:text-xl font-extrabold {{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-white' }}">
+        🎉 Congratulations! Your Global Varsell Store is Live!
+      </h2>
+      <p class="text-xs sm:text-sm {{ 'text-slate-700' if is_light and not store.bg_image_data else 'text-slate-200' }} mt-1">
+        Save your <strong>Secret Key</strong> below so you can log in anytime. Tap <strong>"🎨 Look & Background"</strong> above to customize your theme, profile picture, or background wallpaper!
+      </p>
+    </div>
+    {% endif %}
 
     <!-- Flash Alerts -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="p-4 rounded-2xl text-sm font-bold flex items-center gap-2.5 {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-300{% else %}border {{ accent_badge }}{% endif %}">
+          <div class="p-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2.5 {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-300{% else %}border {{ accent_badge }}{% endif %}">
             <span>{% if category == 'error' %}⚠️{% else %}✅{% endif %}</span>
-            <span>{{ message }}</span>
+            <span class="break-words">{{ message }}</span>
           </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
 
-    <!-- Top Credentials Grid: Secret Key + Clean Store Name & Web Link -->
-    <div class="grid md:grid-cols-2 gap-5">
+    <!-- Top Credentials Grid (100% Mobile-Fit with min-w-0 so nothing overflows sideways!) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
 
       <!-- Left Card: Secret Key -->
-      <div class="{{ card_bg }} border rounded-3xl p-6 flex flex-col justify-between shadow-xl">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">
-              Your Store Secret Key (Login Password)
-            </span>
-            <p class="text-2xl sm:text-3xl font-mono font-extrabold text-amber-400 mt-2 tracking-wider">
-              {{ store.access_key }}
-            </p>
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              onclick="toggleKeyEditor()"
-              class="bg-amber-400/10 hover:bg-amber-400/20 text-amber-400 border border-amber-400/30 text-xs font-bold px-3 py-2 rounded-xl transition"
-            >
-              ✏️ Customize Key
-            </button>
-            <button
-              type="button"
-              onclick="showToast('Secret Key copied!', '{{ store.access_key }}')"
-              class="{{ 'bg-slate-100 text-slate-800 border-slate-300' if is_light else 'bg-white/5 hover:bg-white/10 text-white border-white/10' }} text-xs font-bold px-3.5 py-2 rounded-xl border transition"
-            >
-              Copy
-            </button>
-          </div>
+      <div class="{{ card_bg }} border rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-xl min-w-0 w-full">
+        <div>
+          <span class="text-[10px] sm:text-[11px] uppercase tracking-widest text-slate-400 font-bold block">
+            Your Store Secret Key (Login Password)
+          </span>
+          <p class="text-2xl sm:text-3xl font-mono font-extrabold text-amber-400 mt-1.5 tracking-wider break-all">
+            {{ store.access_key }}
+          </p>
         </div>
 
-        <form id="keyEditorForm" action="/change-key" method="POST" class="hidden mt-4 pt-4 border-t border-white/10">
-          <label class="block text-xs font-bold text-slate-400 mb-2">
+        <div class="grid grid-cols-2 gap-2 mt-4">
+          <button
+            type="button"
+            onclick="toggleKeyEditor()"
+            class="bg-amber-400/15 hover:bg-amber-400/25 text-amber-300 border border-amber-400/30 text-xs font-extrabold py-2.5 px-3 rounded-xl transition cursor-pointer"
+          >
+            ✏️ Customize Key
+          </button>
+          <button
+            type="button"
+            onclick="showToast('Secret Key copied!', '{{ store.access_key }}')"
+            class="bg-white/10 hover:bg-white/15 text-white border border-white/15 text-xs font-extrabold py-2.5 px-3 rounded-xl transition cursor-pointer"
+          >
+            📋 Copy Key
+          </button>
+        </div>
+
+        <form id="keyEditorForm" action="/change-key" method="POST" class="hidden mt-4 pt-4 border-t border-white/10 space-y-2.5">
+          <label class="block text-xs font-bold text-slate-300">
             Type your new custom Secret Key (min 4 characters):
           </label>
-          <div class="flex gap-2">
+          <div class="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               name="new_key"
-              placeholder="e.g. CHRIS2026"
+              placeholder="e.g. JAGES2026"
               required
               minlength="4"
-              class="flex-1 bg-slate-950 border border-amber-400/40 rounded-xl px-3.5 py-2 text-sm text-white font-mono uppercase focus:outline-none"
+              class="w-full sm:flex-1 min-w-0 bg-slate-950 border border-amber-400/40 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono uppercase focus:outline-none"
             />
             <button
               type="submit"
-              class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl transition"
+              class="w-full sm:w-auto bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl transition shrink-0 cursor-pointer"
             >
               Save New Key
             </button>
@@ -444,71 +503,66 @@
       </div>
 
       <!-- Right Card: Clean Store Name & Web Link -->
-      <div class="{{ card_bg }} border rounded-3xl p-6 flex flex-col justify-between shadow-xl">
-        <div class="flex items-start justify-between gap-3">
-          <div class="overflow-hidden">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">
-                Your Store Name & Web Link
-              </span>
-              <span class="text-[10px] font-bold border {{ accent_badge }} px-2 py-0.5 rounded-full">
-                Global Link
-              </span>
-            </div>
-            <p class="text-sm sm:text-lg font-mono font-extrabold {{ accent_text }} truncate mt-2">
-              {{ request.host }}/{{ store.store_slug }}
-            </p>
+      <div class="{{ card_bg }} border rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-xl min-w-0 w-full">
+        <div class="min-w-0">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[10px] sm:text-[11px] uppercase tracking-widest text-slate-400 font-bold">
+              Your Store Name & Web Link
+            </span>
+            <span class="text-[10px] font-bold border {{ accent_badge }} px-2 py-0.5 rounded-full shrink-0">
+              Global Link
+            </span>
           </div>
-
-          <div class="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onclick="toggleNameEditor()"
-              class="border {{ accent_badge }} text-xs font-bold px-3 py-2.5 rounded-xl transition"
-            >
-              ✏️ Change Store Name
-            </button>
-            <button
-              type="button"
-              onclick="showToast('Store Link copied! Share it anywhere.', '{{ request.host_url }}{{ store.store_slug }}')"
-              class="{{ accent_btn }} text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-lg"
-            >
-              Copy Link
-            </button>
-          </div>
+          <p class="text-xs sm:text-base font-mono font-extrabold {{ accent_text }} break-all mt-1.5">
+            {{ request.host }}/{{ store.store_slug }}
+          </p>
+          <p class="text-[11px] text-slate-400 mt-1 truncate">
+            Store: <strong class="text-white">{{ store.store_name }}</strong> • Theme: <strong class="{{ accent_text }} uppercase">{{ theme }}</strong>
+            {% if store.bg_image_data %}• <span class="text-emerald-400 font-bold">🖼️ Custom BG</span>{% endif %}
+          </p>
         </div>
 
-        <p class="text-xs text-slate-400 mt-3">
-          💡 Store Name: <strong class="{{ 'text-slate-900' if is_light else 'text-white' }}">{{ store.store_name }}</strong> • Theme: <strong class="{{ accent_text }} uppercase">{{ theme }}</strong>
-          {% if store.bg_image_data %}• <span class="text-emerald-400 font-bold">🖼️ Custom Background Active</span>{% endif %}
-        </p>
+        <div class="grid grid-cols-2 gap-2 mt-4">
+          <button
+            type="button"
+            onclick="toggleNameEditor()"
+            class="border {{ accent_badge }} text-xs font-extrabold py-2.5 px-3 rounded-xl transition cursor-pointer"
+          >
+            ✏️ Change Name
+          </button>
+          <button
+            type="button"
+            onclick="showToast('Store Link copied! Share it anywhere.', '{{ request.host_url }}{{ store.store_slug }}')"
+            class="{{ accent_btn }} text-xs font-extrabold py-2.5 px-3 rounded-xl transition shadow-md cursor-pointer"
+          >
+            🔗 Copy Link
+          </button>
+        </div>
 
         <form id="nameEditorForm" action="/change-store-name" method="POST" class="hidden mt-4 pt-4 border-t border-white/10 space-y-3">
           <div>
-            <label class="block text-xs font-bold text-slate-400 mb-1">Enter Your New Store Name:</label>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Enter Your New Store Name:</label>
             <input
               type="text"
               id="newStoreNameInput"
               name="new_store_name"
               value="{{ store.store_name }}"
               oninput="syncSlugPreview(this.value)"
-              placeholder="e.g. Chris G Swiss Belts"
+              placeholder="e.g. Jags Boutique"
               required
-              class="w-full bg-slate-950 border border-white/20 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+              class="w-full min-w-0 bg-slate-950 border border-white/20 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
             />
           </div>
 
-          <div class="bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2 flex items-center justify-between">
-            <span class="text-[11px] text-slate-400">New Link Preview:</span>
-            <span class="text-xs font-mono font-bold {{ accent_text }}">
-              {{ request.host }}/<span id="newSlugText">{{ store.store_slug }}</span>
-            </span>
+          <div class="bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono break-all">
+            <span class="text-slate-400 block text-[10px]">New Link Preview:</span>
+            <span class="font-bold {{ accent_text }}">{{ request.host }}/<span id="newSlugText">{{ store.store_slug }}</span></span>
             <input type="hidden" id="newStoreSlugInput" name="new_store_slug" value="{{ store.store_slug }}" />
           </div>
 
           <button
             type="submit"
-            class="w-full {{ accent_btn }} font-extrabold text-xs py-2.5 rounded-xl transition"
+            class="w-full {{ accent_btn }} font-extrabold text-xs py-2.5 rounded-xl transition cursor-pointer"
           >
             Save New Store Name & Link →
           </button>
@@ -518,38 +572,38 @@
     </div>
 
     <!-- Main Workspace: Add Product Form + Live Inventory -->
-    <div class="grid lg:grid-cols-12 gap-8 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
 
-      <!-- Left Column: Post New Product (With Multi-Photo + Discount Slash Pricing + Urgency Badges) -->
-      <div class="lg:col-span-5 {{ card_bg }} border rounded-3xl p-6 shadow-2xl">
-        <div class="mb-5">
+      <!-- Left Column: Post New Product -->
+      <div class="lg:col-span-5 {{ card_bg }} border rounded-3xl p-5 sm:p-6 shadow-2xl min-w-0 w-full">
+        <div class="mb-4">
           <span class="text-[11px] font-bold uppercase tracking-widest {{ accent_text }}">Multi-Photo & Promo Uploader</span>
-          <h2 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">Add a New Product</h2>
+          <h2 class="text-xl font-extrabold text-white">Add a New Product</h2>
         </div>
 
         <form action="/add-product" method="POST" enctype="multipart/form-data" class="space-y-4">
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
               Product Title *
             </label>
             <input
               type="text"
               name="product_name"
-              placeholder="e.g. Designer Black Leather Belt"
+              placeholder="e.g. Designer Leather Belt"
               required
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
+              class="w-full min-w-0 bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
             />
           </div>
 
-          <!-- Selling Price + Original / Compare Price -->
-          <div class="grid grid-cols-12 gap-2.5">
-            <div class="col-span-4">
-              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+          <!-- Currency + Selling Price + Old Slash Price (Spacious 2-Row Mobile Layout so nothing gets squished) -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
                 Currency
               </label>
               <select
                 name="currency"
-                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-2.5 py-3 text-xs sm:text-sm text-white focus:outline-none"
+                class="w-full bg-slate-950 border border-white/15 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none"
               >
                 {% set def_curr = store.default_currency or 'GHS' %}
                 {% for c in [('GHS', 'GHS (₵)'), ('USD', 'USD ($)'), ('NGN', 'NGN (₦)'), ('GBP', 'GBP (£)'), ('EUR', 'EUR (€)'), ('KES', 'KES (KSh)'), ('ZAR', 'ZAR (R)'), ('CAD', 'CAD ($)'), ('XOF', 'XOF (CFA)')] %}
@@ -558,7 +612,7 @@
               </select>
             </div>
 
-            <div class="col-span-4">
+            <div>
               <label class="block text-[11px] font-bold uppercase tracking-wider {{ accent_text }} mb-1">
                 Selling Price *
               </label>
@@ -570,13 +624,15 @@
                 oninput="previewDiscountBadge()"
                 placeholder="e.g. 150"
                 required
-                class="w-full bg-slate-950 border border-white/15 rounded-2xl px-3 py-3 text-sm text-white font-bold focus:outline-none"
+                class="w-full min-w-0 bg-slate-950 border border-white/15 rounded-2xl px-3.5 py-3 text-sm text-white font-bold focus:outline-none"
               />
             </div>
+          </div>
 
-            <div class="col-span-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
               <label class="block text-[11px] font-bold uppercase tracking-wider text-rose-400 mb-1">
-                Old Price (Slash)
+                Old Price (Optional Slash Deal)
               </label>
               <input
                 type="number"
@@ -584,48 +640,47 @@
                 id="newComparePrice"
                 name="compare_price"
                 oninput="previewDiscountBadge()"
-                placeholder="e.g. 200"
-                class="w-full bg-slate-950 border border-rose-500/30 rounded-2xl px-3 py-3 text-sm text-slate-300 focus:outline-none"
+                placeholder="e.g. 200 (shows ~~200~~)"
+                class="w-full min-w-0 bg-slate-950 border border-rose-500/30 rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none"
               />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-amber-300 mb-1">
+                🔥 Promo Badge (Optional)
+              </label>
+              <select
+                name="badge_text"
+                class="w-full bg-slate-950 border border-amber-400/25 rounded-2xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none"
+              >
+                <option value="">No Extra Badge (Standard)</option>
+                <option value="🔥 Hot Deal">🔥 Hot Deal</option>
+                <option value="⚡ Limited Stock">⚡ Limited Stock</option>
+                <option value="🚚 Free Delivery">🚚 Free Delivery</option>
+                <option value="✨ New Arrival">✨ New Arrival</option>
+                <option value="💎 Best Seller">💎 Best Seller</option>
+                <option value="🎁 Promo Offer">🎁 Promo Offer</option>
+              </select>
             </div>
           </div>
 
-          <div id="liveDiscountPreview" class="hidden bg-rose-500/15 border border-rose-500/35 rounded-xl px-3.5 py-2 flex items-center justify-between text-xs">
-            <span class="font-extrabold text-rose-300" id="liveDiscountText">🔥 SAVE 25% OFF Badge Active!</span>
-            <span class="text-[11px] text-slate-300">Auto-calculated</span>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1.5">
-              🔥 Promo / Urgency Badge (Optional)
-            </label>
-            <select
-              name="badge_text"
-              class="w-full bg-slate-950 border border-amber-400/25 rounded-2xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none"
-            >
-              <option value="">No Extra Badge (Standard)</option>
-              <option value="🔥 Hot Deal">🔥 Hot Deal</option>
-              <option value="⚡ Limited Stock">⚡ Limited Stock</option>
-              <option value="🚚 Free Delivery">🚚 Free Delivery</option>
-              <option value="✨ New Arrival">✨ New Arrival</option>
-              <option value="💎 Best Seller">💎 Best Seller</option>
-              <option value="🎁 Promo Offer">🎁 Promo Offer</option>
-            </select>
+          <div id="liveDiscountPreview" class="hidden bg-rose-500/15 border border-rose-500/35 rounded-xl px-3.5 py-2 text-xs font-extrabold text-rose-300">
+            <span id="liveDiscountText">🔥 SAVE 25% OFF Badge Active!</span>
           </div>
 
           <!-- Multi-Photo Dropzone -->
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">
-                Product Photos (Select 1 or Multiple)
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                Product Photos (Select 1 or More)
               </label>
-              <span class="text-[10px] font-bold {{ accent_text }}">📸 Multi-Select Ready</span>
+              <span class="text-[10px] font-bold {{ accent_text }}">📸 Multi-Photo</span>
             </div>
-            <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/15 hover:border-white/30 bg-slate-950/80 rounded-2xl p-4 cursor-pointer transition text-center">
+            <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/20 hover:border-white/40 bg-slate-950/90 rounded-2xl p-4 cursor-pointer transition text-center">
               <div id="multiPreviewGrid" class="hidden grid grid-cols-3 gap-2 w-full mb-3"></div>
-              <div id="uploadPrompt" class="py-2">
-                <p class="text-xs font-bold {{ accent_text }}">📸 Click to select 1 or more photos from gallery</p>
-                <p class="text-[11px] text-slate-500 mt-0.5">Select multiple photos to show front, side, and close-up angles</p>
+              <div id="uploadPrompt" class="py-1.5">
+                <p class="text-xs font-bold {{ accent_text }}">📸 Tap to choose 1 or more photos</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Upload front, side, and close-up angles</p>
               </div>
               <input
                 type="file"
@@ -646,25 +701,25 @@
               type="text"
               name="image_url"
               placeholder="https://image1.jpg, https://image2.jpg"
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-2.5 text-xs text-white focus:outline-none"
+              class="w-full min-w-0 bg-slate-950 border border-white/10 rounded-2xl px-4 py-2.5 text-xs text-white focus:outline-none"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
               Sizes / Details / Description
             </label>
             <textarea
               name="description"
               rows="3"
-              placeholder="e.g. **Genuine Leather Belt** — Available sizes, colors, and delivery info..."
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
+              placeholder="Available sizes, colors, and delivery info..."
+              class="w-full min-w-0 bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
             ></textarea>
           </div>
 
           <button
             type="submit"
-            class="w-full {{ accent_btn }} font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg"
+            class="w-full {{ accent_btn }} font-extrabold py-3.5 rounded-2xl text-sm transition shadow-lg cursor-pointer"
           >
             + Publish Product to Store
           </button>
@@ -672,22 +727,22 @@
       </div>
 
       <!-- Right Column: Live Products Grid -->
-      <div class="lg:col-span-7 space-y-4">
+      <div class="lg:col-span-7 space-y-4 min-w-0 w-full">
         <div class="flex items-center justify-between">
           <div>
             <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Store Catalog</span>
-            <h2 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">
+            <h2 class="text-xl font-extrabold text-white">
               Your Active Products ({{ products|length }})
             </h2>
           </div>
         </div>
 
         {% if products %}
-          <div class="grid sm:grid-cols-2 gap-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {% for p in products %}
             {% set img_list = p.images_list if p.images_list is defined else [p.image_data] %}
             {% set img_count = img_list|length %}
-            <div class="{{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group">
+            <div class="{{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl min-w-0">
               <div>
                 <div class="relative overflow-hidden bg-slate-950 h-52">
                   <img
@@ -697,7 +752,7 @@
                     data-idx="0"
                     data-images='{{ img_list|tojson }}'
                     onclick="openDashLightbox('dashSlideImg-{{ p.id }}', {{ p.product_name|tojson }})"
-                    class="w-full h-full object-cover cursor-zoom-in transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
+                    class="w-full h-full object-cover cursor-zoom-in {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
                   />
 
                   <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
@@ -712,7 +767,7 @@
                     {% endif %}
 
                     {% if p.badge_text %}
-                    <span class="bg-slate-950/90 backdrop-blur border border-amber-400/50 text-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                    <span class="bg-slate-950/90 border border-amber-400/50 text-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
                       {{ p.badge_text }}
                     </span>
                     {% endif %}
@@ -720,7 +775,7 @@
 
                   <span
                     id="dashSlideBadge-{{ p.id }}"
-                    class="absolute top-3 right-3 bg-slate-950/85 backdrop-blur border border-white/15 text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full"
+                    class="absolute top-3 right-3 bg-slate-950/85 border border-white/15 text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full"
                   >
                     📸 1/{{ img_count }}
                   </span>
@@ -729,14 +784,14 @@
                   <button
                     type="button"
                     onclick="stepSlide('dashSlideImg-{{ p.id }}', 'dashSlideBadge-{{ p.id }}', -1)"
-                    class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+                    class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 text-white font-bold flex items-center justify-center text-sm shadow-lg cursor-pointer"
                   >
                     ‹
                   </button>
                   <button
                     type="button"
                     onclick="stepSlide('dashSlideImg-{{ p.id }}', 'dashSlideBadge-{{ p.id }}', 1)"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 text-white font-bold flex items-center justify-center text-sm shadow-lg cursor-pointer"
                   >
                     ›
                   </button>
@@ -749,21 +804,21 @@
                   <img
                     src="{{ img_url }}"
                     onclick="jumpSlide('dashSlideImg-{{ p.id }}', 'dashSlideBadge-{{ p.id }}', {{ loop.index0 }})"
-                    class="w-10 h-10 rounded-lg object-cover border border-white/20 hover:border-amber-400 cursor-pointer shrink-0 transition"
+                    class="w-10 h-10 rounded-lg object-cover border border-white/20 cursor-pointer shrink-0"
                   />
                   {% endfor %}
                 </div>
                 {% endif %}
 
-                <div class="p-5">
+                <div class="p-4 sm:p-5">
                   <div class="flex items-start justify-between gap-2">
-                    <h3 class="font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} text-base">
+                    <h3 class="font-extrabold text-white text-base break-words">
                       {{ p.product_name }}
                     </h3>
 
                     <div class="text-right shrink-0">
                       {% if p.compare_price and p.compare_price > p.price %}
-                        <span class="block text-[11px] font-mono text-slate-500 line-through">
+                        <span class="block text-[11px] font-mono text-slate-400 line-through">
                           {{ p.currency }} {{ "%.2f"|format(p.compare_price) }}
                         </span>
                       {% endif %}
@@ -775,23 +830,23 @@
 
                   {% if p.savings_amount and p.savings_amount > 0 %}
                     <p class="text-[11px] font-bold text-rose-400 mt-1">
-                      🔥 Customers save {{ p.currency }} {{ "%.2f"|format(p.savings_amount) }} ({{ p.discount_percent }}% OFF)
+                      🔥 Save {{ p.currency }} {{ "%.2f"|format(p.savings_amount) }} ({{ p.discount_percent }}% OFF)
                     </p>
                   {% endif %}
 
                   {% if p.description %}
-                    <div class="text-xs text-slate-400 mt-1.5 line-clamp-3 leading-relaxed">
+                    <div class="text-xs text-slate-300 mt-1.5 line-clamp-3 leading-relaxed">
                       {{ p.description|format_desc }}
                     </div>
                   {% endif %}
                 </div>
               </div>
 
-              <div class="p-5 pt-0 space-y-2">
+              <div class="p-4 sm:p-5 pt-0 space-y-2">
                 <button
                   type="button"
                   onclick="toggleProductEditor({{ p.id }})"
-                  class="w-full border {{ accent_badge }} text-xs font-extrabold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
+                  class="w-full border {{ accent_badge }} text-xs font-extrabold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>✏️</span>
                   <span>Edit Price, Discount & Photos ({{ img_count }})</span>
@@ -801,7 +856,7 @@
                   <form action="/toggle-stock/{{ p.id }}" method="POST">
                     <button
                       type="submit"
-                      class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold py-2.5 rounded-xl transition"
+                      class="w-full bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-bold py-2.5 rounded-xl transition cursor-pointer"
                     >
                       {% if p.in_stock == 1 %}Mark Sold Out{% else %}Mark In Stock{% endif %}
                     </button>
@@ -814,7 +869,7 @@
                   >
                     <button
                       type="submit"
-                      class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold py-2.5 rounded-xl transition"
+                      class="w-full bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/25 text-xs font-bold py-2.5 rounded-xl transition cursor-pointer"
                     >
                       Delete
                     </button>
@@ -831,12 +886,12 @@
                 >
                   <div class="flex items-center justify-between">
                     <span class="text-[11px] font-extrabold uppercase tracking-wider {{ accent_text }}">
-                      Editing Product, Discount & Photos
+                      Editing Product & Photos
                     </span>
                     <button
                       type="button"
                       onclick="toggleProductEditor({{ p.id }})"
-                      class="text-[11px] text-slate-400 hover:text-white"
+                      class="text-[11px] text-slate-400 hover:text-white cursor-pointer"
                     >
                       ✕ Close
                     </button>
@@ -855,7 +910,7 @@
 
                   <div class="grid grid-cols-3 gap-2">
                     <div>
-                      <label class="block text-[11px] font-bold text-slate-300 mb-1">Currency</label>
+                      <label class="block text-[10px] font-bold text-slate-300 mb-1">Currency</label>
                       <select
                         name="currency"
                         class="w-full bg-slate-950 border border-white/15 rounded-xl px-2 py-2 text-xs text-white"
@@ -866,7 +921,7 @@
                       </select>
                     </div>
                     <div>
-                      <label class="block text-[11px] font-bold {{ accent_text }} mb-1">Selling Price</label>
+                      <label class="block text-[10px] font-bold {{ accent_text }} mb-1">Price</label>
                       <input
                         type="number"
                         step="0.01"
@@ -877,20 +932,20 @@
                       />
                     </div>
                     <div>
-                      <label class="block text-[11px] font-bold text-rose-400 mb-1">Old Price (Slash)</label>
+                      <label class="block text-[10px] font-bold text-rose-400 mb-1">Old Price</label>
                       <input
                         type="number"
                         step="0.01"
                         name="compare_price"
                         value="{{ p.compare_price if p.compare_price and p.compare_price > 0 else '' }}"
-                        placeholder="e.g. 200"
+                        placeholder="200"
                         class="w-full bg-slate-950 border border-rose-500/30 rounded-xl px-2.5 py-2 text-xs text-white"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label class="block text-[11px] font-bold text-amber-300 mb-1">Promo / Urgency Badge</label>
+                    <label class="block text-[11px] font-bold text-amber-300 mb-1">Promo Badge</label>
                     <select
                       name="badge_text"
                       class="w-full bg-slate-950 border border-amber-400/30 rounded-xl px-3 py-2 text-xs text-white"
@@ -911,9 +966,9 @@
                     >{{ p.description }}</textarea>
                   </div>
 
-                  <div class="bg-slate-950/90 border border-white/10 rounded-xl p-2.5">
+                  <div class="bg-slate-950 border border-white/10 rounded-xl p-2.5">
                     <span class="block text-[10px] font-bold uppercase text-slate-400 mb-2">
-                      Current Photos (Uncheck any photo to remove it):
+                      Current Photos (Uncheck to remove):
                     </span>
                     <div class="grid grid-cols-4 gap-2">
                       {% for img_url in img_list %}
@@ -934,7 +989,7 @@
                     </div>
                   </div>
 
-                  <div class="bg-slate-950/90 border border-white/10 rounded-xl p-2.5 space-y-2">
+                  <div class="bg-slate-950 border border-white/10 rounded-xl p-2.5 space-y-2">
                     <label class="block text-[10px] font-bold uppercase {{ accent_text }}">
                       Upload New / Additional Photos:
                     </label>
@@ -943,7 +998,7 @@
                       class="w-full bg-slate-900 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white"
                     >
                       <option value="append">➕ Add new photo(s) to current photos</option>
-                      <option value="replace">🔄 Replace all current photos with new upload</option>
+                      <option value="replace">🔄 Replace all current photos</option>
                     </select>
                     <input
                       type="file"
@@ -962,9 +1017,9 @@
 
                   <button
                     type="submit"
-                    class="w-full {{ accent_btn }} font-extrabold text-xs py-2.5 rounded-xl transition shadow-md"
+                    class="w-full {{ accent_btn }} font-extrabold text-xs py-2.5 rounded-xl transition shadow-md cursor-pointer"
                   >
-                    💾 Save Product, Discount & Photo Updates
+                    💾 Save Product Updates
                   </button>
                 </form>
 
@@ -973,12 +1028,10 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="{{ card_bg }} border-2 border-dashed rounded-3xl p-12 text-center">
-            <p class="text-base font-bold {{ 'text-slate-900' if is_light else 'text-white' }}">
-              Your store catalog is empty
-            </p>
+          <div class="{{ card_bg }} border-2 border-dashed rounded-3xl p-10 text-center">
+            <p class="text-base font-bold text-white">Your store catalog is empty</p>
             <p class="text-xs text-slate-400 mt-1">
-              Use the multi-photo uploader on the left to post your first product photo and price.
+              Use the uploader to post your first product photo and price.
             </p>
           </div>
         {% endif %}
@@ -992,31 +1045,30 @@
   <!-- ========================================================================= -->
   <div
     id="themeStudioModal"
-    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4"
   >
-    <div class="bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
-        <div>
-          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Appearance & Wallpaper Studio</span>
-          <h2 class="text-xl sm:text-2xl font-extrabold text-white">
-            🎨 Change Profile Picture, Store Background Image & Theme Look
+    <div class="bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-5 gap-2">
+        <div class="min-w-0">
+          <span class="text-[10px] font-bold uppercase tracking-widest {{ accent_text }}">Appearance Studio</span>
+          <h2 class="text-lg sm:text-xl font-extrabold text-white truncate">
+            🎨 Profile Pic, Background & Theme
           </h2>
         </div>
         <button
           type="button"
           onclick="closeModal('themeStudioModal')"
-          class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-2 rounded-xl"
+          class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl shrink-0 cursor-pointer"
         >
           ✕ Close
         </button>
       </div>
 
-      <form action="/update-theme" method="POST" enctype="multipart/form-data" class="space-y-6">
+      <form action="/update-theme" method="POST" enctype="multipart/form-data" class="space-y-5">
         
-        <!-- 1. Profile Picture + Full-Screen Store Background Image Upload -->
-        <div class="grid sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <!-- Profile Picture Upload -->
-          <div class="bg-slate-950 border border-white/15 rounded-2xl p-4 space-y-3">
+          <div class="bg-slate-950 border border-white/15 rounded-2xl p-3.5 space-y-2.5">
             <label class="block text-xs font-extrabold uppercase text-emerald-300">
               📸 1. Store Profile Picture / Logo
             </label>
@@ -1025,12 +1077,12 @@
                 <img
                   id="studioAvatarPreview"
                   src="{{ store.logo_data }}"
-                  class="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400 shrink-0"
+                  class="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-400 shrink-0"
                 />
               {% else %}
                 <img
                   id="studioAvatarPreview"
-                  class="hidden w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400 shrink-0"
+                  class="hidden w-14 h-14 rounded-2xl object-cover border-2 border-emerald-400 shrink-0"
                 />
               {% endif %}
               <input
@@ -1038,20 +1090,20 @@
                 name="logo_file"
                 accept="image/*"
                 onchange="previewStudioAvatar(event)"
-                class="w-full text-xs text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-500/20 file:text-emerald-300 cursor-pointer"
+                class="w-full text-xs text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-500/20 file:text-emerald-300"
               />
             </div>
           </div>
 
           <!-- Full-Screen Store Background Image Upload -->
-          <div class="bg-slate-950 border border-amber-400/35 rounded-2xl p-4 space-y-3">
+          <div class="bg-slate-950 border border-amber-400/35 rounded-2xl p-3.5 space-y-2.5">
             <div class="flex items-center justify-between">
               <label class="block text-xs font-extrabold uppercase text-amber-300">
-                🖼️ 2. Full Store Background Image
+                🖼️ 2. Store Background Image
               </label>
               {% if store.bg_image_data %}
               <label class="text-[11px] text-red-400 font-bold flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" name="clear_bg" value="1" /> Remove BG
+                <input type="checkbox" name="clear_bg" value="1" /> Remove
               </label>
               {% endif %}
             </div>
@@ -1061,12 +1113,12 @@
                 <img
                   id="studioBgPreview"
                   src="{{ store.bg_image_data }}"
-                  class="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shrink-0"
+                  class="w-14 h-14 rounded-2xl object-cover border-2 border-amber-400 shrink-0"
                 />
               {% else %}
                 <img
                   id="studioBgPreview"
-                  class="hidden w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shrink-0"
+                  class="hidden w-14 h-14 rounded-2xl object-cover border-2 border-amber-400 shrink-0"
                 />
               {% endif %}
               <input
@@ -1074,7 +1126,7 @@
                 name="bg_image_file"
                 accept="image/*"
                 onchange="previewStudioBgImage(event)"
-                class="w-full text-xs text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-amber-400/20 file:text-amber-300 cursor-pointer"
+                class="w-full text-xs text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-amber-400/20 file:text-amber-300"
               />
             </div>
 
@@ -1082,50 +1134,50 @@
               type="text"
               id="bgPresetUrlInput"
               name="bg_preset_url"
-              placeholder="Or paste any background image URL or click a preset below..."
+              placeholder="Or tap a ready-made wallpaper below..."
               class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-[11px] text-white"
             />
           </div>
         </div>
 
         <!-- 1-Click Pro Background Wallpaper Presets -->
-        <div class="bg-slate-950/80 border border-white/10 rounded-2xl p-4">
-          <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
-            ✨ Or Click a Ready-Made Pro Store Wallpaper Background:
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-3.5">
+          <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+            ✨ Or Tap a Ready-Made Pro Store Wallpaper:
           </span>
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center text-[11px] font-bold">
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-[11px] font-bold">
             <button
               type="button"
-              onclick="selectBgPreset('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1400&q=80')"
-              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition cursor-pointer"
             >
               🖤 Obsidian Waves
             </button>
             <button
               type="button"
-              onclick="selectBgPreset('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1400&q=80')"
-              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1200&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition cursor-pointer"
             >
               🟣 Neon Cyber
             </button>
             <button
               type="button"
-              onclick="selectBgPreset('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1400&q=80')"
-              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1200&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition cursor-pointer"
             >
-              🌈 Velvet Gradient
+              🌈 Velvet Glow
             </button>
             <button
               type="button"
-              onclick="selectBgPreset('https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=1400&q=80')"
-              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=1200&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition cursor-pointer"
             >
-              ✨ Luxury Showroom
+              ✨ Luxury Room
             </button>
             <button
               type="button"
-              onclick="selectBgPreset('https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1400&q=80')"
-              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1200&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition cursor-pointer"
             >
               🔵 Deep Sapphire
             </button>
@@ -1134,55 +1186,55 @@
 
         <!-- 3. Select Color Theme -->
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2.5">
             🎨 3. Select Your Storefront Color Theme:
           </label>
-          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             
             <label class="cursor-pointer">
               <input type="radio" name="theme_color" value="emerald" {% if theme == 'emerald' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-emerald-400 peer-checked:bg-emerald-950/40 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-600 mb-2"></div>
+              <div class="border-2 border-white/10 peer-checked:border-emerald-400 peer-checked:bg-emerald-950/40 bg-slate-950 rounded-2xl p-2.5 text-center transition">
+                <div class="w-full h-7 rounded-lg bg-gradient-to-r from-emerald-400 to-teal-600 mb-1.5"></div>
                 <p class="text-xs font-extrabold text-white">Emerald</p>
               </div>
             </label>
 
             <label class="cursor-pointer">
               <input type="radio" name="theme_color" value="gold" {% if theme == 'gold' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-amber-400 peer-checked:bg-amber-950/40 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-600 mb-2"></div>
+              <div class="border-2 border-white/10 peer-checked:border-amber-400 peer-checked:bg-amber-950/40 bg-slate-950 rounded-2xl p-2.5 text-center transition">
+                <div class="w-full h-7 rounded-lg bg-gradient-to-r from-amber-400 to-yellow-600 mb-1.5"></div>
                 <p class="text-xs font-extrabold text-white">Royal Gold</p>
               </div>
             </label>
 
             <label class="cursor-pointer">
               <input type="radio" name="theme_color" value="violet" {% if theme == 'violet' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-purple-400 peer-checked:bg-purple-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 mb-2"></div>
+              <div class="border-2 border-white/10 peer-checked:border-purple-400 peer-checked:bg-purple-950/50 bg-slate-950 rounded-2xl p-2.5 text-center transition">
+                <div class="w-full h-7 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 mb-1.5"></div>
                 <p class="text-xs font-extrabold text-white">Cyber Violet</p>
               </div>
             </label>
 
             <label class="cursor-pointer">
               <input type="radio" name="theme_color" value="rose" {% if theme == 'rose' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-rose-400 peer-checked:bg-rose-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-rose-400 to-pink-600 mb-2"></div>
+              <div class="border-2 border-white/10 peer-checked:border-rose-400 peer-checked:bg-rose-950/50 bg-slate-950 rounded-2xl p-2.5 text-center transition">
+                <div class="w-full h-7 rounded-lg bg-gradient-to-r from-rose-400 to-pink-600 mb-1.5"></div>
                 <p class="text-xs font-extrabold text-white">Velvet Rose</p>
               </div>
             </label>
 
             <label class="cursor-pointer">
               <input type="radio" name="theme_color" value="ocean" {% if theme == 'ocean' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-cyan-400 peer-checked:bg-cyan-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 mb-2"></div>
+              <div class="border-2 border-white/10 peer-checked:border-cyan-400 peer-checked:bg-cyan-950/50 bg-slate-950 rounded-2xl p-2.5 text-center transition">
+                <div class="w-full h-7 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-600 mb-1.5"></div>
                 <p class="text-xs font-extrabold text-white">Sapphire</p>
               </div>
             </label>
 
             <label class="cursor-pointer">
               <input type="radio" name="theme_color" value="light" {% if theme == 'light' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-white bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-white via-slate-100 to-slate-300 mb-2"></div>
+              <div class="border-2 border-white/10 peer-checked:border-white bg-slate-950 rounded-2xl p-2.5 text-center transition">
+                <div class="w-full h-7 rounded-lg bg-gradient-to-r from-white via-slate-100 to-slate-300 mb-1.5"></div>
                 <p class="text-xs font-extrabold text-white">Pearl Light</p>
               </div>
             </label>
@@ -1190,15 +1242,15 @@
           </div>
         </div>
 
-        <!-- 4. Optional Top Header Banner -->
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+        <!-- 4. Optional Top Header Strip Banner -->
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-3.5">
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold uppercase text-purple-300">
               4. Top Header Strip Banner (Optional)
             </label>
             {% if store.banner_data %}
             <label class="text-[11px] text-red-400 flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" name="clear_banner" value="1" /> Remove Top Banner
+              <input type="checkbox" name="clear_banner" value="1" /> Remove Banner
             </label>
             {% endif %}
           </div>
@@ -1210,19 +1262,19 @@
           />
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-2">
+        <div class="flex items-center justify-end gap-2.5 pt-2">
           <button
             type="button"
             onclick="closeModal('themeStudioModal')"
-            class="bg-white/10 hover:bg-white/15 text-white font-bold px-5 py-3 rounded-2xl text-xs"
+            class="bg-white/10 hover:bg-white/15 text-white font-bold px-4 py-3 rounded-2xl text-xs cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
-            class="{{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-xl"
+            class="flex-1 sm:flex-initial {{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-xl cursor-pointer"
           >
-            💾 Apply Background, Profile Pic & Theme →
+            💾 Save Look & Background →
           </button>
         </div>
       </form>
@@ -1234,74 +1286,61 @@
   <!-- ========================================================================= -->
   <div
     id="profileEditorModal"
-    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4"
   >
-    <div class="bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+    <div class="bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl max-w-xl w-full p-5 sm:p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-5">
         <div>
-          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Global Store Configuration</span>
-          <h2 class="text-xl font-extrabold text-white">⚙️ Edit Store Details, Currency & Payment Method</h2>
+          <span class="text-[10px] font-bold uppercase tracking-widest {{ accent_text }}">Global Store Configuration</span>
+          <h2 class="text-lg sm:text-xl font-extrabold text-white">⚙️ Currency & Payment Setup</h2>
         </div>
         <button
           type="button"
           onclick="closeModal('profileEditorModal')"
-          class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-2 rounded-xl"
+          class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer"
         >
           ✕ Close
         </button>
       </div>
 
-      <form action="/update-store" method="POST" enctype="multipart/form-data" class="grid sm:grid-cols-2 gap-4">
+      <form action="/update-store" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Custom Store Name *</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Store Name *</label>
           <input
             type="text"
             name="store_name"
             value="{{ store.store_name }}"
             required
-            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white"
+            class="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Custom Web Link Handle</label>
-          <div class="flex items-center bg-slate-950 border border-white/15 rounded-2xl px-3.5 py-3 text-sm">
-            <span class="text-slate-500 font-mono text-xs select-none">{{ request.host }}/</span>
-            <input
-              type="text"
-              name="store_slug"
-              value="{{ store.store_slug }}"
-              class="flex-1 bg-transparent {{ accent_text }} font-mono font-bold focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">International WhatsApp Number</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">WhatsApp Number *</label>
           <input
             type="text"
             name="whatsapp_number"
             value="{{ store.whatsapp_number }}"
             required
-            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white"
+            class="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white"
           />
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-2 sm:col-span-2">
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Country</label>
+            <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Country</label>
             <input
               type="text"
               name="country"
               value="{{ store.country or 'Global' }}"
-              class="w-full bg-slate-950 border border-white/15 rounded-2xl px-3.5 py-3 text-sm text-white"
+              class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white"
             />
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Currency</label>
+            <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Currency</label>
             <select
               name="default_currency"
-              class="w-full bg-slate-950 border border-white/15 rounded-2xl px-3 py-3 text-sm text-white"
+              class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white"
             >
               {% for curr in ['USD', 'GHS', 'NGN', 'GBP', 'EUR', 'KES', 'ZAR', 'CAD', 'XOF'] %}
                 <option value="{{ curr }}" {% if store.default_currency == curr %}selected{% endif %}>{{ curr }}</option>
@@ -1311,78 +1350,80 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Payment Method Label</label>
+          <label class="block text-xs font-bold uppercase text-amber-300 mb-1">Payment Method</label>
           <input
             type="text"
             name="payment_method_label"
             value="{{ store.payment_method_label or 'Mobile Money / Instant Transfer' }}"
-            class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-4 py-3 text-sm text-white"
+            class="w-full bg-slate-950 border border-amber-400/30 rounded-xl px-3.5 py-2.5 text-sm text-white"
           />
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Account / MoMo</label>
-            <input
-              type="text"
-              name="momo_number"
-              value="{{ store.momo_number or '' }}"
-              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white"
-            />
-          </div>
-          <div>
-            <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Verified Name</label>
-            <input
-              type="text"
-              name="momo_name"
-              value="{{ store.momo_name or '' }}"
-              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white"
-            />
-          </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-amber-300 mb-1">Account / MoMo / Handle</label>
+          <input
+            type="text"
+            name="momo_number"
+            value="{{ store.momo_number or '' }}"
+            class="w-full bg-slate-950 border border-amber-400/30 rounded-xl px-3.5 py-2.5 text-sm text-white"
+          />
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-bold uppercase text-amber-300 mb-1">Verified Account Name</label>
+          <input
+            type="text"
+            name="momo_name"
+            value="{{ store.momo_name or '' }}"
+            class="w-full bg-slate-950 border border-amber-400/30 rounded-xl px-3.5 py-2.5 text-sm text-white"
+          />
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Category</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Store Category</label>
           <input
             type="text"
             name="category"
             value="{{ store.category }}"
-            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white"
+            class="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Store Bio / Shipping Info</label>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Store Bio / Shipping Info</label>
           <input
             type="text"
             name="bio"
             value="{{ store.bio }}"
-            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white"
+            class="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white"
           />
         </div>
 
+        <input type="hidden" name="store_slug" value="{{ store.store_slug }}" />
         <input type="hidden" name="theme_color" value="{{ store.theme_color or 'emerald' }}" />
 
-        <div class="sm:col-span-2 flex justify-end gap-3 pt-2">
+        <div class="sm:col-span-2 flex justify-end gap-2.5 pt-2">
           <button
             type="button"
             onclick="closeModal('profileEditorModal')"
-            class="bg-white/10 text-white font-bold px-5 py-3 rounded-2xl text-xs"
+            class="bg-white/10 text-white font-bold px-4 py-3 rounded-2xl text-xs cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
-            class="{{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-sm transition shadow-lg"
+            class="flex-1 sm:flex-initial {{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-lg cursor-pointer"
           >
-            💾 Save Global Store Settings
+            💾 Save Global Settings
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Full-Screen Dashboard Image Lightbox Modal -->
+  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 3: FULL-SCREEN DASHBOARD IMAGE LIGHTBOX                      -->
+  <!-- ========================================================================= -->
   <div
     id="dashLightboxModal"
     class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4"
@@ -1392,7 +1433,7 @@
       <button
         type="button"
         onclick="closeModal('dashLightboxModal')"
-        class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-1.5 rounded-full"
+        class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-1.5 rounded-full cursor-pointer"
       >
         ✕ Close
       </button>
@@ -1407,7 +1448,7 @@
         id="dashLightboxPrev"
         type="button"
         onclick="stepDashLightbox(-1)"
-        class="absolute left-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center"
+        class="absolute left-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center cursor-pointer"
       >
         ‹
       </button>
@@ -1415,20 +1456,22 @@
         id="dashLightboxNext"
         type="button"
         onclick="stepDashLightbox(1)"
-        class="absolute right-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center"
+        class="absolute right-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center cursor-pointer"
       >
         ›
       </button>
     </div>
   </div>
 
-  <!-- WhatsApp Status Flyer & QR Card Modal -->
+  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 4: WHATSAPP STATUS FLYER & QR CARD                           -->
+  <!-- ========================================================================= -->
   <div
     id="flyerModal"
-    class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
   >
     <div class="max-w-sm w-full space-y-3">
-      <div class="bg-slate-900 border-2 {{ accent_border }} rounded-3xl p-7 text-center shadow-2xl relative overflow-hidden">
+      <div class="bg-slate-900 border-2 {{ accent_border }} rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
         {% if store.logo_data %}
           <img
             src="{{ store.logo_data }}"
@@ -1460,19 +1503,73 @@
       <div class="flex gap-2">
         <button
           type="button"
-          onclick="showToast('Store Link copied! Screenshot this flyer for your Status or Story.', '{{ request.host_url }}{{ store.store_slug }}')"
-          class="flex-1 {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs"
+          onclick="showToast('Store Link copied! Screenshot this flyer for your Status.', '{{ request.host_url }}{{ store.store_slug }}')"
+          class="flex-1 {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs cursor-pointer"
         >
-          📸 Copy Link & Screenshot Flyer
+          📸 Copy Link & Screenshot
         </button>
         <button
           type="button"
           onclick="closeModal('flyerModal')"
-          class="bg-white/10 text-white font-bold px-4 py-3 rounded-2xl text-xs"
+          class="bg-white/10 text-white font-bold px-4 py-3 rounded-2xl text-xs cursor-pointer"
         >
           Close
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 5: SELLER DASHBOARD HELP GUIDE                               -->
+  <!-- ========================================================================= -->
+  <div
+    id="dashHelpModal"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
+    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto text-white">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-widest {{ accent_text }}">Seller Command Guide</span>
+          <h3 class="text-xl font-extrabold text-white">❓ How to Manage Your Varsell Store</h3>
+        </div>
+        <button
+          type="button"
+          onclick="closeModal('dashHelpModal')"
+          class="text-slate-400 hover:text-white text-sm cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold text-rose-400 mb-1">🔥 How to Add Strike-Through Discount Prices</p>
+          <p>Enter your normal selling price (e.g. <strong>150</strong>) and type a higher number in the <strong>"Old Price (Optional Slash Deal)"</strong> box (e.g. <strong>200</strong>). Varsell automatically crosses out 200 and displays a <strong>🔥 SAVE 25%</strong> badge!</p>
+        </div>
+
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold {{ accent_text }} mb-1">📸 How to Upload Multiple Photos or Update Product Images</p>
+          <p>When adding a product, select multiple photos from your gallery at once. To add more photos or replace an existing product's image later, tap <strong>"✏️ Edit Price, Discount & Photos"</strong> on that product card!</p>
+        </div>
+
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold text-amber-300 mb-1">🎨 How to Change Your Store Theme, Wallpaper & Profile Picture</p>
+          <p>Tap <strong>"🎨 Look & Background"</strong> in the top toolbar to switch between 6 themes, upload your profile picture, or set a custom full-screen background image.</p>
+        </div>
+
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold text-emerald-400 mb-1">🔗 How to Rename Your Store Without Losing Customers</p>
+          <p>Tap <strong>"✏️ Change Name"</strong> on your Store Link card. Even after you rename your shop, anyone clicking your old link will be redirected to your new link automatically!</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onclick="closeModal('dashHelpModal')"
+        class="w-full {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs cursor-pointer"
+      >
+        Got It!
+      </button>
     </div>
   </div>
 
