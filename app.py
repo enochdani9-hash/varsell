@@ -5,6 +5,7 @@ import sqlite3
 import secrets
 import string
 import base64
+from datetime import timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, jsonify
 from markupsafe import Markup, escape
 
@@ -16,6 +17,7 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "varsell-super-secret-dev-key-2026")
+app.permanent_session_lifetime = timedelta(days=30)
 ADMIN_MASTER_KEY = os.environ.get("ADMIN_KEY", "VARSELL-BOSS-2026")
 
 DB_NAME = "varsell.db"
@@ -29,13 +31,12 @@ RESERVED_SLUGS = {
     "login", "logout", "dashboard", "admin", "admin-logout", "create-store",
     "change-key", "change-store-name", "update-store", "update-theme",
     "update-avatar", "add-product", "edit-product", "manifest.json", "sw.js",
-    "icon.svg", "sitemap.xml", "robots.txt", "store"
+    "icon.svg", "sitemap.xml", "robots.txt", "store", "ping"
 }
 
 
 @app.template_filter("format_desc")
 def format_desc_filter(text):
-    """Converts **bold** markdown into clean HTML <strong> tags and preserves line breaks"""
     if not text:
         return ""
     safe_text = str(escape(text))
@@ -330,14 +331,14 @@ def find_store_by_any_identifier(conn, identifier):
         (raw.lower(), slug_candidate)
     ).fetchone()
     if store:
-        return store, False
+        return dict(store), False
 
     store = conn.execute(
         "SELECT * FROM stores WHERE LOWER(store_name) = ?",
         (raw.lower(),)
     ).fetchone()
     if store:
-        return store, True
+        return dict(store), True
 
     alias = conn.execute(
         "SELECT store_id FROM store_aliases WHERE old_slug = ? OR old_slug = ? OR LOWER(old_name) = ?",
@@ -346,17 +347,26 @@ def find_store_by_any_identifier(conn, identifier):
     if alias:
         store = conn.execute("SELECT * FROM stores WHERE id = ?", (alias["store_id"],)).fetchone()
         if store:
-            return store, True
+            return dict(store), True
 
     if compact_candidate:
         all_stores = conn.execute("SELECT * FROM stores").fetchall()
         for s in all_stores:
-            s_compact = re.sub(r"[^a-z0-9]", "", s["store_slug"].lower())
-            name_compact = re.sub(r"[^a-z0-9]", "", s["store_name"].lower())
+            s_dict = dict(s)
+            s_compact = re.sub(r"[^a-z0-9]", "", s_dict["store_slug"].lower())
+            name_compact = re.sub(r"[^a-z0-9]", "", s_dict["store_name"].lower())
             if compact_candidate in (s_compact, name_compact):
-                return s, True
+                return s_dict, True
 
     return None, False
+
+
+# --- ULTRA-LIGHTWEIGHT KEEP-ALIVE PING ROUTE ---
+
+@app.route("/ping")
+def ping():
+    """Ultra-fast 2-byte endpoint for cron-job.org and in-browser heartbeat so Render never sleeps"""
+    return Response("OK", status=200, mimetype="text/plain")
 
 
 # --- PWA, OFFLINE & SEO ROUTES ---
@@ -401,7 +411,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v7';
+const CACHE_NAME = 'varsell-global-v8';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -426,7 +436,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  if (event.request.method !== 'GET' || event.request.url.includes('/ping')) return;
 
   event.respondWith(
     fetch(event.request)
@@ -478,6 +488,17 @@ def sitemap_xml():
 def index():
     q = request.args.get("q", "").strip()
     conn = get_db_connection()
+
+    # Check if seller is already logged in so we can show a 1-click "Return to Dashboard" banner
+    active_store = None
+    active_key = session.get("store_key")
+    if active_key:
+        row = conn.execute(
+            "SELECT store_name, store_slug FROM stores WHERE access_key = ?", (active_key,)
+        ).fetchone()
+        if row:
+            active_store = dict(row)
+
     if q:
         like_q = f"%{q.lower()}%"
         recent_stores = conn.execute(
@@ -492,7 +513,7 @@ def index():
             "SELECT store_name, store_slug, category, bio, logo_data, momo_name, country, theme_color FROM stores ORDER BY id DESC LIMIT 12"
         ).fetchall()
     conn.close()
-    return render_template("index.html", recent_stores=recent_stores, search_query=q)
+    return render_template("index.html", recent_stores=recent_stores, search_query=q, active_store=active_store)
 
 
 @app.route("/create-store", methods=["POST"])
@@ -534,7 +555,7 @@ def create_store():
         ).fetchone()
         if existing_key:
             conn.close()
-            flash(f"The Secret Key '{access_key}' is already taken. Please choose another one.", "error")
+            flash(f"The Secret Key '{access_key}' is already taken. If this is your store, enter '{access_key}' in the Unlock Store box!", "error")
             return redirect(url_for("index"))
     else:
         access_key = generate_access_key()
@@ -564,6 +585,7 @@ def create_store():
     conn.commit()
     conn.close()
 
+    session.permanent = True
     session["store_key"] = access_key
     session["new_store_created"] = True
     return redirect(url_for("dashboard"))
@@ -575,6 +597,7 @@ def login():
     access_key = normalize_key(raw_input)
 
     if raw_input.upper() == ADMIN_MASTER_KEY.upper() or access_key == normalize_key(ADMIN_MASTER_KEY):
+        session.permanent = True
         session["is_varsell_admin"] = True
         flash("⚡ Founder Master Key recognized! Welcome to Varsell Command HQ.", "success")
         return redirect(url_for("admin_panel"))
@@ -584,6 +607,7 @@ def login():
     conn.close()
 
     if store:
+        session.permanent = True
         session["store_key"] = access_key
         return redirect(url_for("dashboard"))
     else:
@@ -625,6 +649,7 @@ def change_key():
     conn.commit()
     conn.close()
 
+    session.permanent = True
     session["store_key"] = new_key
     flash(f"Your Store Secret Key has been updated to: {new_key}", "success")
     return redirect(url_for("dashboard"))
@@ -637,10 +662,11 @@ def change_store_name():
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
-    if not store:
+    store_row = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    if not store_row:
         conn.close()
         return redirect(url_for("index"))
+    store = dict(store_row)
 
     new_store_name = request.form.get("new_store_name", "").strip()
     custom_slug_input = request.form.get("new_store_slug", "").strip()
@@ -673,7 +699,7 @@ def change_store_name():
     conn.commit()
     conn.close()
 
-    flash(f"✨ Store renamed to '{new_store_name}'! Your new link is /{desired_slug} (old links still redirect automatically!).", "success")
+    flash(f"✨ Store renamed to '{new_store_name}'! Your new link is /{desired_slug}", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -704,16 +730,16 @@ def update_avatar():
 
 @app.route("/update-theme", methods=["POST"])
 def update_theme():
-    """Updates Store Theme Look, Profile Picture, Full-Screen Background Image & Header Banner"""
     current_key = session.get("store_key")
     if not current_key:
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
-    if not store:
+    store_row = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    if not store_row:
         conn.close()
         return redirect(url_for("index"))
+    store = dict(store_row)
 
     theme_color = request.form.get("theme_color", store.get("theme_color") or "emerald").strip()
     logo_file = request.files.get("logo_file")
@@ -727,7 +753,6 @@ def update_theme():
     logo_data = encode_uploaded_image(logo_file) or store.get("logo_data") or ""
     banner_data = "" if clear_banner else (encode_uploaded_image(banner_file) or store.get("banner_data") or "")
 
-    # Handle Full-Screen Store Background Image (Upload, Preset URL, or Remove)
     uploaded_bg = encode_uploaded_image(bg_image_file)
     if clear_bg:
         bg_image_data = ""
@@ -756,10 +781,11 @@ def update_store():
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
-    if not store:
+    store_row = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    if not store_row:
         conn.close()
         return redirect(url_for("index"))
+    store = dict(store_row)
 
     store_name = request.form.get("store_name", store["store_name"]).strip() or store["store_name"]
     custom_slug_raw = request.form.get("store_slug", "").strip()
@@ -786,7 +812,7 @@ def update_store():
         save_alias_if_needed(conn, store["id"], store["store_slug"], store["store_name"])
         conn.execute("DELETE FROM store_aliases WHERE old_slug = ? AND store_id = ?", (new_slug, store["id"]))
 
-    logo_data = encode_uploaded_image(logo_file) or store["logo_data"] or ""
+    logo_data = encode_uploaded_image(logo_file) or store.get("logo_data") or ""
     banner_data = encode_uploaded_image(banner_file) or store.get("banner_data") or ""
 
     conn.execute(
@@ -804,7 +830,7 @@ def update_store():
     conn.commit()
     conn.close()
 
-    flash("Store profile, global settings, look & payment details updated!", "success")
+    flash("Store profile, global settings & payment details updated!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -816,13 +842,14 @@ def dashboard():
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store = conn.execute("SELECT * FROM stores WHERE access_key = ?", (access_key,)).fetchone()
+    store_row = conn.execute("SELECT * FROM stores WHERE access_key = ?", (access_key,)).fetchone()
 
-    if not store:
+    if not store_row:
         session.pop("store_key", None)
         conn.close()
         return redirect(url_for("index"))
 
+    store = dict(store_row)
     raw_products = conn.execute(
         "SELECT * FROM products WHERE store_id = ? ORDER BY id DESC", (store["id"],)
     ).fetchall()
@@ -845,10 +872,11 @@ def add_product():
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store = conn.execute("SELECT id, default_currency FROM stores WHERE access_key = ?", (access_key,)).fetchone()
-    if not store:
+    store_row = conn.execute("SELECT id, default_currency FROM stores WHERE access_key = ?", (access_key,)).fetchone()
+    if not store_row:
         conn.close()
         return redirect(url_for("index"))
+    store = dict(store_row)
 
     product_name = request.form.get("product_name", "").strip()
     price = request.form.get("price", "0").strip()
@@ -1063,6 +1091,7 @@ def admin_panel():
     if request.method == "POST":
         entered_key = request.form.get("admin_key", "").strip()
         if entered_key.upper() == ADMIN_MASTER_KEY.upper() or normalize_key(entered_key) == normalize_key(ADMIN_MASTER_KEY):
+            session.permanent = True
             session["is_varsell_admin"] = True
             flash("⚡ Welcome back, Founder! Master Command HQ unlocked.", "success")
             return redirect(url_for("admin_panel"))
@@ -1108,6 +1137,7 @@ def admin_manage_store(store_id):
     conn.close()
 
     if store:
+        session.permanent = True
         session["store_key"] = store["access_key"]
         flash(f"⚡ Founder Mode: You are now managing '{store['store_name']}'.", "success")
         return redirect(url_for("dashboard"))
