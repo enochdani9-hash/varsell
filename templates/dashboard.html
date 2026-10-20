@@ -4,7 +4,7 @@
 
 {% if theme == 'gold' %}
   {% set page_bg = '#090703' %}
-  {% set card_bg = 'bg-[#120e06]/90 border-amber-500/25' %}
+  {% set card_bg = 'bg-[#120e06]/90 border-amber-500/25 backdrop-blur-xl' %}
   {% set accent_btn = 'bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-amber-500/20' %}
   {% set accent_text = 'text-amber-400' %}
   {% set accent_badge = 'bg-amber-400/15 text-amber-300 border-amber-400/35' %}
@@ -12,7 +12,7 @@
   {% set glow_color = 'bg-amber-500/20' %}
 {% elif theme == 'violet' %}
   {% set page_bg = '#070412' %}
-  {% set card_bg = 'bg-[#110a26]/90 border-purple-500/25' %}
+  {% set card_bg = 'bg-[#110a26]/90 border-purple-500/25 backdrop-blur-xl' %}
   {% set accent_btn = 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white shadow-purple-500/25' %}
   {% set accent_text = 'text-purple-400' %}
   {% set accent_badge = 'bg-purple-500/15 text-purple-300 border-purple-400/35' %}
@@ -20,7 +20,7 @@
   {% set glow_color = 'bg-purple-600/25' %}
 {% elif theme == 'rose' %}
   {% set page_bg = '#0c0408' %}
-  {% set card_bg = 'bg-[#1a0812]/90 border-rose-500/25' %}
+  {% set card_bg = 'bg-[#1a0812]/90 border-rose-500/25 backdrop-blur-xl' %}
   {% set accent_btn = 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white shadow-rose-500/25' %}
   {% set accent_text = 'text-rose-400' %}
   {% set accent_badge = 'bg-rose-500/15 text-rose-300 border-rose-400/35' %}
@@ -28,7 +28,7 @@
   {% set glow_color = 'bg-rose-600/25' %}
 {% elif theme == 'ocean' %}
   {% set page_bg = '#030914' %}
-  {% set card_bg = 'bg-[#07152b]/90 border-cyan-500/25' %}
+  {% set card_bg = 'bg-[#07152b]/90 border-cyan-500/25 backdrop-blur-xl' %}
   {% set accent_btn = 'bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 shadow-cyan-500/25' %}
   {% set accent_text = 'text-cyan-400' %}
   {% set accent_badge = 'bg-cyan-400/15 text-cyan-300 border-cyan-400/35' %}
@@ -36,7 +36,7 @@
   {% set glow_color = 'bg-cyan-500/25' %}
 {% elif theme == 'light' %}
   {% set page_bg = '#f1f5f9' %}
-  {% set card_bg = 'bg-white border-slate-300 text-slate-900' %}
+  {% set card_bg = 'bg-white/95 border-slate-300 text-slate-900 backdrop-blur-xl' %}
   {% set accent_btn = 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/15' %}
   {% set accent_text = 'text-emerald-600' %}
   {% set accent_badge = 'bg-slate-900/10 text-slate-900 border-slate-300' %}
@@ -44,7 +44,7 @@
   {% set glow_color = 'bg-emerald-400/10' %}
 {% else %}
   {% set page_bg = '#050811' %}
-  {% set card_bg = 'bg-slate-900/90 border-white/10' %}
+  {% set card_bg = 'bg-slate-900/90 border-white/10 backdrop-blur-xl' %}
   {% set accent_btn = 'bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 shadow-emerald-500/20' %}
   {% set accent_text = 'text-emerald-400' %}
   {% set accent_badge = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' %}
@@ -69,25 +69,207 @@
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: {{ page_bg }};
+      {% if store.bg_image_data %}
+      background-image: linear-gradient(to bottom, rgba(5, 8, 17, 0.72), rgba(5, 8, 17, 0.88)), url('{{ store.bg_image_data }}');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      {% endif %}
     }
     .font-mono {
       font-family: 'JetBrains Mono', monospace;
     }
   </style>
+
+  <!-- TOP-LEVEL INTERACTIVE FUNCTIONS (Loads immediately so buttons always click) -->
+  <script>
+    var dashLightboxImages = [];
+    var dashLightboxIdx = 0;
+
+    function openModal(id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.remove("hidden");
+    }
+
+    function closeModal(id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.add("hidden");
+    }
+
+    function toggleThemeStudio() {
+      var el = document.getElementById("themeStudioModal");
+      if (el) el.classList.toggle("hidden");
+    }
+
+    function toggleProfileEditor() {
+      var el = document.getElementById("profileEditorModal");
+      if (el) el.classList.toggle("hidden");
+    }
+
+    function toggleKeyEditor() {
+      var el = document.getElementById("keyEditorForm");
+      if (el) el.classList.toggle("hidden");
+    }
+
+    function toggleNameEditor() {
+      var el = document.getElementById("nameEditorForm");
+      if (el) el.classList.toggle("hidden");
+    }
+
+    function toggleProductEditor(productId) {
+      var form = document.getElementById("editProductForm-" + productId);
+      if (form) form.classList.toggle("hidden");
+    }
+
+    function showToast(message, textToCopy) {
+      if (textToCopy && navigator.clipboard) {
+        navigator.clipboard.writeText(textToCopy);
+      }
+      var toast = document.getElementById("toast");
+      if (!toast) return;
+      toast.textContent = "✨ " + message;
+      toast.classList.remove("hidden");
+      setTimeout(function() {
+        toast.classList.add("hidden");
+      }, 2800);
+    }
+
+    function syncSlugPreview(val) {
+      var clean = (val || "").toLowerCase().replace(/\.com|\.gh|\.net|\.store/g, "");
+      var slug = clean.replace(/[^a-z0-9\s-]/g, "").trim().replace(/[\s-]+/g, "-") || "store";
+      var inputEl = document.getElementById("newStoreSlugInput");
+      var previewEl = document.getElementById("newSlugText");
+      if (inputEl) inputEl.value = slug;
+      if (previewEl) previewEl.textContent = slug;
+    }
+
+    function previewDiscountBadge() {
+      var sellEl = document.getElementById("newSellPrice");
+      var compEl = document.getElementById("newComparePrice");
+      var box = document.getElementById("liveDiscountPreview");
+      var text = document.getElementById("liveDiscountText");
+      if (!sellEl || !compEl || !box || !text) return;
+
+      var sell = parseFloat(sellEl.value || "0");
+      var compare = parseFloat(compEl.value || "0");
+      if (compare > sell && sell > 0) {
+        var pct = Math.max(1, Math.min(99, Math.round(((compare - sell) / compare) * 100)));
+        text.textContent = "🔥 SAVE " + pct + "% OFF Badge Active! (Customers save " + (compare - sell).toFixed(2) + ")";
+        box.classList.remove("hidden");
+      } else {
+        box.classList.add("hidden");
+      }
+    }
+
+    function stepSlide(imgId, badgeId, delta) {
+      var imgEl = document.getElementById(imgId);
+      var badgeEl = document.getElementById(badgeId);
+      if (!imgEl) return;
+      var images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      if (images.length <= 1) return;
+      var currentIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
+      currentIdx = (currentIdx + delta + images.length) % images.length;
+      imgEl.src = images[currentIdx];
+      imgEl.setAttribute("data-idx", currentIdx);
+      if (badgeEl) badgeEl.textContent = "📸 " + (currentIdx + 1) + "/" + images.length;
+    }
+
+    function jumpSlide(imgId, badgeId, targetIdx) {
+      var imgEl = document.getElementById(imgId);
+      var badgeEl = document.getElementById(badgeId);
+      if (!imgEl) return;
+      var images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      if (targetIdx < 0 || targetIdx >= images.length) return;
+      imgEl.src = images[targetIdx];
+      imgEl.setAttribute("data-idx", targetIdx);
+      if (badgeEl) badgeEl.textContent = "📸 " + (targetIdx + 1) + "/" + images.length;
+    }
+
+    function openDashLightbox(imgId, title) {
+      var imgEl = document.getElementById(imgId);
+      if (!imgEl) return;
+      dashLightboxImages = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      dashLightboxIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
+      document.getElementById("dashLightboxTitle").textContent = title;
+      document.getElementById("dashLightboxImg").src = dashLightboxImages[dashLightboxIdx];
+      document.getElementById("dashLightboxPrev").style.display = dashLightboxImages.length > 1 ? "flex" : "none";
+      document.getElementById("dashLightboxNext").style.display = dashLightboxImages.length > 1 ? "flex" : "none";
+      openModal("dashLightboxModal");
+    }
+
+    function stepDashLightbox(delta) {
+      if (dashLightboxImages.length <= 1) return;
+      dashLightboxIdx = (dashLightboxIdx + delta + dashLightboxImages.length) % dashLightboxImages.length;
+      document.getElementById("dashLightboxImg").src = dashLightboxImages[dashLightboxIdx];
+    }
+
+    function previewMultipleImages(event) {
+      var files = Array.from(event.target.files || []);
+      var grid = document.getElementById("multiPreviewGrid");
+      var prompt = document.getElementById("uploadPrompt");
+      if (!files.length || !grid || !prompt) return;
+
+      grid.innerHTML = "";
+      grid.classList.remove("hidden");
+
+      files.forEach(function(file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var img = document.createElement("img");
+          img.src = e.target.result;
+          img.className = "w-full h-24 object-cover rounded-xl border border-white/20 shadow";
+          grid.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      prompt.innerHTML = '<p class="text-xs font-extrabold text-emerald-400">✅ ' + files.length + ' Photo(s) Selected & Ready to Publish</p>';
+    }
+
+    function previewStudioAvatar(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var preview = document.getElementById("studioAvatarPreview");
+        if (preview) {
+          preview.src = e.target.result;
+          preview.classList.remove("hidden");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function previewStudioBgImage(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var preview = document.getElementById("studioBgPreview");
+        if (preview) {
+          preview.src = e.target.result;
+          preview.classList.remove("hidden");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function selectBgPreset(url) {
+      var input = document.getElementById("bgPresetUrlInput");
+      var preview = document.getElementById("studioBgPreview");
+      if (input) input.value = url;
+      if (preview && url) {
+        preview.src = url;
+        preview.classList.remove("hidden");
+      }
+    }
+  </script>
 </head>
 <body class="{{ 'text-slate-900' if is_light else 'text-slate-100' }} min-h-screen pb-20 relative overflow-x-hidden">
 
   <!-- Dynamic Theme Ambient Glows -->
   <div class="pointer-events-none fixed top-[-140px] left-[-140px] w-[480px] h-[480px] rounded-full {{ glow_color }} blur-[130px] z-0"></div>
   <div class="pointer-events-none fixed bottom-[-140px] right-[-140px] w-[480px] h-[480px] rounded-full {{ glow_color }} blur-[140px] z-0"></div>
-
-  <!-- Offline Status Banner -->
-  <div
-    id="offlineBanner"
-    class="hidden bg-amber-400 text-slate-950 text-center py-2.5 px-4 text-xs font-extrabold sticky top-0 z-50 shadow-md"
-  >
-    ⚡ Offline Mode Active — Viewing cached seller command center
-  </div>
 
   <!-- Toast Notification Popup -->
   <div
@@ -96,7 +278,7 @@
   ></div>
 
   <!-- Top Sticky Navigation Bar -->
-  <header class="border-b {{ 'border-slate-300 bg-white/90' if is_light else 'border-white/10 bg-slate-950/75' }} backdrop-blur-xl sticky top-0 z-40">
+  <header class="border-b {{ 'border-slate-300 bg-white/90' if is_light else 'border-white/10 bg-slate-950/85' }} backdrop-blur-xl sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
       
       <!-- Left: 1-Click Profile Picture Uploader + Store Name -->
@@ -138,10 +320,10 @@
           </div>
           <button
             type="button"
-            onclick="toggleThemeStudio()"
-            class="text-[11px] {{ accent_text }} font-bold hover:underline mt-1 block text-left"
+            onclick="openModal('themeStudioModal')"
+            class="text-[11px] {{ accent_text }} font-bold hover:underline mt-1 block text-left cursor-pointer"
           >
-            📸 Change Profile Pic or Store Look →
+            📸 Change Profile Pic, Background or Store Look →
           </button>
         </div>
       </div>
@@ -150,34 +332,26 @@
       <div class="flex items-center gap-2 flex-wrap justify-end">
         <button
           type="button"
-          onclick="toggleThemeStudio()"
-          class="border {{ accent_badge }} text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition"
+          onclick="openModal('themeStudioModal')"
+          class="border {{ accent_badge }} text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition cursor-pointer"
         >
-          🎨 Store Look & Avatar
+          🎨 Store Look, Background & Avatar
         </button>
 
         <button
           type="button"
-          onclick="document.getElementById('flyerModal').classList.remove('hidden')"
-          class="bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/40 text-amber-400 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition"
+          onclick="openModal('flyerModal')"
+          class="bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/40 text-amber-400 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition cursor-pointer"
         >
           📲 Status Flyer & QR
         </button>
 
         <button
           type="button"
-          onclick="toggleProfileEditor()"
-          class="{{ 'bg-slate-200 text-slate-900' if is_light else 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15' }} text-xs font-bold px-3.5 py-2.5 rounded-xl transition"
+          onclick="openModal('profileEditorModal')"
+          class="{{ 'bg-slate-200 text-slate-900' if is_light else 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15' }} text-xs font-bold px-3.5 py-2.5 rounded-xl transition cursor-pointer"
         >
           ⚙️ Global & Payment Setup
-        </button>
-
-        <button
-          type="button"
-          onclick="document.getElementById('dashHelpModal').classList.remove('hidden')"
-          class="{{ 'bg-slate-200 text-slate-900' if is_light else 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15' }} text-xs font-bold px-3 py-2.5 rounded-xl transition"
-        >
-          ❓ Help
         </button>
 
         <a
@@ -202,18 +376,6 @@
   <!-- Main Dashboard Workspace -->
   <main class="max-w-6xl mx-auto px-4 py-8 space-y-8 relative z-10">
 
-    <!-- New Store Welcome Alert Banner -->
-    {% if new_store_alert %}
-    <div class="bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-transparent border-2 {{ accent_border }} rounded-3xl p-6 shadow-xl">
-      <h2 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">
-        🎉 Congratulations! Your Global Varsell Store is Live!
-      </h2>
-      <p class="text-xs sm:text-sm {{ 'text-slate-700' if is_light else 'text-slate-200' }} mt-1">
-        Save your <strong>Secret Key</strong> below so you can log in anytime. You can upload multiple photos per product, add strike-through discount prices, or customize your theme whenever you want!
-      </p>
-    </div>
-    {% endif %}
-
     <!-- Flash Alerts -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -225,292 +387,6 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
-
-    <!-- Collapsible Store Appearance, Theme & Profile Picture Studio -->
-    <div
-      id="themeStudioCard"
-      class="hidden bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl p-6 sm:p-8 shadow-2xl"
-    >
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Appearance Studio</span>
-          <h2 class="text-xl sm:text-2xl font-extrabold text-white">
-            🎨 Customize Your Store Look, Theme & Profile Picture
-          </h2>
-        </div>
-        <button
-          type="button"
-          onclick="toggleThemeStudio()"
-          class="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5"
-        >
-          ✕ Close
-        </button>
-      </div>
-
-      <form action="/update-theme" method="POST" enctype="multipart/form-data" class="space-y-6">
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
-            1. Click a Theme Below to Transform Your Store & Dashboard:
-          </label>
-          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            
-            <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="emerald" {% if theme == 'emerald' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-emerald-400 peer-checked:bg-emerald-950/40 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-600 mb-2"></div>
-                <p class="text-xs font-extrabold text-white">Obsidian Emerald</p>
-                <p class="text-[10px] text-slate-400">Signature Dark</p>
-              </div>
-            </label>
-
-            <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="gold" {% if theme == 'gold' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-amber-400 peer-checked:bg-amber-950/40 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-600 mb-2"></div>
-                <p class="text-xs font-extrabold text-white">Royal Gold</p>
-                <p class="text-[10px] text-slate-400">Luxury Black</p>
-              </div>
-            </label>
-
-            <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="violet" {% if theme == 'violet' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-purple-400 peer-checked:bg-purple-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 mb-2"></div>
-                <p class="text-xs font-extrabold text-white">Cyber Violet</p>
-                <p class="text-[10px] text-slate-400">Modern Neon</p>
-              </div>
-            </label>
-
-            <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="rose" {% if theme == 'rose' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-rose-400 peer-checked:bg-rose-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-rose-400 to-pink-600 mb-2"></div>
-                <p class="text-xs font-extrabold text-white">Velvet Rose</p>
-                <p class="text-[10px] text-slate-400">Beauty & Drip</p>
-              </div>
-            </label>
-
-            <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="ocean" {% if theme == 'ocean' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-cyan-400 peer-checked:bg-cyan-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 mb-2"></div>
-                <p class="text-xs font-extrabold text-white">Ocean Sapphire</p>
-                <p class="text-[10px] text-slate-400">Tech & Gadgets</p>
-              </div>
-            </label>
-
-            <label class="cursor-pointer">
-              <input type="radio" name="theme_color" value="light" {% if theme == 'light' %}checked{% endif %} class="peer hidden" />
-              <div class="border-2 border-white/10 peer-checked:border-white bg-slate-950 rounded-2xl p-3 text-center transition">
-                <div class="w-full h-10 rounded-xl bg-gradient-to-r from-white via-slate-100 to-slate-300 mb-2"></div>
-                <p class="text-xs font-extrabold text-white">Pearl Light</p>
-                <p class="text-[10px] text-slate-400">Clean White Mode</p>
-              </div>
-            </label>
-
-          </div>
-        </div>
-
-        <div class="grid sm:grid-cols-2 gap-4 pt-2 border-t border-white/10">
-          <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-            <label class="block text-xs font-bold uppercase text-emerald-300 mb-2">
-              2. Upload Seller Profile Picture / Logo
-            </label>
-            <div class="flex items-center gap-3">
-              {% if store.logo_data %}
-                <img
-                  id="studioAvatarPreview"
-                  src="{{ store.logo_data }}"
-                  class="w-14 h-14 rounded-2xl object-cover border border-emerald-400 shrink-0"
-                />
-              {% else %}
-                <img
-                  id="studioAvatarPreview"
-                  class="hidden w-14 h-14 rounded-2xl object-cover border border-emerald-400 shrink-0"
-                />
-              {% endif %}
-              <input
-                type="file"
-                name="logo_file"
-                accept="image/*"
-                onchange="previewStudioAvatar(event)"
-                class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-500/20 file:text-emerald-300"
-              />
-            </div>
-          </div>
-
-          <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-xs font-bold uppercase text-purple-300">
-                3. Store Header Cover Banner (Optional)
-              </label>
-              {% if store.banner_data %}
-              <label class="text-[11px] text-red-400 flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" name="clear_banner" value="1" /> Remove Banner
-              </label>
-              {% endif %}
-            </div>
-            <input
-              type="file"
-              name="banner_file"
-              accept="image/*"
-              class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-purple-500/20 file:text-purple-300"
-            />
-          </div>
-        </div>
-
-        <div class="flex justify-end">
-          <button
-            type="submit"
-            class="{{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-xl"
-          >
-            Apply New Theme & Save Changes →
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Collapsible Global Settings, Custom Link & Payment Editor -->
-    <div
-      id="profileEditorCard"
-      class="hidden bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl p-6 sm:p-8 shadow-2xl"
-    >
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Global Store Configuration</span>
-          <h2 class="text-xl font-extrabold text-white">Edit Store Details, Currency & Payment Method</h2>
-        </div>
-        <button
-          type="button"
-          onclick="toggleProfileEditor()"
-          class="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5"
-        >
-          ✕ Close
-        </button>
-      </div>
-
-      <form action="/update-store" method="POST" enctype="multipart/form-data" class="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Custom Store Name *</label>
-          <input
-            type="text"
-            name="store_name"
-            value="{{ store.store_name }}"
-            required
-            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Custom Web Link Handle</label>
-          <div class="flex items-center bg-slate-950 border border-white/15 rounded-2xl px-3.5 py-3 text-sm">
-            <span class="text-slate-500 font-mono text-xs select-none">{{ request.host }}/</span>
-            <input
-              type="text"
-              name="store_slug"
-              value="{{ store.store_slug }}"
-              class="flex-1 bg-transparent {{ accent_text }} font-mono font-bold focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">International WhatsApp Number</label>
-          <input
-            type="text"
-            name="whatsapp_number"
-            value="{{ store.whatsapp_number }}"
-            required
-            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
-          />
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Country / Region</label>
-            <input
-              type="text"
-              name="country"
-              value="{{ store.country or 'Global' }}"
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none"
-            />
-          </div>
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Default Currency</label>
-            <select
-              name="default_currency"
-              class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none"
-            >
-              {% for curr in ['USD', 'GHS', 'NGN', 'GBP', 'EUR', 'KES', 'ZAR', 'CAD', 'XOF'] %}
-                <option value="{{ curr }}" {% if store.default_currency == curr %}selected{% endif %}>{{ curr }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Payment Method Label</label>
-          <input
-            type="text"
-            name="payment_method_label"
-            value="{{ store.payment_method_label or 'Mobile Money / Instant Transfer' }}"
-            class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
-          />
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Account / MoMo / Handle</label>
-            <input
-              type="text"
-              name="momo_number"
-              value="{{ store.momo_number or '' }}"
-              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none"
-            />
-          </div>
-          <div>
-            <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Verified Account Name</label>
-            <input
-              type="text"
-              name="momo_name"
-              value="{{ store.momo_name or '' }}"
-              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Category</label>
-          <input
-            type="text"
-            name="category"
-            value="{{ store.category }}"
-            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Store Bio / Shipping Info</label>
-          <input
-            type="text"
-            name="bio"
-            value="{{ store.bio }}"
-            class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
-          />
-        </div>
-
-        <input type="hidden" name="theme_color" value="{{ store.theme_color or 'emerald' }}" />
-
-        <div class="sm:col-span-2 flex justify-end">
-          <button
-            type="submit"
-            class="{{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-sm transition shadow-lg"
-          >
-            Save Global Store Settings
-          </button>
-        </div>
-      </form>
-    </div>
 
     <!-- Top Credentials Grid: Secret Key + Clean Store Name & Web Link -->
     <div class="grid md:grid-cols-2 gap-5">
@@ -603,7 +479,8 @@
         </div>
 
         <p class="text-xs text-slate-400 mt-3">
-          💡 Current Store Name: <strong class="{{ 'text-slate-900' if is_light else 'text-white' }}">{{ store.store_name }}</strong> • Active Theme: <strong class="{{ accent_text }} uppercase">{{ theme }}</strong>
+          💡 Store Name: <strong class="{{ 'text-slate-900' if is_light else 'text-white' }}">{{ store.store_name }}</strong> • Theme: <strong class="{{ accent_text }} uppercase">{{ theme }}</strong>
+          {% if store.bg_image_data %}• <span class="text-emerald-400 font-bold">🖼️ Custom Background Active</span>{% endif %}
         </p>
 
         <form id="nameEditorForm" action="/change-store-name" method="POST" class="hidden mt-4 pt-4 border-t border-white/10 space-y-3">
@@ -664,7 +541,7 @@
             />
           </div>
 
-          <!-- Selling Price + Original / Compare Price (For Strike-Through Discount) -->
+          <!-- Selling Price + Original / Compare Price -->
           <div class="grid grid-cols-12 gap-2.5">
             <div class="col-span-4">
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
@@ -713,13 +590,11 @@
             </div>
           </div>
 
-          <!-- Live Discount Calculation Preview Pill -->
           <div id="liveDiscountPreview" class="hidden bg-rose-500/15 border border-rose-500/35 rounded-xl px-3.5 py-2 flex items-center justify-between text-xs">
             <span class="font-extrabold text-rose-300" id="liveDiscountText">🔥 SAVE 25% OFF Badge Active!</span>
             <span class="text-[11px] text-slate-300">Auto-calculated</span>
           </div>
 
-          <!-- Urgency / Promo Badge Selector -->
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1.5">
               🔥 Promo / Urgency Badge (Optional)
@@ -738,7 +613,7 @@
             </select>
           </div>
 
-          <!-- Multi-Photo Dropzone with Live Thumbnail Grid Preview -->
+          <!-- Multi-Photo Dropzone -->
           <div>
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -796,7 +671,7 @@
         </form>
       </div>
 
-      <!-- Right Column: Live Products Grid (With Multi-Photo Slider, Discount Badges & Full Editor) -->
+      <!-- Right Column: Live Products Grid -->
       <div class="lg:col-span-7 space-y-4">
         <div class="flex items-center justify-between">
           <div>
@@ -814,7 +689,6 @@
             {% set img_count = img_list|length %}
             <div class="{{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group">
               <div>
-                <!-- Product Image Slider Container -->
                 <div class="relative overflow-hidden bg-slate-950 h-52">
                   <img
                     id="dashSlideImg-{{ p.id }}"
@@ -826,7 +700,6 @@
                     class="w-full h-full object-cover cursor-zoom-in transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
                   />
 
-                  <!-- Top-Left Badges: Stock + Discount % + Custom Urgency Badge -->
                   <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
                     <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow {% if p.in_stock == 1 %}{{ accent_btn }}{% else %}bg-red-500 text-white{% endif %}">
                       {% if p.in_stock == 1 %}● In Stock{% else %}Sold Out{% endif %}
@@ -845,7 +718,6 @@
                     {% endif %}
                   </div>
 
-                  <!-- Photo Counter Badge -->
                   <span
                     id="dashSlideBadge-{{ p.id }}"
                     class="absolute top-3 right-3 bg-slate-950/85 backdrop-blur border border-white/15 text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full"
@@ -871,7 +743,6 @@
                   {% endif %}
                 </div>
 
-                <!-- Mini Thumbnail Strip -->
                 {% if img_count > 1 %}
                 <div class="flex items-center gap-1.5 px-4 pt-3 overflow-x-auto">
                   {% for img_url in img_list %}
@@ -884,7 +755,6 @@
                 </div>
                 {% endif %}
 
-                <!-- Product Title, Strike-Through Price & Formatted Description -->
                 <div class="p-5">
                   <div class="flex items-start justify-between gap-2">
                     <h3 class="font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} text-base">
@@ -917,7 +787,6 @@
                 </div>
               </div>
 
-              <!-- Action Buttons: Edit Product / Discount / Photos + Stock Toggle + Delete -->
               <div class="p-5 pt-0 space-y-2">
                 <button
                   type="button"
@@ -952,7 +821,7 @@
                   </form>
                 </div>
 
-                <!-- Collapsible Product, Discount & Multi-Photo Editor Form -->
+                <!-- Collapsible Product Editor Form -->
                 <form
                   id="editProductForm-{{ p.id }}"
                   action="/edit-product/{{ p.id }}"
@@ -1042,7 +911,6 @@
                     >{{ p.description }}</textarea>
                   </div>
 
-                  <!-- Current Photos Checklist -->
                   <div class="bg-slate-950/90 border border-white/10 rounded-xl p-2.5">
                     <span class="block text-[10px] font-bold uppercase text-slate-400 mb-2">
                       Current Photos (Uncheck any photo to remove it):
@@ -1066,7 +934,6 @@
                     </div>
                   </div>
 
-                  <!-- Upload New or Additional Photos -->
                   <div class="bg-slate-950/90 border border-white/10 rounded-xl p-2.5 space-y-2">
                     <label class="block text-[10px] font-bold uppercase {{ accent_text }}">
                       Upload New / Additional Photos:
@@ -1120,6 +987,401 @@
     </div>
   </main>
 
+  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 1: STORE LOOK, BACKGROUND IMAGE, THEME & AVATAR STUDIO       -->
+  <!-- ========================================================================= -->
+  <div
+    id="themeStudioModal"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
+    <div class="bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Appearance & Wallpaper Studio</span>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-white">
+            🎨 Change Profile Picture, Store Background Image & Theme Look
+          </h2>
+        </div>
+        <button
+          type="button"
+          onclick="closeModal('themeStudioModal')"
+          class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-2 rounded-xl"
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      <form action="/update-theme" method="POST" enctype="multipart/form-data" class="space-y-6">
+        
+        <!-- 1. Profile Picture + Full-Screen Store Background Image Upload -->
+        <div class="grid sm:grid-cols-2 gap-4">
+          <!-- Profile Picture Upload -->
+          <div class="bg-slate-950 border border-white/15 rounded-2xl p-4 space-y-3">
+            <label class="block text-xs font-extrabold uppercase text-emerald-300">
+              📸 1. Store Profile Picture / Logo
+            </label>
+            <div class="flex items-center gap-3">
+              {% if store.logo_data %}
+                <img
+                  id="studioAvatarPreview"
+                  src="{{ store.logo_data }}"
+                  class="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400 shrink-0"
+                />
+              {% else %}
+                <img
+                  id="studioAvatarPreview"
+                  class="hidden w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400 shrink-0"
+                />
+              {% endif %}
+              <input
+                type="file"
+                name="logo_file"
+                accept="image/*"
+                onchange="previewStudioAvatar(event)"
+                class="w-full text-xs text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-500/20 file:text-emerald-300 cursor-pointer"
+              />
+            </div>
+          </div>
+
+          <!-- Full-Screen Store Background Image Upload -->
+          <div class="bg-slate-950 border border-amber-400/35 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-extrabold uppercase text-amber-300">
+                🖼️ 2. Full Store Background Image
+              </label>
+              {% if store.bg_image_data %}
+              <label class="text-[11px] text-red-400 font-bold flex items-center gap-1 cursor-pointer">
+                <input type="checkbox" name="clear_bg" value="1" /> Remove BG
+              </label>
+              {% endif %}
+            </div>
+
+            <div class="flex items-center gap-3">
+              {% if store.bg_image_data %}
+                <img
+                  id="studioBgPreview"
+                  src="{{ store.bg_image_data }}"
+                  class="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shrink-0"
+                />
+              {% else %}
+                <img
+                  id="studioBgPreview"
+                  class="hidden w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shrink-0"
+                />
+              {% endif %}
+              <input
+                type="file"
+                name="bg_image_file"
+                accept="image/*"
+                onchange="previewStudioBgImage(event)"
+                class="w-full text-xs text-slate-300 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-amber-400/20 file:text-amber-300 cursor-pointer"
+              />
+            </div>
+
+            <input
+              type="text"
+              id="bgPresetUrlInput"
+              name="bg_preset_url"
+              placeholder="Or paste any background image URL or click a preset below..."
+              class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-[11px] text-white"
+            />
+          </div>
+        </div>
+
+        <!-- 1-Click Pro Background Wallpaper Presets -->
+        <div class="bg-slate-950/80 border border-white/10 rounded-2xl p-4">
+          <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+            ✨ Or Click a Ready-Made Pro Store Wallpaper Background:
+          </span>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center text-[11px] font-bold">
+            <button
+              type="button"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1400&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+            >
+              🖤 Obsidian Waves
+            </button>
+            <button
+              type="button"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1400&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+            >
+              🟣 Neon Cyber
+            </button>
+            <button
+              type="button"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1400&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+            >
+              🌈 Velvet Gradient
+            </button>
+            <button
+              type="button"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=1400&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+            >
+              ✨ Luxury Showroom
+            </button>
+            <button
+              type="button"
+              onclick="selectBgPreset('https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1400&q=80')"
+              class="bg-slate-900 hover:border-amber-400 border border-white/15 rounded-xl p-2 transition"
+            >
+              🔵 Deep Sapphire
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Select Color Theme -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
+            🎨 3. Select Your Storefront Color Theme:
+          </label>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="emerald" {% if theme == 'emerald' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-emerald-400 peer-checked:bg-emerald-950/40 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Emerald</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="gold" {% if theme == 'gold' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-amber-400 peer-checked:bg-amber-950/40 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Royal Gold</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="violet" {% if theme == 'violet' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-purple-400 peer-checked:bg-purple-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Cyber Violet</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="rose" {% if theme == 'rose' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-rose-400 peer-checked:bg-rose-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-rose-400 to-pink-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Velvet Rose</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="ocean" {% if theme == 'ocean' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-cyan-400 peer-checked:bg-cyan-950/50 bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Sapphire</p>
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="theme_color" value="light" {% if theme == 'light' %}checked{% endif %} class="peer hidden" />
+              <div class="border-2 border-white/10 peer-checked:border-white bg-slate-950 rounded-2xl p-3 text-center transition">
+                <div class="w-full h-9 rounded-xl bg-gradient-to-r from-white via-slate-100 to-slate-300 mb-2"></div>
+                <p class="text-xs font-extrabold text-white">Pearl Light</p>
+              </div>
+            </label>
+
+          </div>
+        </div>
+
+        <!-- 4. Optional Top Header Banner -->
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold uppercase text-purple-300">
+              4. Top Header Strip Banner (Optional)
+            </label>
+            {% if store.banner_data %}
+            <label class="text-[11px] text-red-400 flex items-center gap-1 cursor-pointer">
+              <input type="checkbox" name="clear_banner" value="1" /> Remove Top Banner
+            </label>
+            {% endif %}
+          </div>
+          <input
+            type="file"
+            name="banner_file"
+            accept="image/*"
+            class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-purple-500/20 file:text-purple-300 cursor-pointer"
+          />
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onclick="closeModal('themeStudioModal')"
+            class="bg-white/10 hover:bg-white/15 text-white font-bold px-5 py-3 rounded-2xl text-xs"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="{{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-xl"
+          >
+            💾 Apply Background, Profile Pic & Theme →
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 2: GLOBAL & PAYMENT SETUP                                    -->
+  <!-- ========================================================================= -->
+  <div
+    id="profileEditorModal"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
+    <div class="bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest {{ accent_text }}">Global Store Configuration</span>
+          <h2 class="text-xl font-extrabold text-white">⚙️ Edit Store Details, Currency & Payment Method</h2>
+        </div>
+        <button
+          type="button"
+          onclick="closeModal('profileEditorModal')"
+          class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-2 rounded-xl"
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      <form action="/update-store" method="POST" enctype="multipart/form-data" class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Custom Store Name *</label>
+          <input
+            type="text"
+            name="store_name"
+            value="{{ store.store_name }}"
+            required
+            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Custom Web Link Handle</label>
+          <div class="flex items-center bg-slate-950 border border-white/15 rounded-2xl px-3.5 py-3 text-sm">
+            <span class="text-slate-500 font-mono text-xs select-none">{{ request.host }}/</span>
+            <input
+              type="text"
+              name="store_slug"
+              value="{{ store.store_slug }}"
+              class="flex-1 bg-transparent {{ accent_text }} font-mono font-bold focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">International WhatsApp Number</label>
+          <input
+            type="text"
+            name="whatsapp_number"
+            value="{{ store.whatsapp_number }}"
+            required
+            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Country</label>
+            <input
+              type="text"
+              name="country"
+              value="{{ store.country or 'Global' }}"
+              class="w-full bg-slate-950 border border-white/15 rounded-2xl px-3.5 py-3 text-sm text-white"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Currency</label>
+            <select
+              name="default_currency"
+              class="w-full bg-slate-950 border border-white/15 rounded-2xl px-3 py-3 text-sm text-white"
+            >
+              {% for curr in ['USD', 'GHS', 'NGN', 'GBP', 'EUR', 'KES', 'ZAR', 'CAD', 'XOF'] %}
+                <option value="{{ curr }}" {% if store.default_currency == curr %}selected{% endif %}>{{ curr }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Payment Method Label</label>
+          <input
+            type="text"
+            name="payment_method_label"
+            value="{{ store.payment_method_label or 'Mobile Money / Instant Transfer' }}"
+            class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-4 py-3 text-sm text-white"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Account / MoMo</label>
+            <input
+              type="text"
+              name="momo_number"
+              value="{{ store.momo_number or '' }}"
+              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-amber-300 mb-1.5">Verified Name</label>
+            <input
+              type="text"
+              name="momo_name"
+              value="{{ store.momo_name or '' }}"
+              class="w-full bg-slate-950 border border-amber-400/30 rounded-2xl px-3.5 py-3 text-sm text-white"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Category</label>
+          <input
+            type="text"
+            name="category"
+            value="{{ store.category }}"
+            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1.5">Store Bio / Shipping Info</label>
+          <input
+            type="text"
+            name="bio"
+            value="{{ store.bio }}"
+            class="w-full bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white"
+          />
+        </div>
+
+        <input type="hidden" name="theme_color" value="{{ store.theme_color or 'emerald' }}" />
+
+        <div class="sm:col-span-2 flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onclick="closeModal('profileEditorModal')"
+            class="bg-white/10 text-white font-bold px-5 py-3 rounded-2xl text-xs"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="{{ accent_btn }} font-extrabold px-6 py-3 rounded-2xl text-sm transition shadow-lg"
+          >
+            💾 Save Global Store Settings
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Full-Screen Dashboard Image Lightbox Modal -->
   <div
     id="dashLightboxModal"
@@ -1129,7 +1391,7 @@
       <p id="dashLightboxTitle" class="text-sm font-extrabold text-white truncate"></p>
       <button
         type="button"
-        onclick="closeDashLightbox()"
+        onclick="closeModal('dashLightboxModal')"
         class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-1.5 rounded-full"
       >
         ✕ Close
@@ -1205,7 +1467,7 @@
         </button>
         <button
           type="button"
-          onclick="document.getElementById('flyerModal').classList.add('hidden')"
+          onclick="closeModal('flyerModal')"
           class="bg-white/10 text-white font-bold px-4 py-3 rounded-2xl text-xs"
         >
           Close
@@ -1214,219 +1476,5 @@
     </div>
   </div>
 
-  <!-- Seller Dashboard Help Guide Modal -->
-  <div
-    id="dashHelpModal"
-    class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
-  >
-    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto text-white">
-      <div class="flex items-center justify-between border-b border-white/10 pb-3">
-        <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-widest {{ accent_text }}">Seller Command Guide</span>
-          <h3 class="text-xl font-extrabold text-white">❓ How to Manage Your Varsell Store</h3>
-        </div>
-        <button
-          type="button"
-          onclick="document.getElementById('dashHelpModal').classList.add('hidden')"
-          class="text-slate-400 hover:text-white text-sm"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold text-rose-400 mb-1">🔥 How to Add Strike-Through Discount Prices</p>
-          <p>Enter your normal selling price (e.g. <strong>150</strong>) and type a higher number in the <strong>"Old Price (Slash)"</strong> box (e.g. <strong>200</strong>). Varsell automatically crosses out 200 and displays a <strong>🔥 SAVE 25%</strong> badge!</p>
-        </div>
-
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold {{ accent_text }} mb-1">📸 How to Upload Multiple Photos or Update Product Images</p>
-          <p>When adding a product, select multiple photos from your gallery at once. To add more photos or replace an existing product's image later, click <strong>"✏️ Edit Price, Discount & Photos"</strong> on that product card!</p>
-        </div>
-
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold text-amber-300 mb-1">🎨 How to Change Your Store Theme & Profile Picture</p>
-          <p>Click <strong>"🎨 Store Look & Avatar"</strong> at the top of your dashboard to switch between 6 themes and upload your logo or cover banner.</p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onclick="document.getElementById('dashHelpModal').classList.add('hidden')"
-        class="w-full {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs"
-      >
-        Got It!
-      </button>
-    </div>
-  </div>
-
-  <!-- Dashboard Interactive JavaScript -->
-  <script>
-    let dashLightboxImages = [];
-    let dashLightboxIdx = 0;
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js');
-      });
-    }
-
-    function toggleKeyEditor() {
-      document.getElementById("keyEditorForm").classList.toggle("hidden");
-    }
-
-    function toggleNameEditor() {
-      document.getElementById("nameEditorForm").classList.toggle("hidden");
-    }
-
-    function toggleProfileEditor() {
-      document.getElementById("profileEditorCard").classList.toggle("hidden");
-    }
-
-    function toggleThemeStudio() {
-      document.getElementById("themeStudioCard").classList.toggle("hidden");
-    }
-
-    function toggleProductEditor(productId) {
-      const form = document.getElementById(`editProductForm-${productId}`);
-      if (form) form.classList.toggle("hidden");
-    }
-
-    // Live Discount Percentage Calculator in Upload Form
-    function previewDiscountBadge() {
-      const sell = parseFloat(document.getElementById("newSellPrice").value || "0");
-      const compare = parseFloat(document.getElementById("newComparePrice").value || "0");
-      const box = document.getElementById("liveDiscountPreview");
-      const text = document.getElementById("liveDiscountText");
-
-      if (compare > sell && sell > 0) {
-        const pct = Math.max(1, Math.min(99, Math.round(((compare - sell) / compare) * 100)));
-        text.textContent = `🔥 SAVE ${pct}% OFF Badge Active! (Customers save ${(compare - sell).toFixed(2)})`;
-        box.classList.remove("hidden");
-      } else {
-        box.classList.add("hidden");
-      }
-    }
-
-    // Multi-Photo Slider Controls
-    function stepSlide(imgId, badgeId, delta) {
-      const imgEl = document.getElementById(imgId);
-      const badgeEl = document.getElementById(badgeId);
-      if (!imgEl) return;
-      const images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
-      if (images.length <= 1) return;
-      let currentIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
-      currentIdx = (currentIdx + delta + images.length) % images.length;
-      imgEl.src = images[currentIdx];
-      imgEl.setAttribute("data-idx", currentIdx);
-      if (badgeEl) badgeEl.textContent = `📸 ${currentIdx + 1}/${images.length}`;
-    }
-
-    function jumpSlide(imgId, badgeId, targetIdx) {
-      const imgEl = document.getElementById(imgId);
-      const badgeEl = document.getElementById(badgeId);
-      if (!imgEl) return;
-      const images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
-      if (targetIdx < 0 || targetIdx >= images.length) return;
-      imgEl.src = images[targetIdx];
-      imgEl.setAttribute("data-idx", targetIdx);
-      if (badgeEl) badgeEl.textContent = `📸 ${targetIdx + 1}/${images.length}`;
-    }
-
-    // Full-Screen Lightbox inside Dashboard
-    function openDashLightbox(imgId, title) {
-      const imgEl = document.getElementById(imgId);
-      if (!imgEl) return;
-      dashLightboxImages = JSON.parse(imgEl.getAttribute("data-images") || "[]");
-      dashLightboxIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
-      document.getElementById("dashLightboxTitle").textContent = title;
-      document.getElementById("dashLightboxImg").src = dashLightboxImages[dashLightboxIdx];
-      document.getElementById("dashLightboxPrev").style.display = dashLightboxImages.length > 1 ? "flex" : "none";
-      document.getElementById("dashLightboxNext").style.display = dashLightboxImages.length > 1 ? "flex" : "none";
-      document.getElementById("dashLightboxModal").classList.remove("hidden");
-    }
-
-    function stepDashLightbox(delta) {
-      if (dashLightboxImages.length <= 1) return;
-      dashLightboxIdx = (dashLightboxIdx + delta + dashLightboxImages.length) % dashLightboxImages.length;
-      document.getElementById("dashLightboxImg").src = dashLightboxImages[dashLightboxIdx];
-    }
-
-    function closeDashLightbox() {
-      document.getElementById("dashLightboxModal").classList.add("hidden");
-    }
-
-    function syncSlugPreview(val) {
-      let clean = val.toLowerCase().replace(/\.com|\.gh|\.net|\.store/g, '');
-      const slug = clean
-        .replace(/[^a-z0-9\s-]/g, '')
-        .trim()
-        .replace(/[\s-]+/g, '-') || 'store';
-      document.getElementById("newStoreSlugInput").value = slug;
-      const previewEl = document.getElementById("newSlugText");
-      if (previewEl) previewEl.textContent = slug;
-    }
-
-    function showToast(message, textToCopy) {
-      if (textToCopy) {
-        navigator.clipboard.writeText(textToCopy);
-      }
-      const toast = document.getElementById("toast");
-      toast.textContent = "✨ " + message;
-      toast.classList.remove("hidden");
-      setTimeout(() => {
-        toast.classList.add("hidden");
-      }, 2800);
-    }
-
-    // Live Multi-Photo Thumbnail Grid Preview
-    function previewMultipleImages(event) {
-      const files = Array.from(event.target.files || []);
-      const grid = document.getElementById("multiPreviewGrid");
-      const prompt = document.getElementById("uploadPrompt");
-      if (!files.length) return;
-
-      grid.innerHTML = "";
-      grid.classList.remove("hidden");
-
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const img = document.createElement("img");
-          img.src = e.target.result;
-          img.className = "w-full h-24 object-cover rounded-xl border border-white/20 shadow";
-          grid.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      });
-
-      prompt.innerHTML = `<p class="text-xs font-extrabold text-emerald-400">✅ ${files.length} Photo(s) Selected & Ready to Publish</p>`;
-    }
-
-    function previewStudioAvatar(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const preview = document.getElementById("studioAvatarPreview");
-        preview.src = e.target.result;
-        preview.classList.remove("hidden");
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function updateOnlineStatus() {
-      const banner = document.getElementById('offlineBanner');
-      if (!navigator.onLine) {
-        banner.classList.remove('hidden');
-      } else {
-        banner.classList.add('hidden');
-      }
-    }
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
-    updateOnlineStatus();
-  </script>
 </body>
 </html>
