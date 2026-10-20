@@ -88,6 +88,7 @@ def init_db():
                 bio TEXT DEFAULT '',
                 logo_data TEXT DEFAULT '',
                 banner_data TEXT DEFAULT '',
+                bg_image_data TEXT DEFAULT '',
                 theme_color TEXT DEFAULT 'emerald',
                 country TEXT DEFAULT 'Global',
                 default_currency TEXT DEFAULT 'USD',
@@ -100,6 +101,7 @@ def init_db():
         new_store_cols = [
             ("logo_data", "TEXT DEFAULT ''"),
             ("banner_data", "TEXT DEFAULT ''"),
+            ("bg_image_data", "TEXT DEFAULT ''"),
             ("theme_color", "TEXT DEFAULT 'emerald'"),
             ("country", "TEXT DEFAULT 'Global'"),
             ("default_currency", "TEXT DEFAULT 'USD'"),
@@ -151,6 +153,7 @@ def init_db():
                 bio TEXT DEFAULT '',
                 logo_data TEXT DEFAULT '',
                 banner_data TEXT DEFAULT '',
+                bg_image_data TEXT DEFAULT '',
                 theme_color TEXT DEFAULT 'emerald',
                 country TEXT DEFAULT 'Global',
                 default_currency TEXT DEFAULT 'USD',
@@ -163,6 +166,7 @@ def init_db():
         for col_name, col_def in [
             ("logo_data", "TEXT DEFAULT ''"),
             ("banner_data", "TEXT DEFAULT ''"),
+            ("bg_image_data", "TEXT DEFAULT ''"),
             ("theme_color", "TEXT DEFAULT 'emerald'"),
             ("country", "TEXT DEFAULT 'Global'"),
             ("default_currency", "TEXT DEFAULT 'USD'"),
@@ -269,7 +273,6 @@ def encode_uploaded_image(file_obj):
 
 
 def hydrate_products(product_rows):
-    """Hydrates multi-image list and calculates discount percentages automatically"""
     hydrated = []
     for row in product_rows:
         p = dict(row)
@@ -289,7 +292,6 @@ def hydrate_products(product_rows):
         p["images_list"] = imgs
         p["image_data"] = imgs[0]
 
-        # Calculate discount percentage and savings amount if compare_price > price
         price_val = float(p.get("price") or 0.0)
         compare_val = float(p.get("compare_price") or 0.0)
         p["compare_price"] = compare_val
@@ -399,7 +401,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v6';
+const CACHE_NAME = 'varsell-global-v7';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -702,6 +704,7 @@ def update_avatar():
 
 @app.route("/update-theme", methods=["POST"])
 def update_theme():
+    """Updates Store Theme Look, Profile Picture, Full-Screen Background Image & Header Banner"""
     current_key = session.get("store_key")
     if not current_key:
         return redirect(url_for("index"))
@@ -715,19 +718,34 @@ def update_theme():
     theme_color = request.form.get("theme_color", store.get("theme_color") or "emerald").strip()
     logo_file = request.files.get("logo_file")
     banner_file = request.files.get("banner_file")
-    clear_banner = request.form.get("clear_banner") == "1"
+    bg_image_file = request.files.get("bg_image_file")
+    bg_preset_url = request.form.get("bg_preset_url", "").strip()
 
-    logo_data = encode_uploaded_image(logo_file) or store["logo_data"] or ""
+    clear_banner = request.form.get("clear_banner") == "1"
+    clear_bg = request.form.get("clear_bg") == "1"
+
+    logo_data = encode_uploaded_image(logo_file) or store.get("logo_data") or ""
     banner_data = "" if clear_banner else (encode_uploaded_image(banner_file) or store.get("banner_data") or "")
 
+    # Handle Full-Screen Store Background Image (Upload, Preset URL, or Remove)
+    uploaded_bg = encode_uploaded_image(bg_image_file)
+    if clear_bg:
+        bg_image_data = ""
+    elif uploaded_bg:
+        bg_image_data = uploaded_bg
+    elif bg_preset_url:
+        bg_image_data = bg_preset_url
+    else:
+        bg_image_data = store.get("bg_image_data") or ""
+
     conn.execute(
-        "UPDATE stores SET theme_color = ?, logo_data = ?, banner_data = ? WHERE id = ?",
-        (theme_color, logo_data, banner_data, store["id"])
+        "UPDATE stores SET theme_color = ?, logo_data = ?, banner_data = ?, bg_image_data = ? WHERE id = ?",
+        (theme_color, logo_data, banner_data, bg_image_data, store["id"])
     )
     conn.commit()
     conn.close()
 
-    flash("🎨 Store theme, appearance & profile picture updated!", "success")
+    flash("🎨 Store theme, background image & profile picture updated!", "success")
     return redirect(url_for("dashboard"))
 
 
