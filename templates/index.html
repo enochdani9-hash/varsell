@@ -2,7 +2,7 @@
 <html lang="en" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <meta name="theme-color" content="#10b981" />
   <meta
     name="description"
@@ -33,18 +33,22 @@
     rel="stylesheet"
   />
   <style>
-    body {
+    html, body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: #050811;
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+      -webkit-overflow-scrolling: touch;
     }
     .font-mono {
       font-family: 'JetBrains Mono', monospace;
     }
     .bg-grid {
-      background-size: 40px 40px;
+      background-size: 36px 36px;
       background-image: 
-        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
     }
     .no-scrollbar::-webkit-scrollbar {
       display: none;
@@ -54,8 +58,168 @@
       scrollbar-width: none;
     }
   </style>
+
+  <!-- TOP-LEVEL HOMEPAGE JAVASCRIPT (Loaded in <head> so all buttons respond immediately) -->
+  <script>
+    var deferredPrompt = null;
+
+    // 1. In-Browser Keep-Alive Heartbeat (Prevents Render from sleeping while a user is filling out forms)
+    setInterval(function() {
+      fetch('/ping').catch(function() {});
+    }, 90000);
+
+    // 2. Register Offline Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+
+    // 3. Native PWA Install Prompt Handler
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+
+    async function triggerInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      } else {
+        var modal = document.getElementById('installModal');
+        if (modal) modal.classList.remove('hidden');
+      }
+    }
+
+    // 4. Suggest Easy Custom Secret Key
+    function generateEasyKey() {
+      var words = ["BOSS", "SHOP", "STAR", "DRIP", "GOLD", "NOVA", "KING", "LUXE"];
+      var word = words[Math.floor(Math.random() * words.length)];
+      var num = Math.floor(100 + Math.random() * 900);
+      var input = document.getElementById("customKeyInput");
+      if (input) input.value = word + "-" + num;
+    }
+
+    // 5. Live Store Link Preview While Typing Store Name
+    function updateLiveLinkPreview(val) {
+      var clean = (val || "").toLowerCase().replace(/\.com|\.gh|\.net|\.store/g, '');
+      var slug = clean
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/[\s-]+/g, '-');
+      var preview = document.getElementById("liveSlugPreview");
+      if (preview) preview.textContent = slug || "your-store-name";
+    }
+
+    // 6. Auto-Sync Country Selection with Default Store Currency
+    function syncCountryCurrency(selectEl) {
+      var opt = selectEl.options[selectEl.selectedIndex];
+      var country = opt.getAttribute("data-country") || "Global";
+      var curr = opt.getAttribute("data-curr") || "USD";
+      var countryInput = document.getElementById("countryNameInput");
+      var currSelect = document.getElementById("defaultCurrencySelect");
+      if (countryInput) countryInput.value = country;
+      if (currSelect) currSelect.value = curr;
+    }
+
+    // 7. Live Profile Picture Preview on Sign-Up Card
+    function previewSignupAvatar(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = document.getElementById("signupAvatarPreview");
+        var placeholder = document.getElementById("signupAvatarPlaceholder");
+        if (img && placeholder) {
+          img.src = e.target.result;
+          img.classList.remove("hidden");
+          placeholder.classList.add("hidden");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // 8. Direct Store Jump Form
+    function jumpToStore(event) {
+      event.preventDefault();
+      var input = document.getElementById("quickJumpInput").value.trim();
+      if (!input) return;
+      window.location.href = "/" + encodeURIComponent(input);
+    }
+
+    // 9. Copy Store Link with Toast Notification
+    function copyStoreLink(url) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url);
+      }
+      var toast = document.getElementById("homeToast");
+      if (!toast) return;
+      toast.textContent = "✨ Store link copied: " + url;
+      toast.classList.remove("hidden");
+      setTimeout(function() {
+        toast.classList.add("hidden");
+      }, 2600);
+    }
+
+    // 10. Instant Client-Side Store Directory Filter
+    function filterDirectoryCards() {
+      var input = document.getElementById("directorySearchInput");
+      if (!input) return;
+      var q = input.value.toLowerCase();
+      var cards = document.querySelectorAll(".directory-store-card");
+      cards.forEach(function(card) {
+        var text = card.getAttribute("data-store-search") || "";
+        card.style.display = text.includes(q) ? "flex" : "none";
+      });
+    }
+
+    // 11. Category Pill Filter with Active Button Highlight
+    function filterByCategory(catKeyword, btnEl) {
+      var cards = document.querySelectorAll(".directory-store-card");
+      cards.forEach(function(card) {
+        var text = card.getAttribute("data-store-search") || "";
+        if (catKeyword === 'all' || text.includes(catKeyword)) {
+          card.style.display = "flex";
+        } else {
+          card.style.display = "none";
+        }
+      });
+
+      if (btnEl) {
+        document.querySelectorAll(".cat-pill").forEach(function(pill) {
+          pill.className = "cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition";
+        });
+        btnEl.className = "cat-pill shrink-0 bg-emerald-500 text-slate-950 text-xs font-extrabold px-4 py-2 rounded-full transition";
+      }
+    }
+
+    // 12. Real-Time Offline Status Detection
+    function updateOnlineStatus() {
+      var banner = document.getElementById('offlineBanner');
+      if (!banner) return;
+      if (!navigator.onLine) {
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    window.addEventListener('DOMContentLoaded', updateOnlineStatus);
+  </script>
 </head>
-<body class="text-slate-100 min-h-screen relative overflow-x-hidden bg-grid">
+<body class="text-slate-100 min-h-screen relative bg-grid">
+
+  <!-- Active Session Quick-Return Banner (Prevents re-typing Secret Key if already logged in) -->
+  {% if active_store %}
+  <div class="bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 px-4 py-2.5 text-xs font-extrabold flex items-center justify-between gap-2 z-50 relative">
+    <span class="truncate">⚡ Logged in as <strong>{{ active_store.store_name }}</strong></span>
+    <a href="/dashboard" class="shrink-0 bg-slate-950 text-emerald-400 px-3.5 py-1.5 rounded-full text-[11px] font-extrabold shadow">
+      Open My Dashboard →
+    </a>
+  </div>
+  {% endif %}
 
   <!-- Offline Status Banner -->
   <div
@@ -68,25 +232,20 @@
   <!-- Toast Notification Popup -->
   <div
     id="homeToast"
-    class="fixed top-5 right-5 z-50 hidden bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"
+    class="fixed top-5 right-4 left-4 sm:left-auto z-50 hidden bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all text-center"
   ></div>
 
-  <!-- Ambient Background Glows -->
-  <div class="pointer-events-none fixed top-[-150px] left-[-150px] w-[500px] h-[500px] rounded-full bg-emerald-500/15 blur-[130px] z-0"></div>
-  <div class="pointer-events-none fixed top-[35%] right-[-180px] w-[450px] h-[450px] rounded-full bg-purple-500/10 blur-[140px] z-0"></div>
-  <div class="pointer-events-none fixed bottom-[-150px] left-[20%] w-[500px] h-[500px] rounded-full bg-teal-500/10 blur-[140px] z-0"></div>
-
-  <!-- Top Sticky Navigation Bar -->
-  <header class="border-b border-white/10 bg-[#050811]/85 backdrop-blur-xl sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-2">
+  <!-- Top Sticky Navigation Bar (Compact & Mobile-Fit) -->
+  <header class="border-b border-white/10 bg-[#050811]/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 py-3.5 flex items-center justify-between gap-2">
       
       <!-- Brand Logo -->
-      <a href="/" class="flex items-center gap-3 group">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold text-xl shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition">
+      <a href="/" class="flex items-center gap-2.5 shrink-0 group">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold text-lg sm:text-xl shadow-lg group-hover:scale-105 transition">
           V
         </div>
         <div>
-          <span class="text-xl font-extrabold tracking-tight text-white">Varsell</span>
+          <span class="text-lg sm:text-xl font-extrabold tracking-tight text-white">Varsell</span>
           <span class="hidden sm:inline-block ml-2 text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full">
             Global Cloud Stores
           </span>
@@ -94,7 +253,7 @@
       </a>
 
       <!-- Navigation Actions -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 sm:gap-2">
         <a
           href="#store-directory"
           class="hidden md:inline-flex bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 px-3.5 py-2.5 rounded-xl transition"
@@ -119,7 +278,7 @@
         <button
           type="button"
           onclick="document.getElementById('helpModal').classList.remove('hidden')"
-          class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-emerald-300 px-3 py-2.5 rounded-xl transition"
+          class="bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-emerald-300 px-2.5 sm:px-3 py-2 rounded-xl transition cursor-pointer"
         >
           ❓ Help
         </button>
@@ -128,48 +287,57 @@
           type="button"
           id="installAppBtn"
           onclick="triggerInstall()"
-          class="bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5"
+          class="bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-xs font-extrabold px-2.5 sm:px-3.5 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer"
         >
           <span>📲</span>
-          <span>Install App</span>
+          <span>Install</span>
         </button>
 
+        {% if active_store %}
+        <a
+          href="/dashboard"
+          class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold px-3 sm:px-4 py-2 rounded-xl transition shadow-lg"
+        >
+          Dashboard →
+        </a>
+        {% else %}
         <a
           href="#unlock-store"
-          class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20"
+          class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold px-3 sm:px-4 py-2 rounded-xl transition shadow-lg"
         >
-          🔑 Unlock Store
+          🔑 Unlock
         </a>
+        {% endif %}
       </div>
 
     </div>
   </header>
 
   <!-- Flash Messages Container -->
-  <div class="max-w-6xl mx-auto px-4 mt-6 relative z-10">
+  <div class="max-w-6xl mx-auto px-4 mt-4 relative z-10">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="p-4 rounded-2xl mb-3 text-sm font-semibold flex items-center gap-3 backdrop-blur-xl {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-200{% else %}bg-emerald-500/15 border border-emerald-500/40 text-emerald-200{% endif %}">
+          <div class="p-4 rounded-2xl mb-3 text-xs sm:text-sm font-semibold flex items-center gap-3 {% if category == 'error' %}bg-red-500/15 border border-red-500/40 text-red-200{% else %}bg-emerald-500/15 border border-emerald-500/40 text-emerald-200{% endif %}">
             <span>{% if category == 'error' %}⚠️{% else %}✨{% endif %}</span>
-            <span>{{ message }}</span>
+            <span class="break-words">{{ message }}</span>
           </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
   </div>
 
-  <!-- Main Hero Section -->
-  <main class="max-w-6xl mx-auto px-4 py-10 lg:py-14 grid lg:grid-cols-12 gap-12 items-start relative z-10">
+  <!-- Main Hero Section (min-w-0 locks width on iPhone/Android so nothing overflows) -->
+  <main class="max-w-6xl mx-auto px-4 py-8 lg:py-14 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start relative z-10">
 
     <!-- Left Column: Brand Pitch, Seller Login & Direct Store Jump -->
-    <div class="lg:col-span-6 space-y-7">
-      <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs font-bold px-3.5 py-1.5 rounded-full">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        GLOBAL MULTI-CURRENCY • 6 CUSTOM THEMES • WORKS OFFLINE
+    <div class="lg:col-span-6 min-w-0 w-full space-y-6">
+      <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[11px] font-bold px-3 py-1.5 rounded-full max-w-full">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+        <span class="truncate">GLOBAL MULTI-CURRENCY • 6 CUSTOM THEMES • WORKS OFFLINE</span>
       </div>
 
-      <h1 class="text-4xl sm:text-6xl font-extrabold leading-[1.08] tracking-tight text-white">
+      <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.12] tracking-tight text-white break-words">
         Launch your custom
         <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 bg-clip-text text-transparent">
           global storefront
@@ -177,52 +345,52 @@
         in 60 seconds.
       </h1>
 
-      <p class="text-slate-400 text-base sm:text-lg leading-relaxed">
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
         Built for modern entrepreneurs worldwide. Upload your profile picture, customize your store's look with 6 designer themes, sell in any currency (USD, GHS, NGN, GBP, EUR+), let buyers browse <strong>offline</strong>, and receive orders straight on WhatsApp.
       </p>
 
-      <!-- Highlight Value Pills -->
-      <div class="grid grid-cols-3 gap-3 pt-1">
-        <div class="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-3.5">
-          <p class="text-base sm:text-xl font-extrabold text-purple-400">6 Themes</p>
-          <p class="text-xs text-slate-400 mt-0.5">Custom Store Looks</p>
+      <!-- Highlight Value Pills (Responsive 3-Column Grid that fits narrow mobile screens) -->
+      <div class="grid grid-cols-3 gap-2 sm:gap-3">
+        <div class="bg-slate-900/90 border border-white/10 rounded-2xl p-2.5 sm:p-3.5 min-w-0">
+          <p class="text-xs sm:text-lg font-extrabold text-purple-400 truncate">6 Themes</p>
+          <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">Custom Looks</p>
         </div>
-        <div class="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-3.5">
-          <p class="text-base sm:text-xl font-extrabold text-amber-400">Global Pay</p>
-          <p class="text-xs text-slate-400 mt-0.5">MoMo, Bank, CashApp+</p>
+        <div class="bg-slate-900/90 border border-white/10 rounded-2xl p-2.5 sm:p-3.5 min-w-0">
+          <p class="text-xs sm:text-lg font-extrabold text-amber-400 truncate">Global Pay</p>
+          <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">MoMo & CashApp</p>
         </div>
-        <div class="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-3.5">
-          <p class="text-base sm:text-xl font-extrabold text-emerald-400">0MB Offline</p>
-          <p class="text-xs text-slate-400 mt-0.5">Installable PWA App</p>
+        <div class="bg-slate-900/90 border border-white/10 rounded-2xl p-2.5 sm:p-3.5 min-w-0">
+          <p class="text-xs sm:text-lg font-extrabold text-emerald-400 truncate">0MB Offline</p>
+          <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">Installable App</p>
         </div>
       </div>
 
       <!-- Existing Seller & Founder Login Card -->
-      <div id="unlock-store" class="bg-slate-900/75 backdrop-blur-xl border border-white/15 rounded-3xl p-6 shadow-2xl">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-base font-bold text-white flex items-center gap-2">
+      <div id="unlock-store" class="bg-slate-900 border border-white/15 rounded-3xl p-5 sm:p-6 shadow-2xl w-full min-w-0">
+        <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+          <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
             <span>🔐</span>
             <span>Already have a Varsell Store?</span>
           </h2>
-          <span class="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+          <span class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
             Seller & Founder Portal
           </span>
         </div>
-        <p class="text-xs text-slate-400 mb-4">
+        <p class="text-xs text-slate-400 mb-3.5">
           Enter your custom Secret Key below to unlock your store dashboard.
         </p>
 
-        <form action="/login" method="POST" class="flex flex-col sm:flex-row gap-3">
+        <form action="/login" method="POST" class="flex flex-col sm:flex-row gap-2.5 w-full">
           <input
             type="text"
             name="access_key"
-            placeholder="Enter your Secret Key (e.g. DANI)"
+            placeholder="Enter Secret Key (e.g. JAGES)"
             required
-            class="flex-1 bg-slate-950/90 border border-white/15 rounded-2xl px-4 py-3.5 text-white uppercase tracking-wider font-mono text-sm focus:outline-none focus:border-emerald-400 transition"
+            class="w-full sm:flex-1 min-w-0 bg-slate-950 border border-white/15 rounded-2xl px-4 py-3.5 text-white uppercase tracking-wider font-mono text-sm focus:outline-none focus:border-emerald-400"
           />
           <button
             type="submit"
-            class="bg-white text-slate-950 hover:bg-emerald-400 font-extrabold px-6 py-3.5 rounded-2xl text-sm transition shadow-lg shrink-0"
+            class="w-full sm:w-auto bg-white text-slate-950 hover:bg-emerald-400 font-extrabold px-6 py-3.5 rounded-2xl text-sm transition shadow-lg shrink-0 cursor-pointer"
           >
             Unlock Store →
           </button>
@@ -230,21 +398,21 @@
       </div>
 
       <!-- Quick Direct Store Opener -->
-      <div class="bg-slate-900/50 border border-white/10 rounded-3xl p-5">
-        <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+      <div class="bg-slate-900/70 border border-white/10 rounded-3xl p-4 sm:p-5 w-full min-w-0">
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-2">
           ⚡ Looking for a specific store? Type its name to open directly:
         </label>
-        <form onsubmit="jumpToStore(event)" class="flex gap-2">
+        <form onsubmit="jumpToStore(event)" class="flex gap-2 w-full">
           <input
             type="text"
             id="quickJumpInput"
-            placeholder="Type store name (e.g. zayn or kofi-drip)..."
+            placeholder="e.g. jags-boutique or zayn"
             required
-            class="flex-1 bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-400"
+            class="flex-1 min-w-0 bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-400"
           />
           <button
             type="submit"
-            class="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-extrabold px-4 py-2.5 rounded-xl text-xs transition shrink-0"
+            class="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-extrabold px-4 py-2.5 rounded-xl text-xs transition shrink-0 cursor-pointer"
           >
             Go to Shop ↗
           </button>
@@ -254,8 +422,8 @@
     </div>
 
     <!-- Right Column: Instant Global Store Creator Card -->
-    <div class="lg:col-span-6">
-      <div class="bg-slate-900/85 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl relative">
+    <div class="lg:col-span-6 min-w-0 w-full">
+      <div class="bg-slate-900 border border-white/15 rounded-3xl p-5 sm:p-8 shadow-2xl w-full min-w-0">
         <div class="mb-5">
           <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">
             Free Worldwide • Instant Setup
@@ -268,20 +436,20 @@
           </p>
         </div>
 
-        <form action="/create-store" method="POST" enctype="multipart/form-data" class="space-y-4">
+        <form action="/create-store" method="POST" enctype="multipart/form-data" class="space-y-4 w-full">
           
           <!-- Profile Picture Uploader + Store Name -->
-          <div class="flex items-center gap-4 bg-slate-950/70 border border-white/10 rounded-2xl p-3.5">
+          <div class="flex items-center gap-3.5 bg-slate-950 border border-white/10 rounded-2xl p-3">
             <label class="relative cursor-pointer group shrink-0" title="Upload Store Profile Picture">
               <img
                 id="signupAvatarPreview"
-                class="hidden w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg"
+                class="hidden w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg"
               />
               <div
                 id="signupAvatarPlaceholder"
-                class="w-16 h-16 rounded-2xl bg-emerald-500/15 border-2 border-dashed border-emerald-400/50 flex flex-col items-center justify-center text-emerald-300 group-hover:bg-emerald-500/25 transition"
+                class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-500/15 border-2 border-dashed border-emerald-400/50 flex flex-col items-center justify-center text-emerald-300"
               >
-                <span class="text-lg">📸</span>
+                <span class="text-base">📸</span>
                 <span class="text-[9px] font-extrabold uppercase mt-0.5">Add Photo</span>
               </div>
               <input
@@ -293,8 +461,8 @@
               />
             </label>
 
-            <div class="flex-1">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
+            <div class="flex-1 min-w-0">
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
                 Business / Store Name *
               </label>
               <input
@@ -302,20 +470,20 @@
                 id="createStoreName"
                 name="store_name"
                 oninput="updateLiveLinkPreview(this.value)"
-                placeholder="e.g. Zayn Luxury Boutique"
+                placeholder="e.g. Jags Boutique"
                 required
-                class="w-full bg-slate-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+                class="w-full min-w-0 bg-slate-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
               />
             </div>
           </div>
 
           <!-- Live Custom Web Link Preview Box -->
-          <div class="bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2">
-            <div class="overflow-hidden">
+          <div class="bg-slate-950 border border-white/10 rounded-2xl px-3.5 py-2.5 flex items-center justify-between gap-2">
+            <div class="min-w-0 flex-1">
               <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                🌐 Your Instant Web Store Link Preview:
+                🌐 Your Instant Store Link Preview:
               </span>
-              <p class="text-xs sm:text-sm font-mono font-bold text-emerald-400 truncate">
+              <p class="text-xs font-mono font-bold text-emerald-400 truncate">
                 {{ request.host }}/<span id="liveSlugPreview">your-store-name</span>
               </p>
             </div>
@@ -325,7 +493,7 @@
           </div>
 
           <!-- Country Dial Code + International WhatsApp Number -->
-          <div class="grid sm:grid-cols-12 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
             <div class="sm:col-span-5">
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
                 Country / Dial Code
@@ -333,7 +501,7 @@
               <select
                 name="country_code"
                 onchange="syncCountryCurrency(this)"
-                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-3 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-400"
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
               >
                 <option value="233" data-country="Ghana" data-curr="GHS">🇬🇭 Ghana (+233)</option>
                 <option value="234" data-country="Nigeria" data-curr="NGN">🇳🇬 Nigeria (+234)</option>
@@ -354,17 +522,17 @@
                 WhatsApp Number (For Orders) *
               </label>
               <input
-                type="text"
+                type="tel"
                 name="whatsapp_number"
-                placeholder="e.g. 0541234567 or full number"
+                placeholder="e.g. 0541234567 or 7863840627"
                 required
-                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
               />
             </div>
           </div>
 
           <!-- Default Store Currency & Store Theme Look -->
-          <div class="grid sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
                 Default Store Currency
@@ -372,7 +540,7 @@
               <select
                 id="defaultCurrencySelect"
                 name="default_currency"
-                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
               >
                 <option value="GHS">GHS (₵) — Ghana Cedi</option>
                 <option value="USD">USD ($) — US Dollar</option>
@@ -392,7 +560,7 @@
               </label>
               <select
                 name="theme_color"
-                class="w-full bg-slate-950/90 border border-purple-500/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-purple-400"
+                class="w-full bg-slate-950 border border-purple-500/30 rounded-2xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-purple-400"
               >
                 <option value="emerald">🟢 Obsidian Emerald (Dark)</option>
                 <option value="gold">🟡 Royal Gold & Onyx (Luxury)</option>
@@ -409,7 +577,7 @@
             <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 block">
               💳 Direct Payment Details (Optional — Shown at Customer Checkout)
             </span>
-            <div class="grid sm:grid-cols-3 gap-2">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <select
                 name="payment_method_label"
                 class="bg-slate-950 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
@@ -445,7 +613,7 @@
               <button
                 type="button"
                 onclick="generateEasyKey()"
-                class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline"
+                class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
               >
                 ✨ Suggest Easy Key
               </button>
@@ -454,7 +622,7 @@
               type="text"
               id="customKeyInput"
               name="custom_key"
-              placeholder="e.g. ZAYN2026 (min 4 characters)"
+              placeholder="e.g. JAGES (min 4 characters)"
               required
               minlength="4"
               class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-4 py-2.5 text-sm text-amber-300 font-mono uppercase tracking-wider focus:outline-none focus:border-emerald-400"
@@ -464,14 +632,14 @@
             </p>
           </div>
 
-          <div class="grid sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
                 Store Category
               </label>
               <select
                 name="category"
-                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
               >
                 <option value="Fashion & Apparel">Fashion & Apparel</option>
                 <option value="Phones & Electronics">Phones & Electronics</option>
@@ -491,15 +659,15 @@
               <input
                 type="text"
                 name="bio"
-                placeholder="e.g. Express local & worldwide shipping"
-                class="w-full bg-slate-950/90 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+                placeholder="e.g. All over USA & worldwide shipping"
+                class="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            class="w-full bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-extrabold py-4 rounded-2xl text-sm tracking-wide transition shadow-xl shadow-emerald-500/20"
+            class="w-full bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-extrabold py-4 rounded-2xl text-sm tracking-wide transition shadow-xl cursor-pointer"
           >
             Launch My Global Store Now →
           </button>
@@ -516,7 +684,7 @@
         <span class="text-xs font-bold uppercase tracking-widest text-purple-400">Custom Storefront Looks</span>
         <h3 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">6 Instant Store Themes Built-In</h3>
         <p class="text-xs sm:text-sm text-slate-400 mt-1">
-          Every seller can switch their store's entire color palette, upload a cover banner, and update their profile picture anytime.
+          Every seller can switch their store's entire color palette, upload a background wallpaper, and update their profile picture anytime.
         </p>
       </div>
       <a href="#createStoreName" class="text-xs font-extrabold text-emerald-400 hover:underline">
@@ -524,39 +692,39 @@
       </a>
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-      <div class="bg-slate-900/70 border border-emerald-500/30 rounded-2xl p-4">
-        <div class="h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 mb-3 shadow-lg shadow-emerald-500/20"></div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <div class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-4">
+        <div class="h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 mb-3"></div>
         <h4 class="text-sm font-extrabold text-white">Obsidian Emerald</h4>
         <p class="text-[11px] text-slate-400 mt-0.5">Signature Dark</p>
       </div>
 
-      <div class="bg-slate-900/70 border border-amber-500/30 rounded-2xl p-4">
-        <div class="h-12 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 mb-3 shadow-lg shadow-amber-500/20"></div>
+      <div class="bg-slate-900 border border-amber-500/30 rounded-2xl p-4">
+        <div class="h-12 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 mb-3"></div>
         <h4 class="text-sm font-extrabold text-white">Royal Gold</h4>
         <p class="text-[11px] text-slate-400 mt-0.5">Luxury & Jewelry</p>
       </div>
 
-      <div class="bg-slate-900/70 border border-purple-500/30 rounded-2xl p-4">
-        <div class="h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 mb-3 shadow-lg shadow-purple-500/20"></div>
+      <div class="bg-slate-900 border border-purple-500/30 rounded-2xl p-4">
+        <div class="h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 mb-3"></div>
         <h4 class="text-sm font-extrabold text-white">Cyber Violet</h4>
         <p class="text-[11px] text-slate-400 mt-0.5">Modern Streetwear</p>
       </div>
 
-      <div class="bg-slate-900/70 border border-rose-500/30 rounded-2xl p-4">
-        <div class="h-12 rounded-xl bg-gradient-to-br from-rose-400 to-pink-600 mb-3 shadow-lg shadow-rose-500/20"></div>
+      <div class="bg-slate-900 border border-rose-500/30 rounded-2xl p-4">
+        <div class="h-12 rounded-xl bg-gradient-to-br from-rose-400 to-pink-600 mb-3"></div>
         <h4 class="text-sm font-extrabold text-white">Velvet Rose</h4>
         <p class="text-[11px] text-slate-400 mt-0.5">Beauty & Boutique</p>
       </div>
 
-      <div class="bg-slate-900/70 border border-cyan-500/30 rounded-2xl p-4">
-        <div class="h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 mb-3 shadow-lg shadow-cyan-500/20"></div>
+      <div class="bg-slate-900 border border-cyan-500/30 rounded-2xl p-4">
+        <div class="h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 mb-3"></div>
         <h4 class="text-sm font-extrabold text-white">Ocean Sapphire</h4>
         <p class="text-[11px] text-slate-400 mt-0.5">Phones & Gadgets</p>
       </div>
 
-      <div class="bg-slate-900/70 border border-white/30 rounded-2xl p-4">
-        <div class="h-12 rounded-xl bg-gradient-to-br from-white via-slate-100 to-slate-300 mb-3 shadow-lg"></div>
+      <div class="bg-slate-900 border border-white/30 rounded-2xl p-4">
+        <div class="h-12 rounded-xl bg-gradient-to-br from-white via-slate-100 to-slate-300 mb-3"></div>
         <h4 class="text-sm font-extrabold text-white">Minimalist Pearl</h4>
         <p class="text-[11px] text-slate-400 mt-0.5">Clean Light Mode</p>
       </div>
@@ -587,11 +755,11 @@
           value="{{ search_query or '' }}"
           onkeyup="filterDirectoryCards()"
           placeholder="🔍 Search store name, category, or country..."
-          class="flex-1 bg-slate-900 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
+          class="flex-1 min-w-0 bg-slate-900 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-400"
         />
         <button
           type="submit"
-          class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-5 py-3 rounded-2xl text-xs transition"
+          class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-5 py-3 rounded-2xl text-xs transition shrink-0 cursor-pointer"
         >
           Search
         </button>
@@ -603,85 +771,85 @@
       <button
         type="button"
         onclick="filterByCategory('all', this)"
-        class="cat-pill shrink-0 bg-emerald-500 text-slate-950 text-xs font-extrabold px-4 py-2 rounded-full transition"
+        class="cat-pill shrink-0 bg-emerald-500 text-slate-950 text-xs font-extrabold px-4 py-2 rounded-full transition cursor-pointer"
       >
         🌍 All Stores
       </button>
       <button
         type="button"
         onclick="filterByCategory('fashion', this)"
-        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition"
+        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition cursor-pointer"
       >
         👕 Fashion & Apparel
       </button>
       <button
         type="button"
         onclick="filterByCategory('phone', this)"
-        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition"
+        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition cursor-pointer"
       >
         📱 Phones & Tech
       </button>
       <button
         type="button"
         onclick="filterByCategory('beauty', this)"
-        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition"
+        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition cursor-pointer"
       >
         ✨ Beauty & Cosmetics
       </button>
       <button
         type="button"
         onclick="filterByCategory('sneaker', this)"
-        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition"
+        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition cursor-pointer"
       >
         👟 Sneakers & Shoes
       </button>
       <button
         type="button"
         onclick="filterByCategory('food', this)"
-        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition"
+        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition cursor-pointer"
       >
         🍲 Food & Groceries
       </button>
       <button
         type="button"
         onclick="filterByCategory('home', this)"
-        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition"
+        class="cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition cursor-pointer"
       >
         🏠 Home & Lifestyle
       </button>
     </div>
 
     {% if recent_stores %}
-    <div id="storeCardsGrid" class="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
+    <div id="storeCardsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
       {% for s in recent_stores %}
       <div
         data-store-search="{{ s.store_name|lower }} {{ s.store_slug|lower }} {{ s.category|lower }} {{ (s.country or 'global')|lower }} {{ (s.bio or '')|lower }}"
-        class="directory-store-card group bg-slate-900/65 hover:bg-slate-900 border border-white/10 hover:border-emerald-500/50 rounded-3xl p-6 transition flex flex-col justify-between shadow-xl"
+        class="directory-store-card group bg-slate-900 border border-white/10 hover:border-emerald-500/50 rounded-3xl p-5 sm:p-6 transition flex flex-col justify-between shadow-xl min-w-0"
       >
         <div>
           <div class="flex items-center justify-between gap-2">
-            <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+            <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full truncate">
               {{ s.category }}
             </span>
-            <span class="text-[10px] font-bold text-slate-300 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full">
+            <span class="text-[10px] font-bold text-slate-300 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full shrink-0">
               🌍 {{ s.country or 'Global' }}
             </span>
           </div>
 
-          <a href="/{{ s.store_slug }}" class="flex items-center gap-3.5 mt-4">
+          <a href="/{{ s.store_slug }}" class="flex items-center gap-3.5 mt-4 min-w-0">
             {% if s.logo_data %}
               <img
                 src="{{ s.logo_data }}"
                 alt="{{ s.store_name }}"
-                class="w-13 h-13 w-12 h-12 rounded-2xl object-cover border-2 border-emerald-400/50 shrink-0 shadow-md"
+                class="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-400/50 shrink-0 shadow-md"
               />
             {% else %}
               <div class="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black text-lg flex items-center justify-center shrink-0">
                 {{ s.store_name[:1]|upper }}
               </div>
             {% endif %}
-            <div class="overflow-hidden">
-              <h4 class="text-xl font-extrabold text-white group-hover:text-emerald-300 transition truncate">
+            <div class="overflow-hidden min-w-0">
+              <h4 class="text-lg sm:text-xl font-extrabold text-white group-hover:text-emerald-300 transition truncate">
                 {{ s.store_name }}
               </h4>
               <p class="text-[11px] font-mono text-emerald-400/80 truncate">
@@ -699,7 +867,7 @@
           <button
             type="button"
             onclick="copyStoreLink('{{ request.host_url }}{{ s.store_slug }}')"
-            class="text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl transition"
+            class="text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl transition cursor-pointer"
           >
             🔗 Copy Link
           </button>
@@ -734,8 +902,8 @@
       </p>
     </div>
 
-    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      <div class="bg-slate-900/70 border border-white/10 rounded-3xl p-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="bg-slate-900 border border-white/10 rounded-3xl p-6">
         <span class="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black flex items-center justify-center text-sm">
           01
         </span>
@@ -745,7 +913,7 @@
         </p>
       </div>
 
-      <div class="bg-slate-900/70 border border-white/10 rounded-3xl p-6">
+      <div class="bg-slate-900 border border-white/10 rounded-3xl p-6">
         <span class="w-10 h-10 rounded-2xl bg-amber-400/15 border border-amber-400/30 text-amber-300 font-black flex items-center justify-center text-sm">
           02
         </span>
@@ -755,7 +923,7 @@
         </p>
       </div>
 
-      <div class="bg-slate-900/70 border border-white/10 rounded-3xl p-6">
+      <div class="bg-slate-900 border border-white/10 rounded-3xl p-6">
         <span class="w-10 h-10 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-300 font-black flex items-center justify-center text-sm">
           03
         </span>
@@ -765,7 +933,7 @@
         </p>
       </div>
 
-      <div class="bg-slate-900/70 border border-white/10 rounded-3xl p-6">
+      <div class="bg-slate-900 border border-white/10 rounded-3xl p-6">
         <span class="w-10 h-10 rounded-2xl bg-teal-400/15 border border-teal-400/30 text-teal-300 font-black flex items-center justify-center text-sm">
           04
         </span>
@@ -788,14 +956,14 @@
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-5">
+      <div class="flex flex-wrap items-center justify-center gap-5">
         <a href="#store-directory" class="hover:text-emerald-400 transition">Explore Stores</a>
         <a href="#themes-showcase" class="hover:text-purple-400 transition">Store Themes</a>
         <a href="#how-it-works" class="hover:text-emerald-400 transition">How It Works</a>
-        <button type="button" onclick="document.getElementById('helpModal').classList.remove('hidden')" class="hover:text-emerald-400 transition">
+        <button type="button" onclick="document.getElementById('helpModal').classList.remove('hidden')" class="hover:text-emerald-400 transition cursor-pointer">
           Help Guide
         </button>
-        <button type="button" onclick="triggerInstall()" class="text-emerald-400 font-extrabold hover:underline">
+        <button type="button" onclick="triggerInstall()" class="text-emerald-400 font-extrabold hover:underline cursor-pointer">
           📲 Install App
         </button>
       </div>
@@ -805,7 +973,7 @@
   <!-- Seller & Buyer Global Help Centre Modal -->
   <div
     id="helpModal"
-    class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
   >
     <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b border-white/10 pb-3">
@@ -816,7 +984,7 @@
         <button
           type="button"
           onclick="document.getElementById('helpModal').classList.add('hidden')"
-          class="text-slate-400 hover:text-white text-sm"
+          class="text-slate-400 hover:text-white text-sm cursor-pointer"
         >
           ✕
         </button>
@@ -824,13 +992,13 @@
 
       <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold text-purple-400 mb-1">1. How do I change my Store Theme & Profile Picture?</p>
-          <p>Inside your dashboard, click <strong>"🎨 Store Look & Avatar"</strong> (or tap your profile icon in the top-left corner) to upload a new profile picture, add a cover banner, and choose from 6 custom themes!</p>
+          <p class="font-extrabold text-purple-400 mb-1">1. How do I change my Store Theme, Background & Profile Picture?</p>
+          <p>Inside your dashboard, tap <strong>"🎨 Look & Background"</strong> (or tap your profile icon in the top-left corner) to upload a new profile picture, set a full-screen background wallpaper, and choose from 6 custom themes!</p>
         </div>
 
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
           <p class="font-extrabold text-emerald-400 mb-1">2. Can I change my Store Name and Web Link later?</p>
-          <p>Yes! Click <strong>"✏️ Change Store Name"</strong> on your dashboard Link Card. Your store title and URL will update immediately, and your old link will automatically redirect to your new name!</p>
+          <p>Yes! Tap <strong>"✏️ Change Name"</strong> on your dashboard Link Card. Your store title and URL will update immediately, and your old link will automatically redirect to your new name!</p>
         </div>
 
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
@@ -840,14 +1008,14 @@
 
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
           <p class="font-extrabold text-emerald-400 mb-1">4. How does Offline Browsing work?</p>
-          <p>Tap <strong>"📲 Install App"</strong> at the top of the page. Once installed, any store you visit is cached on your phone so you can browse products even with 0MB mobile data.</p>
+          <p>Tap <strong>"📲 Install"</strong> at the top of the page. Once installed, any store you visit is cached on your phone so you can browse products even with 0MB mobile data.</p>
         </div>
       </div>
 
       <button
         type="button"
         onclick="document.getElementById('helpModal').classList.add('hidden')"
-        class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs"
+        class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs cursor-pointer"
       >
         Got It, Let's Go!
       </button>
@@ -857,7 +1025,7 @@
   <!-- Install App Guide Modal (Fallback for iOS / Browsers) -->
   <div
     id="installModal"
-    class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
   >
     <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between">
@@ -865,7 +1033,7 @@
         <button
           type="button"
           onclick="document.getElementById('installModal').classList.add('hidden')"
-          class="text-slate-400 hover:text-white"
+          class="text-slate-400 hover:text-white cursor-pointer"
         >
           ✕
         </button>
@@ -880,142 +1048,12 @@
       <button
         type="button"
         onclick="document.getElementById('installModal').classList.add('hidden')"
-        class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs"
+        class="w-full bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-2xl text-xs cursor-pointer"
       >
         Got It!
       </button>
     </div>
   </div>
 
-  <!-- Complete Homepage Interactive JavaScript -->
-  <script>
-    // 1. Suggest Easy Custom Secret Key
-    function generateEasyKey() {
-      const words = ["BOSS", "SHOP", "STAR", "DRIP", "GOLD", "NOVA", "KING", "LUXE"];
-      const word = words[Math.floor(Math.random() * words.length)];
-      const num = Math.floor(100 + Math.random() * 900);
-      document.getElementById("customKeyInput").value = `${word}-${num}`;
-    }
-
-    // 2. Live Store Link Preview While Typing Store Name
-    function updateLiveLinkPreview(val) {
-      let clean = val.toLowerCase().replace(/\.com|\.gh|\.net|\.store/g, '');
-      const slug = clean
-        .replace(/[^a-z0-9\s-]/g, '')
-        .trim()
-        .replace(/[\s-]+/g, '-');
-      document.getElementById("liveSlugPreview").textContent = slug || "your-store-name";
-    }
-
-    // 3. Auto-Sync Country Selection with Default Store Currency
-    function syncCountryCurrency(selectEl) {
-      const opt = selectEl.options[selectEl.selectedIndex];
-      const country = opt.getAttribute("data-country") || "Global";
-      const curr = opt.getAttribute("data-curr") || "USD";
-      document.getElementById("countryNameInput").value = country;
-      document.getElementById("defaultCurrencySelect").value = curr;
-    }
-
-    // 4. Live Profile Picture Preview on Sign-Up Card
-    function previewSignupAvatar(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = document.getElementById("signupAvatarPreview");
-        const placeholder = document.getElementById("signupAvatarPlaceholder");
-        img.src = e.target.result;
-        img.classList.remove("hidden");
-        placeholder.classList.add("hidden");
-      };
-      reader.readAsDataURL(file);
-    }
-
-    // 5. Direct Store Jump Form
-    function jumpToStore(event) {
-      event.preventDefault();
-      const input = document.getElementById("quickJumpInput").value.trim();
-      if (!input) return;
-      window.location.href = "/" + encodeURIComponent(input);
-    }
-
-    // 6. Copy Store Link with Toast Notification
-    function copyStoreLink(url) {
-      navigator.clipboard.writeText(url);
-      const toast = document.getElementById("homeToast");
-      toast.textContent = "✨ Store link copied: " + url;
-      toast.classList.remove("hidden");
-      setTimeout(() => {
-        toast.classList.add("hidden");
-      }, 2600);
-    }
-
-    // 7. Instant Client-Side Store Directory Filter
-    function filterDirectoryCards() {
-      const q = document.getElementById("directorySearchInput").value.toLowerCase();
-      const cards = document.querySelectorAll(".directory-store-card");
-      cards.forEach(card => {
-        const text = card.getAttribute("data-store-search");
-        card.style.display = text.includes(q) ? "flex" : "none";
-      });
-    }
-
-    // 8. Category Pill Filter with Active Button Highlight
-    function filterByCategory(catKeyword, btnEl) {
-      const cards = document.querySelectorAll(".directory-store-card");
-      cards.forEach(card => {
-        const text = card.getAttribute("data-store-search");
-        if (catKeyword === 'all' || text.includes(catKeyword)) {
-          card.style.display = "flex";
-        } else {
-          card.style.display = "none";
-        }
-      });
-
-      if (btnEl) {
-        document.querySelectorAll(".cat-pill").forEach(pill => {
-          pill.className = "cat-pill shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition";
-        });
-        btnEl.className = "cat-pill shrink-0 bg-emerald-500 text-slate-950 text-xs font-extrabold px-4 py-2 rounded-full transition";
-      }
-    }
-
-    // 9. Register Offline Service Worker
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js');
-      });
-    }
-
-    // 10. Native PWA Install Prompt Handler
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-    });
-
-    async function triggerInstall() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-      } else {
-        document.getElementById('installModal').classList.remove('hidden');
-      }
-    }
-
-    // 11. Real-Time Offline Status Detection
-    function updateOnlineStatus() {
-      const banner = document.getElementById('offlineBanner');
-      if (!navigator.onLine) {
-        banner.classList.remove('hidden');
-      } else {
-        banner.classList.add('hidden');
-      }
-    }
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
-    updateOnlineStatus();
-  </script>
 </body>
 </html>
