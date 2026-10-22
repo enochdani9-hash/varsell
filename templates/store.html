@@ -9,8 +9,7 @@
   {% set accent_text = 'text-amber-400' %}
   {% set accent_badge = 'bg-amber-400/15 text-amber-300 border-amber-400/35' %}
   {% set accent_border = 'border-amber-400' %}
-  {% set hero_grad = 'from-amber-900/45 via-[#0f0b04] to-[#090703]' %}
-  {% set glow_orb = 'bg-amber-500/20' %}
+  {% set hero_grad = 'from-amber-900/45 via-[#0f0b04]/85 to-transparent' %}
 {% elif theme == 'violet' %}
   {% set page_bg = '#070412' %}
   {% set card_bg = 'bg-[#120a2a]/90 border-purple-500/30' %}
@@ -18,8 +17,7 @@
   {% set accent_text = 'text-purple-400' %}
   {% set accent_badge = 'bg-purple-500/15 text-purple-300 border-purple-400/35' %}
   {% set accent_border = 'border-purple-400' %}
-  {% set hero_grad = 'from-purple-900/50 via-[#0d0722] to-[#070412]' %}
-  {% set glow_orb = 'bg-purple-600/25' %}
+  {% set hero_grad = 'from-purple-900/50 via-[#0d0722]/85 to-transparent' %}
 {% elif theme == 'rose' %}
   {% set page_bg = '#0c0408' %}
   {% set card_bg = 'bg-[#1c0913]/90 border-rose-500/30' %}
@@ -27,8 +25,7 @@
   {% set accent_text = 'text-rose-400' %}
   {% set accent_badge = 'bg-rose-500/15 text-rose-300 border-rose-400/35' %}
   {% set accent_border = 'border-rose-400' %}
-  {% set hero_grad = 'from-rose-900/50 via-[#14070e] to-[#0c0408]' %}
-  {% set glow_orb = 'bg-rose-600/25' %}
+  {% set hero_grad = 'from-rose-900/50 via-[#14070e]/85 to-transparent' %}
 {% elif theme == 'ocean' %}
   {% set page_bg = '#030914' %}
   {% set card_bg = 'bg-[#07162c]/90 border-cyan-500/30' %}
@@ -36,17 +33,15 @@
   {% set accent_text = 'text-cyan-400' %}
   {% set accent_badge = 'bg-cyan-400/15 text-cyan-300 border-cyan-400/35' %}
   {% set accent_border = 'border-cyan-400' %}
-  {% set hero_grad = 'from-cyan-900/50 via-[#051020] to-[#030914]' %}
-  {% set glow_orb = 'bg-cyan-500/25' %}
+  {% set hero_grad = 'from-cyan-900/50 via-[#051020]/85 to-transparent' %}
 {% elif theme == 'light' %}
   {% set page_bg = '#f8fafc' %}
-  {% set card_bg = 'bg-white border-slate-200 text-slate-900' %}
+  {% set card_bg = 'bg-white/95 border-slate-200 text-slate-900' %}
   {% set accent_bg = 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/15' %}
   {% set accent_text = 'text-slate-900' %}
   {% set accent_badge = 'bg-slate-900/10 text-slate-900 border-slate-300' %}
   {% set accent_border = 'border-slate-900' %}
-  {% set hero_grad = 'from-slate-200 via-white to-slate-50' %}
-  {% set glow_orb = 'bg-emerald-400/10' %}
+  {% set hero_grad = 'from-slate-200/80 via-white/80 to-transparent' %}
 {% else %}
   {% set page_bg = '#050811' %}
   {% set card_bg = 'bg-slate-900/90 border-emerald-500/20' %}
@@ -54,111 +49,440 @@
   {% set accent_text = 'text-emerald-400' %}
   {% set accent_badge = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' %}
   {% set accent_border = 'border-emerald-400' %}
-  {% set hero_grad = 'from-emerald-950/50 via-slate-900/85 to-[#050811]' %}
-  {% set glow_orb = 'bg-emerald-500/20' %}
+  {% set hero_grad = 'from-emerald-950/50 via-slate-900/85 to-transparent' %}
 {% endif %}
 
 <html lang="en" class="{% if not is_light %}dark{% endif %}">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <meta name="theme-color" content="#10b981" />
+  <meta
+    name="description"
+    content="Shop {{ store.store_name }} ({{ store.category }}) on Varsell. {{ store.bio or 'Browse products online or offline and order directly on WhatsApp.' }}"
+  />
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <title>{{ store.store_name }} — Official Store on Varsell</title>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    "name": {{ store.store_name|tojson }},
+    "description": {{ (store.bio or store.category)|tojson }},
+    "url": "{{ request.host_url }}{{ store.store_slug }}"
+  }
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
     rel="stylesheet"
   />
   <style>
-    body {
+    html, body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: {{ page_bg }};
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+      -webkit-overflow-scrolling: touch;
+      {% if store.bg_image_data %}
+      background-image: linear-gradient(to bottom, rgba(5, 8, 17, 0.55), rgba(5, 8, 17, 0.85)), url('{{ store.bg_image_data }}');
+      background-size: cover;
+      background-position: center;
+      {% endif %}
     }
     .font-mono {
       font-family: 'JetBrains Mono', monospace;
     }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
   </style>
-</head>
-<body class="{{ 'text-slate-900' if is_light else 'text-slate-100' }} min-h-screen pb-36 relative overflow-x-hidden">
 
-  <!-- Dynamic Theme Ambient Glow Orbs -->
-  <div class="pointer-events-none fixed top-[-120px] left-[-120px] w-[460px] h-[460px] rounded-full {{ glow_orb }} blur-[130px] z-0"></div>
-  <div class="pointer-events-none fixed bottom-[-120px] right-[-120px] w-[460px] h-[460px] rounded-full {{ glow_orb }} blur-[140px] z-0"></div>
+  <!-- TOP-LEVEL STOREFRONT JAVASCRIPT + VARIANTS ENGINE + HEARTBEAT -->
+  <script>
+    var sellerWhatsApp = "{{ store.whatsapp_number }}";
+    var storeName = {{ store.store_name|tojson }};
+    var cart = [];
+    var selectedVariants = {};
+    var lightboxImages = [];
+    var lightboxIdx = 0;
+    var deferredPrompt = null;
+
+    // Keep server warm while customer is browsing
+    setInterval(function() {
+      fetch('/ping').catch(function() {});
+    }, 60000);
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+
+    function openStoreModal(id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.remove("hidden");
+    }
+
+    function closeStoreModal(id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.add("hidden");
+    }
+
+    function showStoreToast(msg) {
+      var toast = document.getElementById("storeToast");
+      if (!toast) return;
+      toast.textContent = "✨ " + msg;
+      toast.classList.remove("hidden");
+      setTimeout(function() {
+        toast.classList.add("hidden");
+      }, 2600);
+    }
+
+    function copyTextToClipboard(text, msg) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text);
+      }
+      showStoreToast(msg || "Copied to clipboard!");
+    }
+
+    async function installStoreApp() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      } else {
+        openStoreModal("installStoreModal");
+      }
+    }
+
+    // UPGRADE #3: Select Variant Pill (Size / Color / Option)
+    function selectVariant(productId, variantValue, btnEl) {
+      selectedVariants[productId] = variantValue;
+      var group = document.querySelectorAll(".variant-btn-" + productId);
+      group.forEach(function(b) {
+        b.className = "variant-btn-" + productId + " text-[11px] font-bold bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300 px-2.5 py-1 rounded-lg transition cursor-pointer";
+      });
+      if (btnEl) {
+        btnEl.className = "variant-btn-" + productId + " text-[11px] font-extrabold bg-emerald-400 text-slate-950 border border-emerald-300 px-2.5 py-1 rounded-lg shadow transition cursor-pointer";
+      }
+    }
+
+    function getFormattedItemName(id, baseName, defaultVariant) {
+      var chosen = selectedVariants[id] || defaultVariant || "";
+      return chosen ? (baseName + " [" + chosen + "]") : baseName;
+    }
+
+    // Multi-Photo Slider Controls
+    function stepStoreSlide(imgId, badgeId, delta) {
+      var imgEl = document.getElementById(imgId);
+      var badgeEl = document.getElementById(badgeId);
+      if (!imgEl) return;
+      var images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      if (images.length <= 1) return;
+      var currentIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
+      currentIdx = (currentIdx + delta + images.length) % images.length;
+      imgEl.src = images[currentIdx];
+      imgEl.setAttribute("data-idx", currentIdx);
+      if (badgeEl) badgeEl.textContent = "📸 " + (currentIdx + 1) + "/" + images.length;
+    }
+
+    function jumpStoreSlide(imgId, badgeId, targetIdx) {
+      var imgEl = document.getElementById(imgId);
+      var badgeEl = document.getElementById(badgeId);
+      if (!imgEl) return;
+      var images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      if (targetIdx < 0 || targetIdx >= images.length) return;
+      imgEl.src = images[targetIdx];
+      imgEl.setAttribute("data-idx", targetIdx);
+      if (badgeEl) badgeEl.textContent = "📸 " + (targetIdx + 1) + "/" + images.length;
+    }
+
+    // Full-Screen Image Zoom Lightbox
+    function openLightbox(imgId, title) {
+      var imgEl = document.getElementById(imgId);
+      if (!imgEl) return;
+      lightboxImages = JSON.parse(imgEl.getAttribute("data-images") || "[]");
+      lightboxIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
+      document.getElementById("lightboxTitle").textContent = title;
+      document.getElementById("lightboxImg").src = lightboxImages[lightboxIdx];
+      document.getElementById("lightboxPrev").style.display = lightboxImages.length > 1 ? "flex" : "none";
+      document.getElementById("lightboxNext").style.display = lightboxImages.length > 1 ? "flex" : "none";
+      openStoreModal("lightboxModal");
+    }
+
+    function stepLightbox(delta) {
+      if (lightboxImages.length <= 1) return;
+      lightboxIdx = (lightboxIdx + delta + lightboxImages.length) % lightboxImages.length;
+      document.getElementById("lightboxImg").src = lightboxImages[lightboxIdx];
+    }
+
+    function closeLightbox() {
+      closeStoreModal("lightboxModal");
+    }
+
+    // Shopping Bag & Checkout Logic (With Variant Support)
+    function addToCart(id, baseName, price, currency, defaultVariant) {
+      var fullName = getFormattedItemName(id, baseName, defaultVariant);
+      var cartKey = id + "::" + fullName;
+      var existing = cart.find(function(item) { return item.cartKey === cartKey; });
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push({ cartKey: cartKey, id: id, name: fullName, price: parseFloat(price), currency: currency, qty: 1 });
+      }
+      renderCartBar();
+      showStoreToast('Added "' + fullName + '" to your bag!');
+    }
+
+    function changeCartQty(index, delta) {
+      if (index < 0 || index >= cart.length) return;
+      cart[index].qty += delta;
+      if (cart[index].qty <= 0) {
+        cart.splice(index, 1);
+      }
+      renderCartBar();
+      renderModalSummary();
+      if (cart.length === 0) {
+        closeCheckoutModal();
+      }
+    }
+
+    function quickBuyNow(id, baseName, price, currency, defaultVariant) {
+      var fullName = getFormattedItemName(id, baseName, defaultVariant);
+      var cartKey = id + "::" + fullName;
+      var existing = cart.find(function(item) { return item.cartKey === cartKey; });
+      if (!existing) {
+        cart.push({ cartKey: cartKey, id: id, name: fullName, price: parseFloat(price), currency: currency, qty: 1 });
+      }
+      renderCartBar();
+      openCheckoutModal();
+    }
+
+    function openCheckoutModal() {
+      renderModalSummary();
+      openStoreModal("checkoutModal");
+    }
+
+    function closeCheckoutModal() {
+      closeStoreModal("checkoutModal");
+    }
+
+    function renderModalSummary() {
+      var listEl = document.getElementById("modalItemsList");
+      var totalEl = document.getElementById("modalTotalText");
+      if (!listEl || cart.length === 0) return;
+
+      var currency = cart[0].currency;
+      var total = 0;
+      listEl.innerHTML = "";
+
+      cart.forEach(function(item, idx) {
+        var sub = item.price * item.qty;
+        total += sub;
+        var row = document.createElement("div");
+        row.className = "flex items-center justify-between border-b border-white/10 pb-2 pt-1 gap-2";
+        row.innerHTML =
+          '<div class="truncate"><strong class="text-white">' + item.name + '</strong></div>' +
+          '<div class="flex items-center gap-2 shrink-0">' +
+            '<button type="button" onclick="changeCartQty(' + idx + ', -1)" class="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center">-</button>' +
+            '<span class="font-mono text-xs font-bold text-white">' + item.qty + '</span>' +
+            '<button type="button" onclick="changeCartQty(' + idx + ', 1)" class="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center">+</button>' +
+            '<span class="font-mono text-xs text-emerald-300 ml-1">' + currency + ' ' + sub.toFixed(2) + '</span>' +
+          '</div>';
+        listEl.appendChild(row);
+      });
+
+      if (totalEl) {
+        totalEl.textContent = "Total: " + currency + " " + total.toFixed(2);
+      }
+    }
+
+    function copyPaymentDetail(num) {
+      copyTextToClipboard(num, "Payment details copied!");
+    }
+
+    function clearCart() {
+      cart = [];
+      renderCartBar();
+      closeCheckoutModal();
+    }
+
+    function renderCartBar() {
+      var bar = document.getElementById("cartBar");
+      if (!bar) return;
+      if (cart.length === 0) {
+        bar.classList.add("hidden");
+        return;
+      }
+      bar.classList.remove("hidden");
+
+      var totalItems = cart.reduce(function(sum, item) { return sum + item.qty; }, 0);
+      var totalAmount = cart.reduce(function(sum, item) { return sum + item.price * item.qty; }, 0);
+      var currency = cart[0].currency;
+
+      document.getElementById("cartCount").textContent = totalItems + " item(s) ready to order";
+      document.getElementById("cartTotal").textContent = "Total: " + currency + " " + totalAmount.toFixed(2);
+    }
+
+    function checkoutWhatsApp() {
+      if (cart.length === 0) return;
+
+      var buyerName = (document.getElementById("buyerName").value || "").trim() || "Customer";
+      var deliveryZone = document.getElementById("deliveryZone").value;
+      var buyerLocation = (document.getElementById("buyerLocation").value || "").trim() || "Not specified";
+      var paymentMethod = document.getElementById("paymentMethod").value;
+
+      var currency = cart[0].currency;
+      var total = 0;
+      var lines = ["Hello *" + storeName + "*! 👋\nNew Order from *" + buyerName + "* via Varsell:\n"];
+
+      cart.forEach(function(item, index) {
+        var sub = item.price * item.qty;
+        total += sub;
+        lines.push((index + 1) + ". *" + item.name + "* (x" + item.qty + ") — " + currency + " " + sub.toFixed(2));
+      });
+
+      lines.push("\n💰 *Total Order: " + currency + " " + total.toFixed(2) + "*");
+      lines.push("🚚 *Shipping:* " + deliveryZone);
+      lines.push("📍 *Address / Location:* " + buyerLocation);
+      lines.push("💳 *Payment:* " + paymentMethod);
+      lines.push("\nPlease confirm availability and delivery details!");
+
+      var url = "https://wa.me/" + sellerWhatsApp + "?text=" + encodeURIComponent(lines.join("\n"));
+      window.open(url, "_blank");
+      closeCheckoutModal();
+    }
+
+    function filterProducts() {
+      var searchInput = document.getElementById("productSearch");
+      if (!searchInput) return;
+      var query = searchInput.value.toLowerCase();
+      var cards = document.querySelectorAll(".product-card");
+      cards.forEach(function(card) {
+        var text = card.getAttribute("data-name") || "";
+        card.style.display = text.includes(query) ? "flex" : "none";
+      });
+    }
+
+    function updateOnlineStatus() {
+      var banner = document.getElementById("offlineBanner");
+      if (!banner) return;
+      if (!navigator.onLine) {
+        banner.classList.remove("hidden");
+      } else {
+        banner.classList.add("hidden");
+      }
+    }
+
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+    window.addEventListener("DOMContentLoaded", updateOnlineStatus);
+  </script>
+</head>
+<body class="{{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-slate-100' }} min-h-screen pb-36 relative">
 
   <!-- Offline Status Banner -->
   <div
     id="offlineBanner"
     class="hidden bg-amber-400 text-slate-950 text-center py-2.5 px-4 text-xs font-extrabold sticky top-0 z-50 shadow-lg"
   >
-    ⚡ Offline Mode Active — Browsing {{ store.store_name }}'s saved catalog with 0MB data!
+    ⚡ Offline Mode Active — You are browsing {{ store.store_name }}'s saved catalog with 0MB data!
   </div>
 
-  <!-- Toast Popup -->
+  <!-- Toast Notification Popup -->
   <div
     id="storeToast"
-    class="fixed top-5 right-5 z-50 hidden {{ accent_bg }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all"
+    class="fixed top-4 right-4 left-4 sm:left-auto z-50 hidden {{ accent_bg }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all text-center"
   ></div>
 
   <!-- Optional Store Cover Banner -->
   {% if store.banner_data %}
-  <div class="w-full h-44 sm:h-60 overflow-hidden relative bg-slate-950 z-10">
-    <img src="{{ store.banner_data }}" alt="{{ store.store_name }} Banner" class="w-full h-full object-cover" />
-    <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+  <div class="w-full h-44 sm:h-64 overflow-hidden relative bg-slate-950 z-10">
+    <img
+      src="{{ store.banner_data }}"
+      alt="{{ store.store_name }} Cover Banner"
+      class="w-full h-full object-cover"
+    />
+    <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
   </div>
   {% endif %}
 
   <!-- Storefront Hero Header -->
-  <header class="relative z-10 border-b {{ 'border-slate-200' if is_light else 'border-white/10' }} bg-gradient-to-b {{ hero_grad }}">
-    <div class="max-w-5xl mx-auto px-4 py-8 sm:py-10">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+  <header class="relative z-10 border-b {{ 'border-slate-200' if is_light and not store.bg_image_data else 'border-white/10' }} bg-gradient-to-b {{ hero_grad }} backdrop-blur-md">
+    <div class="max-w-5xl mx-auto px-4 py-7 sm:py-10">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
         
-        <div class="flex items-start sm:items-center gap-4">
+        <div class="flex items-start sm:items-center gap-4 min-w-0">
           {% if store.logo_data %}
             <img
               src="{{ store.logo_data }}"
               alt="{{ store.store_name }}"
-              class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 {{ accent_border }} shadow-2xl shrink-0"
+              class="w-16 h-16 sm:w-22 sm:h-22 rounded-3xl object-cover border-2 {{ accent_border }} shadow-2xl shrink-0"
             />
           {% else %}
-            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl {{ accent_bg }} flex items-center justify-center font-black text-3xl shadow-2xl shrink-0">
+            <div class="w-16 h-16 sm:w-22 sm:h-22 rounded-3xl {{ accent_bg }} flex items-center justify-center font-black text-2xl sm:text-3xl shadow-2xl shrink-0">
               {{ store.store_name[:1]|upper }}
             </div>
           {% endif %}
 
-          <div>
+          <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-[11px] font-bold border {{ accent_badge }} px-2.5 py-0.5 rounded-full">
                 {{ store.category }}
               </span>
-              <span class="text-[11px] font-semibold {{ 'text-slate-600' if is_light else 'text-slate-300' }}">
+              <span class="text-[11px] font-semibold {{ 'text-slate-600' if is_light and not store.bg_image_data else 'text-slate-300' }}">
                 🌍 {{ store.country or 'Global' }}
               </span>
               {% if store.momo_name %}
                 <span class="text-[11px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/25 px-2.5 py-0.5 rounded-full">
                   ✓ Verified: {{ store.momo_name }}
                 </span>
+              {% else %}
+                <span class="text-[11px] font-semibold text-emerald-400">
+                  ✓ Verified Store
+                </span>
               {% endif %}
             </div>
 
-            <h1 class="text-2xl sm:text-4xl font-extrabold {{ 'text-slate-950' if is_light else 'text-white' }} mt-1.5 tracking-tight">
+            <h1 class="text-2xl sm:text-4xl font-extrabold {{ 'text-slate-950' if is_light and not store.bg_image_data else 'text-white' }} mt-1.5 tracking-tight break-words">
               {{ store.store_name }}
             </h1>
 
             {% if store.bio %}
-              <p class="text-xs sm:text-sm {{ 'text-slate-600' if is_light else 'text-slate-300' }} mt-1 max-w-xl leading-relaxed">
+              <p class="text-xs sm:text-sm {{ 'text-slate-600' if is_light and not store.bg_image_data else 'text-slate-200' }} mt-1 max-w-xl leading-relaxed">
                 {{ store.bio }}
               </p>
             {% endif %}
           </div>
         </div>
 
-        <div class="flex items-center gap-2.5 shrink-0">
+        <div class="flex items-center gap-2 flex-wrap shrink-0">
+          <button
+            type="button"
+            onclick="openStoreModal('shareStoreModal')"
+            class="bg-white/10 hover:bg-white/15 text-white border border-white/15 text-xs font-extrabold px-3.5 py-2.5 rounded-2xl transition cursor-pointer"
+          >
+            🔗 Share
+          </button>
+
           <button
             type="button"
             onclick="installStoreApp()"
-            class="border {{ accent_badge }} text-xs font-extrabold px-4 py-3 rounded-2xl transition flex items-center gap-1.5"
+            class="border {{ accent_badge }} text-xs font-extrabold px-3.5 py-2.5 rounded-2xl transition flex items-center gap-1.5 cursor-pointer"
           >
             <span>📲</span>
             <span>Save Offline</span>
@@ -167,7 +491,7 @@
           <a
             href="https://wa.me/{{ store.whatsapp_number }}?text={{ ('Hi ' ~ store.store_name ~ '! I am browsing your Varsell store and have a quick question.')|urlencode }}"
             target="_blank"
-            class="inline-flex items-center justify-center gap-2 {{ accent_bg }} text-xs font-extrabold px-4 py-3 rounded-2xl transition shadow-lg"
+            class="inline-flex items-center justify-center gap-2 {{ accent_bg }} text-xs font-extrabold px-4 py-2.5 rounded-2xl transition shadow-lg"
           >
             <span>💬</span>
             <span>Chat Seller</span>
@@ -182,8 +506,8 @@
           type="text"
           id="productSearch"
           onkeyup="filterProducts()"
-          placeholder="🔍 Search products or prices in {{ store.store_name }}..."
-          class="w-full sm:max-w-md {{ 'bg-white border-slate-300 text-slate-900' if is_light else 'bg-slate-950/90 border-white/15 text-white' }} border rounded-2xl px-4 py-3 text-sm focus:outline-none transition"
+          placeholder="🔍 Search products, sizes, or prices in {{ store.store_name }}..."
+          class="w-full sm:max-w-md bg-slate-950/90 border border-white/15 text-white rounded-2xl px-4 py-3 text-sm focus:outline-none transition"
         />
       </div>
       {% endif %}
@@ -197,9 +521,11 @@
         {% for p in products %}
         {% set img_list = p.images_list if p.images_list is defined else [p.image_data] %}
         {% set img_count = img_list|length %}
+        {% set var_list = p.variants_list if p.variants_list is defined else [] %}
+        {% set first_var = var_list[0] if var_list else '' %}
         <div
-          data-name="{{ p.product_name|lower }} {{ p.description|lower }} {{ p.price }} {{ p.badge_text|lower }}"
-          class="product-card {{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl group transition"
+          data-name="{{ p.product_name|lower }} {{ p.description|lower }} {{ p.price }} {{ (p.badge_text or '')|lower }} {{ (p.variants_text or '')|lower }}"
+          class="product-card {{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-2xl group transition min-w-0"
         >
           <div>
             <!-- Multi-Photo Customer Slider -->
@@ -214,8 +540,7 @@
                 class="w-full h-full object-cover cursor-zoom-in transition duration-300 {% if p.in_stock == 0 %}opacity-40 grayscale{% endif %}"
               />
 
-              <!-- Top-Left Badges: Stock + Discount % + Custom Urgency Badge -->
-              <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+              <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5 pointer-events-none">
                 {% if p.in_stock == 0 %}
                   <span class="bg-red-500 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-md">
                     Sold Out
@@ -233,17 +558,16 @@
                 {% endif %}
 
                 {% if p.badge_text %}
-                  <span class="bg-slate-950/90 backdrop-blur border border-amber-400/50 text-amber-300 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                  <span class="bg-slate-950/90 border border-amber-400/50 text-amber-300 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow">
                     {{ p.badge_text }}
                   </span>
                 {% endif %}
               </div>
 
-              <!-- Photo Counter Badge & Slider Controls -->
               {% if img_count > 1 %}
               <span
                 id="storeSlideBadge-{{ p.id }}"
-                class="absolute top-3 right-3 bg-slate-950/85 backdrop-blur border border-white/15 text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full"
+                class="absolute top-3 right-3 bg-slate-950/85 border border-white/15 text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full pointer-events-none"
               >
                 📸 1/{{ img_count }}
               </span>
@@ -251,23 +575,22 @@
               <button
                 type="button"
                 onclick="stepStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', -1)"
-                class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+                class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg cursor-pointer"
               >
                 ‹
               </button>
               <button
                 type="button"
                 onclick="stepStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', 1)"
-                class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg"
+                class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/75 hover:bg-black text-white font-bold flex items-center justify-center text-sm shadow-lg cursor-pointer"
               >
                 ›
               </button>
               {% endif %}
             </div>
 
-            <!-- Clickable Thumbnail Strip -->
             {% if img_count > 1 %}
-            <div class="flex items-center gap-1.5 px-5 pt-3 overflow-x-auto">
+            <div class="flex items-center gap-1.5 px-5 pt-3 overflow-x-auto no-scrollbar">
               {% for img_url in img_list %}
               <img
                 src="{{ img_url }}"
@@ -278,16 +601,16 @@
             </div>
             {% endif %}
 
-            <!-- Product Title, Strike-Through Discount Price & Description -->
+            <!-- Product Title, Strike-Through Discount Price, Variants Picker & Description -->
             <div class="p-5">
               <div class="flex items-start justify-between gap-2">
-                <h2 class="text-lg font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }} leading-snug">
+                <h2 class="text-lg font-extrabold {{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-white' }} leading-snug break-words">
                   {{ p.product_name }}
                 </h2>
 
                 <div class="text-right shrink-0">
                   {% if p.compare_price and p.compare_price > p.price %}
-                    <span class="block text-xs font-mono text-slate-500 line-through">
+                    <span class="block text-xs font-mono text-slate-400 line-through">
                       {{ p.currency }} {{ "%.2f"|format(p.compare_price) }}
                     </span>
                   {% endif %}
@@ -303,8 +626,28 @@
                 </div>
               {% endif %}
 
+              <!-- UPGRADE #3: Interactive Customer Size / Color Variant Selector Pills -->
+              {% if var_list %}
+              <div class="mt-3 pt-2.5 border-t border-white/10">
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Tap to Select Option / Size:
+                </span>
+                <div class="flex flex-wrap gap-1.5">
+                  {% for v in var_list %}
+                  <button
+                    type="button"
+                    onclick="selectVariant({{ p.id }}, {{ v|tojson }}, this)"
+                    class="variant-btn-{{ p.id }} text-[11px] {% if loop.first %}font-extrabold bg-emerald-400 text-slate-950 border border-emerald-300 shadow{% else %}font-bold bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300{% endif %} px-2.5 py-1 rounded-lg transition cursor-pointer"
+                  >
+                    {{ v }}
+                  </button>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
               {% if p.description %}
-                <div class="text-xs {{ 'text-slate-600' if is_light else 'text-slate-300' }} mt-2.5 leading-relaxed">
+                <div class="text-xs {{ 'text-slate-600' if is_light and not store.bg_image_data else 'text-slate-300' }} mt-2.5 leading-relaxed">
                   {{ p.description|format_desc }}
                 </div>
               {% endif %}
@@ -317,15 +660,15 @@
               <div class="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
-                  onclick='addToCart({{ p.id }}, {{ p.product_name|tojson }}, {{ p.price }}, {{ p.currency|tojson }})'
-                  class="{{ 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300' if is_light else 'bg-white/5 hover:bg-white/10 text-white border-white/10' }} text-xs font-extrabold py-3 px-3 rounded-2xl border transition"
+                  onclick='addToCart({{ p.id }}, {{ p.product_name|tojson }}, {{ p.price }}, {{ p.currency|tojson }}, {{ first_var|tojson }})'
+                  class="{{ 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300' if is_light and not store.bg_image_data else 'bg-white/5 hover:bg-white/10 text-white border-white/10' }} text-xs font-extrabold py-3 px-3 rounded-2xl border transition cursor-pointer"
                 >
                   + Add to Bag
                 </button>
                 <button
                   type="button"
-                  onclick='quickBuyNow({{ p.id }}, {{ p.product_name|tojson }}, {{ p.price }}, {{ p.currency|tojson }})'
-                  class="{{ accent_bg }} text-xs font-extrabold py-3 px-3 rounded-2xl text-center transition shadow-lg"
+                  onclick='quickBuyNow({{ p.id }}, {{ p.product_name|tojson }}, {{ p.price }}, {{ p.currency|tojson }}, {{ first_var|tojson }})'
+                  class="{{ accent_bg }} text-xs font-extrabold py-3 px-3 rounded-2xl text-center transition shadow-lg cursor-pointer"
                 >
                   Buy Now →
                 </button>
@@ -348,7 +691,9 @@
         <span class="inline-block border {{ accent_badge }} text-xs font-extrabold px-3 py-1 rounded-full mb-3">
           {{ store.store_name }}
         </span>
-        <h3 class="text-xl font-extrabold {{ 'text-slate-900' if is_light else 'text-white' }}">New products coming soon!</h3>
+        <h3 class="text-xl font-extrabold {{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-white' }}">
+          New products coming soon!
+        </h3>
         <p class="text-xs sm:text-sm text-slate-400 mt-1">
           {{ store.store_name }} is updating its catalog. Check back shortly or chat with the seller on WhatsApp.
         </p>
@@ -356,44 +701,8 @@
     {% endif %}
   </main>
 
-  <!-- Full-Screen Image Lightbox Modal -->
-  <div
-    id="lightboxModal"
-    class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4"
-  >
-    <div class="max-w-2xl w-full flex items-center justify-between mb-3">
-      <p id="lightboxTitle" class="text-sm font-extrabold text-white truncate"></p>
-      <button
-        type="button"
-        onclick="closeLightbox()"
-        class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-1.5 rounded-full"
-      >
-        ✕ Close
-      </button>
-    </div>
-    <div class="relative max-w-2xl w-full flex items-center justify-center">
-      <img id="lightboxImg" src="" class="max-h-[78vh] w-auto rounded-2xl object-contain border border-white/15 shadow-2xl" />
-      <button
-        id="lightboxPrev"
-        type="button"
-        onclick="stepLightbox(-1)"
-        class="absolute left-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center"
-      >
-        ‹
-      </button>
-      <button
-        id="lightboxNext"
-        type="button"
-        onclick="stepLightbox(1)"
-        class="absolute right-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center"
-      >
-        ›
-      </button>
-    </div>
-  </div>
-
   <!-- Viral Varsell Footer -->
-  <footer class="max-w-5xl mx-auto px-4 py-12 text-center border-t {{ 'border-slate-200' if is_light else 'border-white/10' }} mt-8 relative z-10">
+  <footer class="max-w-5xl mx-auto px-4 py-12 text-center border-t border-white/10 mt-8 relative z-10">
     <a
       href="/"
       class="inline-flex items-center gap-2.5 {{ card_bg }} border px-4 py-2.5 rounded-full text-xs transition shadow-lg"
@@ -426,24 +735,65 @@
       <button
         type="button"
         onclick="clearCart()"
-        class="text-xs font-bold text-slate-300 hover:text-white px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 transition"
+        class="text-xs font-bold text-slate-300 hover:text-white px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 transition cursor-pointer"
       >
         Clear Bag
       </button>
       <button
         type="button"
         onclick="openCheckoutModal()"
-        class="flex-1 sm:flex-initial {{ accent_bg }} font-extrabold text-sm px-6 py-3.5 rounded-2xl shadow-xl transition"
+        class="flex-1 sm:flex-initial {{ accent_bg }} font-extrabold text-sm px-6 py-3.5 rounded-2xl shadow-xl transition cursor-pointer"
       >
         Proceed to Order & Checkout →
       </button>
     </div>
   </div>
 
-  <!-- Global Payment & Delivery Checkout Modal -->
+  <!-- MODAL 1: FULL-SCREEN IMAGE ZOOM LIGHTBOX -->
+  <div
+    id="lightboxModal"
+    class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4"
+  >
+    <div class="max-w-2xl w-full flex items-center justify-between mb-3">
+      <p id="lightboxTitle" class="text-sm font-extrabold text-white truncate"></p>
+      <button
+        type="button"
+        onclick="closeLightbox()"
+        class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-1.5 rounded-full cursor-pointer"
+      >
+        ✕ Close
+      </button>
+    </div>
+    <div class="relative max-w-2xl w-full flex items-center justify-center">
+      <img
+        id="lightboxImg"
+        src=""
+        alt="Zoomed Product"
+        class="max-h-[78vh] w-auto rounded-2xl object-contain border border-white/15 shadow-2xl"
+      />
+      <button
+        id="lightboxPrev"
+        type="button"
+        onclick="stepLightbox(-1)"
+        class="absolute left-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center cursor-pointer"
+      >
+        ‹
+      </button>
+      <button
+        id="lightboxNext"
+        type="button"
+        onclick="stepLightbox(1)"
+        class="absolute right-2 w-10 h-10 rounded-full bg-black/80 text-white font-bold text-lg flex items-center justify-center cursor-pointer"
+      >
+        ›
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL 2: EXPRESS GLOBAL PAYMENT & DELIVERY CHECKOUT -->
   <div
     id="checkoutModal"
-    class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
   >
     <div class="bg-slate-900 text-slate-100 border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
       
@@ -457,7 +807,7 @@
         <button
           type="button"
           onclick="closeCheckoutModal()"
-          class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-sm"
+          class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-sm cursor-pointer"
         >
           ✕
         </button>
@@ -465,10 +815,10 @@
 
       <div class="bg-slate-950/80 border border-white/10 rounded-2xl p-3.5 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Order Summary</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Your Shopping Bag</span>
           <span id="modalTotalText" class="text-xs font-extrabold {{ accent_text }}"></span>
         </div>
-        <div id="modalItemsList" class="space-y-1.5 text-xs text-slate-200 max-h-28 overflow-y-auto"></div>
+        <div id="modalItemsList" class="space-y-1.5 text-xs text-slate-200 max-h-36 overflow-y-auto"></div>
       </div>
 
       {% if store.momo_number %}
@@ -480,7 +830,7 @@
           <button
             type="button"
             onclick="copyPaymentDetail('{{ store.momo_number }}')"
-            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-[11px] px-3 py-1 rounded-lg transition"
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-[11px] px-3 py-1 rounded-lg transition cursor-pointer"
           >
             Copy Details
           </button>
@@ -556,228 +906,86 @@
       <button
         type="button"
         onclick="checkoutWhatsApp()"
-        class="w-full {{ accent_bg }} font-extrabold py-3.5 rounded-2xl text-sm shadow-xl transition"
+        class="w-full {{ accent_bg }} font-extrabold py-3.5 rounded-2xl text-sm shadow-xl transition cursor-pointer"
       >
         Send Final Order to WhatsApp →
       </button>
     </div>
   </div>
 
-  <script>
-    const sellerWhatsApp = "{{ store.whatsapp_number }}";
-    const storeName = {{ store.store_name|tojson }};
-    let cart = [];
-    let lightboxImages = [];
-    let lightboxIdx = 0;
+  <!-- MODAL 3: SHARE STORE LINK & QR CODE -->
+  <div
+    id="shareStoreModal"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
+    <div class="bg-slate-900 border-2 {{ accent_border }} rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl text-white">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-extrabold uppercase tracking-widest {{ accent_text }}">Share Storefront</span>
+        <button
+          type="button"
+          onclick="closeStoreModal('shareStoreModal')"
+          class="text-slate-400 hover:text-white text-sm cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
 
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js');
-      });
-    }
+      <h3 class="text-xl font-extrabold text-white">{{ store.store_name }}</h3>
 
-    function stepStoreSlide(imgId, badgeId, delta) {
-      const imgEl = document.getElementById(imgId);
-      const badgeEl = document.getElementById(badgeId);
-      if (!imgEl) return;
-      const images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
-      if (images.length <= 1) return;
-      let currentIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
-      currentIdx = (currentIdx + delta + images.length) % images.length;
-      imgEl.src = images[currentIdx];
-      imgEl.setAttribute("data-idx", currentIdx);
-      if (badgeEl) badgeEl.textContent = `📸 ${currentIdx + 1}/${images.length}`;
-    }
+      <div class="bg-white p-3 rounded-2xl inline-block shadow-xl">
+        <img
+          src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ (request.host_url ~ store.store_slug)|urlencode }}"
+          alt="Store QR Code"
+          class="w-36 h-36"
+        />
+      </div>
 
-    function jumpStoreSlide(imgId, badgeId, targetIdx) {
-      const imgEl = document.getElementById(imgId);
-      const badgeEl = document.getElementById(badgeId);
-      if (!imgEl) return;
-      const images = JSON.parse(imgEl.getAttribute("data-images") || "[]");
-      if (targetIdx < 0 || targetIdx >= images.length) return;
-      imgEl.src = images[targetIdx];
-      imgEl.setAttribute("data-idx", targetIdx);
-      if (badgeEl) badgeEl.textContent = `📸 ${targetIdx + 1}/${images.length}`;
-    }
+      <p class="text-xs font-mono font-bold {{ accent_text }} break-all bg-slate-950 border border-white/10 rounded-xl p-2.5">
+        {{ request.host }}/{{ store.store_slug }}
+      </p>
 
-    function openLightbox(imgId, title) {
-      const imgEl = document.getElementById(imgId);
-      if (!imgEl) return;
-      lightboxImages = JSON.parse(imgEl.getAttribute("data-images") || "[]");
-      lightboxIdx = parseInt(imgEl.getAttribute("data-idx") || "0", 10);
-      document.getElementById("lightboxTitle").textContent = title;
-      document.getElementById("lightboxImg").src = lightboxImages[lightboxIdx];
-      document.getElementById("lightboxPrev").style.display = lightboxImages.length > 1 ? "flex" : "none";
-      document.getElementById("lightboxNext").style.display = lightboxImages.length > 1 ? "flex" : "none";
-      document.getElementById("lightboxModal").classList.remove("hidden");
-    }
+      <button
+        type="button"
+        onclick="copyTextToClipboard('{{ request.host_url }}{{ store.store_slug }}', 'Store link copied!')"
+        class="w-full {{ accent_bg }} font-extrabold py-3 rounded-2xl text-xs cursor-pointer"
+      >
+        🔗 Copy Store Link
+      </button>
+    </div>
+  </div>
 
-    function stepLightbox(delta) {
-      if (lightboxImages.length <= 1) return;
-      lightboxIdx = (lightboxIdx + delta + lightboxImages.length) % lightboxImages.length;
-      document.getElementById("lightboxImg").src = lightboxImages[lightboxIdx];
-    }
-
-    function closeLightbox() {
-      document.getElementById("lightboxModal").classList.add("hidden");
-    }
-
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-    });
-
-    async function installStoreApp() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-      } else {
-        showStoreToast("Catalog saved for offline use! You can also tap 'Add to Home Screen' in your browser menu.");
-      }
-    }
-
-    function addToCart(id, name, price, currency) {
-      const existing = cart.find(item => item.id === id);
-      if (existing) {
-        existing.qty += 1;
-      } else {
-        cart.push({ id, name, price, currency, qty: 1 });
-      }
-      renderCartBar();
-      showStoreToast(`Added "${name}" to your bag!`);
-    }
-
-    function quickBuyNow(id, name, price, currency) {
-      const existing = cart.find(item => item.id === id);
-      if (!existing) {
-        cart.push({ id, name, price, currency, qty: 1 });
-      }
-      renderCartBar();
-      openCheckoutModal();
-    }
-
-    function openCheckoutModal() {
-      renderModalSummary();
-      document.getElementById("checkoutModal").classList.remove("hidden");
-    }
-
-    function closeCheckoutModal() {
-      document.getElementById("checkoutModal").classList.add("hidden");
-    }
-
-    function renderModalSummary() {
-      const listEl = document.getElementById("modalItemsList");
-      const totalEl = document.getElementById("modalTotalText");
-      if (!listEl || cart.length === 0) return;
-
-      const currency = cart[0].currency;
-      let total = 0;
-      listEl.innerHTML = "";
-
-      cart.forEach((item) => {
-        const sub = item.price * item.qty;
-        total += sub;
-        const row = document.createElement("div");
-        row.className = "flex items-center justify-between border-b border-white/5 pb-1";
-        row.innerHTML = `
-          <span><strong>${item.name}</strong> × ${item.qty}</span>
-          <span class="font-mono text-slate-300">${currency} ${sub.toFixed(2)}</span>
-        `;
-        listEl.appendChild(row);
-      });
-
-      totalEl.textContent = `Total: ${currency} ${total.toFixed(2)}`;
-    }
-
-    function copyPaymentDetail(num) {
-      navigator.clipboard.writeText(num);
-      showStoreToast("Payment details copied!");
-    }
-
-    function showStoreToast(msg) {
-      const toast = document.getElementById("storeToast");
-      toast.textContent = "✨ " + msg;
-      toast.classList.remove("hidden");
-      setTimeout(() => {
-        toast.classList.add("hidden");
-      }, 2600);
-    }
-
-    function clearCart() {
-      cart = [];
-      renderCartBar();
-    }
-
-    function renderCartBar() {
-      const bar = document.getElementById("cartBar");
-      if (cart.length === 0) {
-        bar.classList.add("hidden");
-        return;
-      }
-      bar.classList.remove("hidden");
-
-      const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
-      const totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-      const currency = cart[0].currency;
-
-      document.getElementById("cartCount").textContent = `${totalItems} item(s) ready to order`;
-      document.getElementById("cartTotal").textContent = `Total: ${currency} ${totalAmount.toFixed(2)}`;
-    }
-
-    function checkoutWhatsApp() {
-      if (cart.length === 0) return;
-
-      const buyerName = document.getElementById("buyerName").value.trim() || "Customer";
-      const deliveryZone = document.getElementById("deliveryZone").value;
-      const buyerLocation = document.getElementById("buyerLocation").value.trim() || "Not specified";
-      const paymentMethod = document.getElementById("paymentMethod").value;
-
-      const currency = cart[0].currency;
-      let total = 0;
-      let lines = [`Hello *${storeName}*! 👋\nNew Order from *${buyerName}* via Varsell:\n`];
-
-      cart.forEach((item, index) => {
-        const sub = item.price * item.qty;
-        total += sub;
-        lines.push(`${index + 1}. *${item.name}* (x${item.qty}) — ${currency} ${sub.toFixed(2)}`);
-      });
-
-      lines.push(`\n💰 *Total Order: ${currency} ${total.toFixed(2)}*`);
-      lines.push(`🚚 *Shipping:* ${deliveryZone}`);
-      lines.push(`📍 *Address / Location:* ${buyerLocation}`);
-      lines.push(`💳 *Payment:* ${paymentMethod}`);
-      lines.push(`\nPlease confirm availability and delivery details!`);
-
-      const url = `https://wa.me/${sellerWhatsApp}?text=${encodeURIComponent(lines.join("\n"))}`;
-      window.open(url, "_blank");
-      closeCheckoutModal();
-    }
-
-    function filterProducts() {
-      const searchInput = document.getElementById("productSearch");
-      if (!searchInput) return;
-      const query = searchInput.value.toLowerCase();
-      const cards = document.querySelectorAll(".product-card");
-      cards.forEach(card => {
-        const text = card.getAttribute("data-name");
-        card.style.display = text.includes(query) ? "flex" : "none";
-      });
-    }
-
-    function updateOnlineStatus() {
-      const banner = document.getElementById('offlineBanner');
-      if (!navigator.onLine) {
-        banner.classList.remove('hidden');
-      } else {
-        banner.classList.add('hidden');
-      }
-    }
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
-    updateOnlineStatus();
-  </script>
+  <!-- MODAL 4: SAVE OFFLINE / INSTALL APP GUIDE -->
+  <div
+    id="installStoreModal"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
+    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-white">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-extrabold text-white">📲 Save {{ store.store_name }} Offline</h3>
+        <button
+          type="button"
+          onclick="closeStoreModal('installStoreModal')"
+          class="text-slate-400 hover:text-white cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        This catalog is now cached in your browser! To add this store directly to your phone's home screen so you can open it anytime with <strong>0MB data</strong>:
+      </p>
+      <div class="bg-slate-950 border border-white/10 rounded-2xl p-4 space-y-2 text-xs text-slate-300">
+        <p><strong>🤖 Android / Chrome:</strong> Tap the <strong>3 dots (⋮)</strong> in the top right and select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</p>
+        <p><strong>🍏 iPhone (Safari):</strong> Tap the <strong>Share icon (⬆️)</strong> at the bottom and tap <strong>"Add to Home Screen"</strong>.</p>
+      </div>
+      <button
+        type="button"
+        onclick="closeStoreModal('installStoreModal')"
+        class="w-full {{ accent_bg }} font-extrabold py-3 rounded-2xl text-xs cursor-pointer"
+      >
+        Got It!
+      </button>
+    </div>
+  </div>
 
 </body>
 </html>
