@@ -34,7 +34,8 @@ IS_POSTGRES = bool(DATABASE_URL and psycopg2)
 RESERVED_SLUGS = {
     "login", "logout", "dashboard", "admin", "admin-logout", "create-store",
     "change-key", "change-store-name", "update-store", "update-theme",
-    "update-avatar", "add-product", "edit-product", "manifest.json", "sw.js",
+    "update-avatar", "add-product", "edit-product", "place-order",
+    "update-order-status", "delete-order", "manifest.json", "sw.js",
     "icon.svg", "sitemap.xml", "robots.txt", "store", "ping"
 }
 
@@ -96,7 +97,6 @@ def format_desc_filter(text):
 
 # --- SPEED BOOST 3: PERSISTENT REUSABLE DATABASE CONNECTION ---
 _pg_conn = None
-_pg_lock = threading.Lock()
 
 
 def get_raw_pg_conn():
@@ -123,7 +123,6 @@ class DBWrapper:
                 cursor.execute(pg_query, params)
                 return cursor
             except Exception:
-                # Reconnect automatically if idle connection was reset by cloud provider
                 global _pg_conn
                 try:
                     if _pg_conn and _pg_conn.closed == 0:
@@ -147,7 +146,6 @@ class DBWrapper:
             pass
 
     def close(self):
-        # Keep PostgreSQL connection warm in memory for instant subsequent requests
         if not IS_POSTGRES:
             self.conn.close()
 
@@ -177,6 +175,7 @@ def init_db():
                 payment_method_label TEXT DEFAULT 'Mobile Money / Instant Transfer',
                 momo_number TEXT DEFAULT '',
                 momo_name TEXT DEFAULT '',
+                views_count INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -189,7 +188,8 @@ def init_db():
             ("default_currency", "TEXT DEFAULT 'USD'"),
             ("payment_method_label", "TEXT DEFAULT 'Mobile Money / Instant Transfer'"),
             ("momo_number", "TEXT DEFAULT ''"),
-            ("momo_name", "TEXT DEFAULT ''")
+            ("momo_name", "TEXT DEFAULT ''"),
+            ("views_count", "INTEGER DEFAULT 0")
         ]
         for col_name, col_def in new_store_cols:
             conn.execute(f"ALTER TABLE stores ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
@@ -225,6 +225,23 @@ def init_db():
         conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS compare_price REAL DEFAULT 0")
         conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS badge_text TEXT DEFAULT ''")
         conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS variants_text TEXT DEFAULT ''")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS orders (
+                id SERIAL PRIMARY KEY,
+                store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+                buyer_name TEXT NOT NULL,
+                buyer_phone TEXT DEFAULT '',
+                delivery_zone TEXT DEFAULT '',
+                buyer_location TEXT DEFAULT '',
+                payment_method TEXT DEFAULT '',
+                items_summary TEXT NOT NULL,
+                total_amount REAL DEFAULT 0,
+                currency TEXT DEFAULT 'USD',
+                order_status TEXT DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS stores (
@@ -244,6 +261,7 @@ def init_db():
                 payment_method_label TEXT DEFAULT 'Mobile Money / Instant Transfer',
                 momo_number TEXT DEFAULT '',
                 momo_name TEXT DEFAULT '',
+                views_count INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -256,7 +274,8 @@ def init_db():
             ("default_currency", "TEXT DEFAULT 'USD'"),
             ("payment_method_label", "TEXT DEFAULT 'Mobile Money / Instant Transfer'"),
             ("momo_number", "TEXT DEFAULT ''"),
-            ("momo_name", "TEXT DEFAULT ''")
+            ("momo_name", "TEXT DEFAULT ''"),
+            ("views_count", "INTEGER DEFAULT 0")
         ]:
             try:
                 conn.execute(f"ALTER TABLE stores ADD COLUMN {col_name} {col_def}")
@@ -302,6 +321,24 @@ def init_db():
                 conn.execute(f"ALTER TABLE products ADD COLUMN {col_name} {col_def}")
             except Exception:
                 pass
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                store_id INTEGER NOT NULL,
+                buyer_name TEXT NOT NULL,
+                buyer_phone TEXT DEFAULT '',
+                delivery_zone TEXT DEFAULT '',
+                buyer_location TEXT DEFAULT '',
+                payment_method TEXT DEFAULT '',
+                items_summary TEXT NOT NULL,
+                total_amount REAL DEFAULT 0,
+                currency TEXT DEFAULT 'USD',
+                order_status TEXT DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE
+            )
+        """)
 
     conn.commit()
     conn.close()
@@ -359,7 +396,6 @@ def encode_uploaded_image(file_obj):
 
 
 def hydrate_products(product_rows):
-    """Hydrates multi-image list, calculates discount %, and parses variants (Sizes/Colors)"""
     hydrated = []
     for row in product_rows:
         p = dict(row)
@@ -379,7 +415,6 @@ def hydrate_products(product_rows):
         p["images_list"] = imgs
         p["image_data"] = imgs[0]
 
-        # Parse comma-separated variants (e.g. "Size 32, Size 34, Black")
         raw_variants = (p.get("variants_text") or "").strip()
         p["variants_text"] = raw_variants
         if raw_variants:
@@ -387,7 +422,6 @@ def hydrate_products(product_rows):
         else:
             p["variants_list"] = []
 
-        # Calculate discount percentage and savings amount
         price_val = float(p.get("price") or 0.0)
         compare_val = float(p.get("compare_price") or 0.0)
         p["compare_price"] = compare_val
@@ -506,7 +540,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v9';
+const CACHE_NAME = 'varsell-global-v10';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -954,17 +988,114 @@ def dashboard():
     raw_products = conn.execute(
         "SELECT * FROM products WHERE store_id = ? ORDER BY id DESC", (store["id"],)
     ).fetchall()
+
+    raw_orders = conn.execute(
+        "SELECT * FROM orders WHERE store_id = ? ORDER BY id DESC LIMIT 100", (store["id"],)
+    ).fetchall()
     conn.close()
 
     products = hydrate_products(raw_products)
+    orders = [dict(o) for o in raw_orders]
+    total_orders = len(orders)
+    total_revenue = sum(
+        float(o.get("total_amount") or 0.0)
+        for o in orders
+        if (o.get("order_status") or "Pending") != "Cancelled"
+    )
+
     new_store_alert = session.pop("new_store_created", False)
     return render_template(
         "dashboard.html",
         store=store,
         products=products,
+        orders=orders,
+        total_orders=total_orders,
+        total_revenue=total_revenue,
         new_store_alert=new_store_alert
     )
 
+
+# --- UPGRADE #4: ORDER LOGGING & ORDER STATUS MANAGEMENT ROUTES ---
+
+@app.route("/place-order/<int:store_id>", methods=["POST"])
+def place_order(store_id):
+    """Logs customer WhatsApp checkout orders into the seller's dashboard bookkeeper"""
+    data = request.get_json(silent=True) or {}
+    buyer_name = (data.get("buyer_name") or "Customer").strip()
+    buyer_phone = clean_international_whatsapp(data.get("buyer_phone") or "")
+    delivery_zone = (data.get("delivery_zone") or "").strip()
+    buyer_location = (data.get("buyer_location") or "").strip()
+    payment_method = (data.get("payment_method") or "").strip()
+    items_summary = (data.get("items_summary") or "").strip()
+    currency = (data.get("currency") or "USD").strip()
+
+    try:
+        total_amount = float(data.get("total_amount") or 0.0)
+    except ValueError:
+        total_amount = 0.0
+
+    if not items_summary:
+        return jsonify({"status": "skipped"}), 200
+
+    conn = get_db_connection()
+    conn.execute(
+        """INSERT INTO orders (
+               store_id, buyer_name, buyer_phone, delivery_zone, buyer_location,
+               payment_method, items_summary, total_amount, currency, order_status
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')""",
+        (
+            store_id, buyer_name, buyer_phone, delivery_zone, buyer_location,
+            payment_method, items_summary, total_amount, currency
+        )
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "logged"}), 200
+
+
+@app.route("/update-order-status/<int:order_id>", methods=["POST"])
+def update_order_status(order_id):
+    access_key = session.get("store_key")
+    if not access_key:
+        return redirect(url_for("index"))
+
+    new_status = request.form.get("order_status", "Pending").strip()
+    if new_status not in ("Pending", "Paid", "Delivered", "Cancelled"):
+        new_status = "Pending"
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT id FROM stores WHERE access_key = ?", (access_key,)).fetchone()
+    if store:
+        conn.execute(
+            "UPDATE orders SET order_status = ? WHERE id = ? AND store_id = ?",
+            (new_status, order_id, store["id"])
+        )
+        conn.commit()
+        flash(f"📋 Order #{order_id} marked as {new_status}!", "success")
+    conn.close()
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/delete-order/<int:order_id>", methods=["POST"])
+def delete_order(order_id):
+    access_key = session.get("store_key")
+    if not access_key:
+        return redirect(url_for("index"))
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT id FROM stores WHERE access_key = ?", (access_key,)).fetchone()
+    if store:
+        conn.execute(
+            "DELETE FROM orders WHERE id = ? AND store_id = ?",
+            (order_id, store["id"])
+        )
+        conn.commit()
+        flash("Order entry removed from log.", "success")
+    conn.close()
+    return redirect(url_for("dashboard"))
+
+
+# --- PRODUCT MANAGEMENT ROUTES ---
 
 @app.route("/add-product", methods=["POST"])
 def add_product():
@@ -991,7 +1122,6 @@ def add_product():
 
     images_list = []
 
-    # 1. Prefer fast client-compressed images if available
     if compressed_images_json:
         try:
             parsed_compressed = json.loads(compressed_images_json)
@@ -1000,7 +1130,6 @@ def add_product():
         except Exception:
             pass
 
-    # 2. Fallback to standard file upload if no client-compressed array
     if not images_list:
         uploaded_files = request.files.getlist("image_files")
         for f in uploaded_files:
@@ -1272,6 +1401,7 @@ def admin_delete_store(store_id):
         return redirect(url_for("admin_panel"))
 
     conn = get_db_connection()
+    conn.execute("DELETE FROM orders WHERE store_id = ?", (store_id,))
     conn.execute("DELETE FROM products WHERE store_id = ?", (store_id,))
     conn.execute("DELETE FROM store_aliases WHERE store_id = ?", (store_id,))
     conn.execute("DELETE FROM stores WHERE id = ?", (store_id,))
@@ -1303,6 +1433,14 @@ def view_store(store_slug):
     if should_redirect and store["store_slug"] != store_slug:
         conn.close()
         return redirect(f"/{store['store_slug']}", code=302)
+
+    # Increment live store views counter
+    conn.execute(
+        "UPDATE stores SET views_count = COALESCE(views_count, 0) + 1 WHERE id = ?",
+        (store["id"],)
+    )
+    conn.commit()
+    store["views_count"] = (store.get("views_count") or 0) + 1
 
     raw_products = conn.execute(
         "SELECT * FROM products WHERE store_id = ? ORDER BY in_stock DESC, id DESC",
