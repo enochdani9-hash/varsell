@@ -78,15 +78,15 @@
     }
   </style>
 
-  <!-- TOP-LEVEL INTERACTIVE FUNCTIONS + KEEP-ALIVE HEARTBEAT -->
+  <!-- TOP-LEVEL INTERACTIVE FUNCTIONS + INSTANT PHOTO COMPRESSOR + HEARTBEAT -->
   <script>
     var dashLightboxImages = [];
     var dashLightboxIdx = 0;
 
-    // 1. Ping server every 90 seconds so Render NEVER falls asleep while seller is using the dashboard
+    // 1. Ping server every 60 seconds so Render NEVER sleeps while seller is on dashboard
     setInterval(function() {
       fetch('/ping').catch(function() {});
-    }, 90000);
+    }, 60000);
 
     // 2. Register Offline Service Worker
     if ('serviceWorker' in navigator) {
@@ -95,7 +95,122 @@
       });
     }
 
-    // 3. Modal & Drawer Controllers
+    // 3. Fast Client-Side Image Compressor (Shrinks 6MB phone photos to ~65KB for instant uploads!)
+    function compressImageFile(file, maxWidth, quality) {
+      return new Promise(function(resolve) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var img = new Image();
+          img.onload = function() {
+            var canvas = document.createElement("canvas");
+            var w = img.width;
+            var h = img.height;
+            if (w > maxWidth) {
+              h = Math.round((h * maxWidth) / w);
+              w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", quality || 0.78));
+          };
+          img.onerror = function() {
+            resolve(e.target.result);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleQuickAvatarUpload(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      showToast("Compressing & uploading profile photo...");
+      var compressed = await compressImageFile(file, 400, 0.82);
+      document.getElementById("quickCompressedLogo").value = compressed;
+      event.target.value = "";
+      document.getElementById("quickAvatarForm").submit();
+    }
+
+    async function previewMultipleImages(event) {
+      var files = Array.from(event.target.files || []);
+      var grid = document.getElementById("multiPreviewGrid");
+      var prompt = document.getElementById("uploadPrompt");
+      var hiddenInput = document.getElementById("compressedImagesJson");
+      if (!files.length || !grid || !prompt) return;
+
+      grid.innerHTML = "";
+      grid.classList.remove("hidden");
+      prompt.innerHTML = '<p class="text-xs font-extrabold text-amber-400">⚡ Optimizing ' + files.length + ' photo(s) for instant upload...</p>';
+
+      var compressedList = [];
+      for (var i = 0; i < files.length; i++) {
+        var cData = await compressImageFile(files[i], 850, 0.78);
+        compressedList.push(cData);
+        var img = document.createElement("img");
+        img.src = cData;
+        img.className = "w-full h-20 object-cover rounded-xl border border-white/20 shadow";
+        grid.appendChild(img);
+      }
+
+      if (hiddenInput) {
+        hiddenInput.value = JSON.stringify(compressedList);
+        // Clear raw file input so browser only sends the fast compressed string
+        event.target.value = "";
+      }
+      prompt.innerHTML = '<p class="text-xs font-extrabold text-emerald-400">✅ ' + files.length + ' Photo(s) Optimized & Ready for Instant Upload!</p>';
+    }
+
+    async function handleEditProductImages(event, productId) {
+      var files = Array.from(event.target.files || []);
+      var hiddenInput = document.getElementById("compressedEditJson-" + productId);
+      if (!files.length || !hiddenInput) return;
+
+      var compressedList = [];
+      for (var i = 0; i < files.length; i++) {
+        var cData = await compressImageFile(files[i], 850, 0.78);
+        compressedList.push(cData);
+      }
+      hiddenInput.value = JSON.stringify(compressedList);
+      event.target.value = "";
+      showToast(files.length + " photo(s) optimized & ready to save!");
+    }
+
+    async function previewStudioAvatar(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var cData = await compressImageFile(file, 400, 0.82);
+      var preview = document.getElementById("studioAvatarPreview");
+      var hidden = document.getElementById("studioCompressedLogo");
+      if (preview) {
+        preview.src = cData;
+        preview.classList.remove("hidden");
+      }
+      if (hidden) {
+        hidden.value = cData;
+        event.target.value = "";
+      }
+    }
+
+    async function previewStudioBgImage(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var cData = await compressImageFile(file, 1200, 0.75);
+      var preview = document.getElementById("studioBgPreview");
+      var hidden = document.getElementById("studioCompressedBg");
+      if (preview) {
+        preview.src = cData;
+        preview.classList.remove("hidden");
+      }
+      if (hidden) {
+        hidden.value = cData;
+        event.target.value = "";
+      }
+    }
+
+    // 4. Modal & Drawer Controllers
     function openModal(id) {
       var el = document.getElementById(id);
       if (el) el.classList.remove("hidden");
@@ -104,16 +219,6 @@
     function closeModal(id) {
       var el = document.getElementById(id);
       if (el) el.classList.add("hidden");
-    }
-
-    function toggleThemeStudio() {
-      var el = document.getElementById("themeStudioModal");
-      if (el) el.classList.toggle("hidden");
-    }
-
-    function toggleProfileEditor() {
-      var el = document.getElementById("profileEditorModal");
-      if (el) el.classList.toggle("hidden");
     }
 
     function toggleKeyEditor() {
@@ -131,7 +236,6 @@
       if (form) form.classList.toggle("hidden");
     }
 
-    // 4. Toast Notification & Clipboard
     function showToast(message, textToCopy) {
       if (textToCopy && navigator.clipboard) {
         navigator.clipboard.writeText(textToCopy);
@@ -145,7 +249,6 @@
       }, 2800);
     }
 
-    // 5. Live Store Slug Preview
     function syncSlugPreview(val) {
       var clean = (val || "").toLowerCase().replace(/\.com|\.gh|\.net|\.store/g, "");
       var slug = clean.replace(/[^a-z0-9\s-]/g, "").trim().replace(/[\s-]+/g, "-") || "store";
@@ -155,7 +258,6 @@
       if (previewEl) previewEl.textContent = slug;
     }
 
-    // 6. Live Discount Percentage Calculator
     function previewDiscountBadge() {
       var sellEl = document.getElementById("newSellPrice");
       var compEl = document.getElementById("newComparePrice");
@@ -174,7 +276,6 @@
       }
     }
 
-    // 7. Multi-Photo Slider Controls
     function stepSlide(imgId, badgeId, delta) {
       var imgEl = document.getElementById(imgId);
       var badgeEl = document.getElementById(badgeId);
@@ -199,7 +300,6 @@
       if (badgeEl) badgeEl.textContent = "📸 " + (targetIdx + 1) + "/" + images.length;
     }
 
-    // 8. Full-Screen Image Zoom Lightbox
     function openDashLightbox(imgId, title) {
       var imgEl = document.getElementById(imgId);
       if (!imgEl) return;
@@ -218,58 +318,6 @@
       document.getElementById("dashLightboxImg").src = dashLightboxImages[dashLightboxIdx];
     }
 
-    // 9. Image Upload Previews
-    function previewMultipleImages(event) {
-      var files = Array.from(event.target.files || []);
-      var grid = document.getElementById("multiPreviewGrid");
-      var prompt = document.getElementById("uploadPrompt");
-      if (!files.length || !grid || !prompt) return;
-
-      grid.innerHTML = "";
-      grid.classList.remove("hidden");
-
-      files.forEach(function(file) {
-        var reader = new FileReader();
-        reader.onload = function(e) {
-          var img = document.createElement("img");
-          img.src = e.target.result;
-          img.className = "w-full h-20 object-cover rounded-xl border border-white/20 shadow";
-          grid.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      });
-
-      prompt.innerHTML = '<p class="text-xs font-extrabold text-emerald-400">✅ ' + files.length + ' Photo(s) Selected & Ready</p>';
-    }
-
-    function previewStudioAvatar(event) {
-      var file = event.target.files[0];
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        var preview = document.getElementById("studioAvatarPreview");
-        if (preview) {
-          preview.src = e.target.result;
-          preview.classList.remove("hidden");
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function previewStudioBgImage(event) {
-      var file = event.target.files[0];
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        var preview = document.getElementById("studioBgPreview");
-        if (preview) {
-          preview.src = e.target.result;
-          preview.classList.remove("hidden");
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-
     function selectBgPreset(url) {
       var input = document.getElementById("bgPresetUrlInput");
       var preview = document.getElementById("studioBgPreview");
@@ -280,7 +328,6 @@
       }
     }
 
-    // 10. Offline Status Banner Detection
     function updateOnlineStatus() {
       var banner = document.getElementById("offlineBanner");
       if (!banner) return;
@@ -311,13 +358,14 @@
     class="fixed top-4 right-4 left-4 sm:left-auto z-50 hidden {{ accent_btn }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all text-center"
   ></div>
 
-  <!-- SLIM STICKY TOP BAR (Fits cleanly on mobile screens without covering content) -->
+  <!-- SLIM STICKY TOP BAR -->
   <header class="border-b {{ 'border-slate-300 bg-white/95' if is_light and not store.bg_image_data else 'border-white/10 bg-slate-950/90' }} backdrop-blur-md sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
       
       <!-- Left: 1-Click Profile Picture Uploader + Store Name -->
       <div class="flex items-center gap-2.5 min-w-0">
         <form id="quickAvatarForm" action="/update-avatar" method="POST" enctype="multipart/form-data" class="shrink-0">
+          <input type="hidden" id="quickCompressedLogo" name="compressed_logo" value="" />
           <label class="relative block cursor-pointer" title="Tap to change Profile Picture">
             {% if store.logo_data %}
               <img
@@ -337,7 +385,7 @@
               type="file"
               name="logo_file"
               accept="image/*"
-              onchange="document.getElementById('quickAvatarForm').submit()"
+              onchange="handleQuickAvatarUpload(event)"
               class="hidden"
             />
           </label>
@@ -385,7 +433,7 @@
   <!-- Main Dashboard Workspace -->
   <main class="max-w-6xl mx-auto px-3.5 sm:px-4 py-5 sm:py-8 space-y-6 relative z-10">
 
-    <!-- 4-Button Quick Action Toolbar (Scrolls naturally so it never blocks the screen on mobile) -->
+    <!-- 4-Button Quick Action Toolbar -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
       <button
         type="button"
@@ -448,7 +496,7 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Top Credentials Grid (100% Mobile-Fit with min-w-0 so nothing overflows sideways!) -->
+    <!-- Top Credentials Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
 
       <!-- Left Card: Secret Key -->
@@ -574,14 +622,16 @@
     <!-- Main Workspace: Add Product Form + Live Inventory -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
 
-      <!-- Left Column: Post New Product -->
+      <!-- Left Column: Post New Product (With Multi-Photo + Discount + Variants Picker) -->
       <div class="lg:col-span-5 {{ card_bg }} border rounded-3xl p-5 sm:p-6 shadow-2xl min-w-0 w-full">
         <div class="mb-4">
-          <span class="text-[11px] font-bold uppercase tracking-widest {{ accent_text }}">Multi-Photo & Promo Uploader</span>
+          <span class="text-[11px] font-bold uppercase tracking-widest {{ accent_text }}">Fast Multi-Photo & Variants Uploader</span>
           <h2 class="text-xl font-extrabold text-white">Add a New Product</h2>
         </div>
 
         <form action="/add-product" method="POST" enctype="multipart/form-data" class="space-y-4">
+          <input type="hidden" id="compressedImagesJson" name="compressed_images_json" value="" />
+
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
               Product Title *
@@ -595,7 +645,7 @@
             />
           </div>
 
-          <!-- Currency + Selling Price + Old Slash Price (Spacious 2-Row Mobile Layout so nothing gets squished) -->
+          <!-- Currency + Selling Price -->
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
@@ -668,19 +718,35 @@
             <span id="liveDiscountText">🔥 SAVE 25% OFF Badge Active!</span>
           </div>
 
+          <!-- UPGRADE #3: Product Sizes / Colors / Options Picker -->
+          <div class="bg-white/[0.03] border border-white/15 rounded-2xl p-3.5">
+            <label class="block text-xs font-extrabold uppercase tracking-wider {{ accent_text }} mb-1">
+              👕 Sizes / Colors / Options (Comma-Separated — Optional)
+            </label>
+            <input
+              type="text"
+              name="variants_text"
+              placeholder="e.g. Size 32, Size 34, Size 36, Black, Brown"
+              class="w-full min-w-0 bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none"
+            />
+            <p class="text-[11px] text-slate-400 mt-1">
+              Customers will tap their exact size or color button before ordering!
+            </p>
+          </div>
+
           <!-- Multi-Photo Dropzone -->
           <div>
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-300">
                 Product Photos (Select 1 or More)
               </label>
-              <span class="text-[10px] font-bold {{ accent_text }}">📸 Multi-Photo</span>
+              <span class="text-[10px] font-bold {{ accent_text }}">⚡ Fast Auto-Compress</span>
             </div>
             <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/20 hover:border-white/40 bg-slate-950/90 rounded-2xl p-4 cursor-pointer transition text-center">
               <div id="multiPreviewGrid" class="hidden grid grid-cols-3 gap-2 w-full mb-3"></div>
               <div id="uploadPrompt" class="py-1.5">
                 <p class="text-xs font-bold {{ accent_text }}">📸 Tap to choose 1 or more photos</p>
-                <p class="text-[11px] text-slate-400 mt-0.5">Upload front, side, and close-up angles</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Automatically compressed for instant loading</p>
               </div>
               <input
                 type="file"
@@ -707,12 +773,12 @@
 
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-              Sizes / Details / Description
+              Product Description / Details
             </label>
             <textarea
               name="description"
-              rows="3"
-              placeholder="Available sizes, colors, and delivery info..."
+              rows="2"
+              placeholder="Material, quality, and delivery info..."
               class="w-full min-w-0 bg-slate-950 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none"
             ></textarea>
           </div>
@@ -742,6 +808,7 @@
             {% for p in products %}
             {% set img_list = p.images_list if p.images_list is defined else [p.image_data] %}
             {% set img_count = img_list|length %}
+            {% set var_list = p.variants_list if p.variants_list is defined else [] %}
             <div class="{{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl min-w-0">
               <div>
                 <div class="relative overflow-hidden bg-slate-950 h-52">
@@ -834,8 +901,19 @@
                     </p>
                   {% endif %}
 
+                  <!-- Display Active Variants on Seller Card -->
+                  {% if var_list %}
+                  <div class="flex flex-wrap gap-1 mt-2">
+                    {% for v in var_list %}
+                      <span class="text-[10px] font-bold bg-white/10 border border-white/15 text-slate-200 px-2 py-0.5 rounded-md">
+                        {{ v }}
+                      </span>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+
                   {% if p.description %}
-                    <div class="text-xs text-slate-300 mt-1.5 line-clamp-3 leading-relaxed">
+                    <div class="text-xs text-slate-300 mt-2 line-clamp-3 leading-relaxed">
                       {{ p.description|format_desc }}
                     </div>
                   {% endif %}
@@ -849,7 +927,7 @@
                   class="w-full border {{ accent_badge }} text-xs font-extrabold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>✏️</span>
-                  <span>Edit Price, Discount & Photos ({{ img_count }})</span>
+                  <span>Edit Price, Sizes & Photos ({{ img_count }})</span>
                 </button>
 
                 <div class="grid grid-cols-2 gap-2">
@@ -876,7 +954,7 @@
                   </form>
                 </div>
 
-                <!-- Collapsible Product Editor Form -->
+                <!-- Collapsible Product Editor Form (Includes Variants & Fast Image Compression) -->
                 <form
                   id="editProductForm-{{ p.id }}"
                   action="/edit-product/{{ p.id }}"
@@ -884,9 +962,11 @@
                   enctype="multipart/form-data"
                   class="hidden mt-3 pt-4 border-t border-white/15 space-y-3 text-left"
                 >
+                  <input type="hidden" id="compressedEditJson-{{ p.id }}" name="compressed_edit_json" value="" />
+
                   <div class="flex items-center justify-between">
                     <span class="text-[11px] font-extrabold uppercase tracking-wider {{ accent_text }}">
-                      Editing Product & Photos
+                      Editing Product, Sizes & Photos
                     </span>
                     <button
                       type="button"
@@ -942,6 +1022,17 @@
                         class="w-full bg-slate-950 border border-rose-500/30 rounded-xl px-2.5 py-2 text-xs text-white"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[11px] font-bold {{ accent_text }} mb-1">Sizes / Colors / Options (Comma-separated)</label>
+                    <input
+                      type="text"
+                      name="variants_text"
+                      value="{{ p.variants_text or '' }}"
+                      placeholder="e.g. Size 32, Size 34, Black, Brown"
+                      class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
+                    />
                   </div>
 
                   <div>
@@ -1005,6 +1096,7 @@
                       name="image_files"
                       accept="image/*"
                       multiple
+                      onchange="handleEditProductImages(event, {{ p.id }})"
                       class="w-full text-[11px] text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-white/10 file:text-white"
                     />
                     <input
@@ -1065,7 +1157,9 @@
       </div>
 
       <form action="/update-theme" method="POST" enctype="multipart/form-data" class="space-y-5">
-        
+        <input type="hidden" id="studioCompressedLogo" name="compressed_logo" value="" />
+        <input type="hidden" id="studioCompressedBg" name="compressed_bg" value="" />
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <!-- Profile Picture Upload -->
           <div class="bg-slate-950 border border-white/15 rounded-2xl p-3.5 space-y-2.5">
@@ -1543,23 +1637,18 @@
 
       <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold text-rose-400 mb-1">🔥 How to Add Strike-Through Discount Prices</p>
-          <p>Enter your normal selling price (e.g. <strong>150</strong>) and type a higher number in the <strong>"Old Price (Optional Slash Deal)"</strong> box (e.g. <strong>200</strong>). Varsell automatically crosses out 200 and displays a <strong>🔥 SAVE 25%</strong> badge!</p>
+          <p class="font-extrabold {{ accent_text }} mb-1">👕 How to Add Product Sizes, Colors or Options</p>
+          <p>In the <strong>"Sizes / Colors / Options"</strong> box, type your options separated by commas (e.g. <strong>Size 32, Size 34, Black, Brown</strong>). Customers will tap their choice on your store before ordering!</p>
         </div>
 
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold {{ accent_text }} mb-1">📸 How to Upload Multiple Photos or Update Product Images</p>
-          <p>When adding a product, select multiple photos from your gallery at once. To add more photos or replace an existing product's image later, tap <strong>"✏️ Edit Price, Discount & Photos"</strong> on that product card!</p>
+          <p class="font-extrabold text-rose-400 mb-1">🔥 How to Add Strike-Through Discount Prices</p>
+          <p>Enter your selling price (e.g. <strong>150</strong>) and type a higher number in the <strong>"Old Price (Optional Slash Deal)"</strong> box (e.g. <strong>200</strong>). Varsell automatically crosses out 200 and displays a <strong>🔥 SAVE 25%</strong> badge!</p>
         </div>
 
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
           <p class="font-extrabold text-amber-300 mb-1">🎨 How to Change Your Store Theme, Wallpaper & Profile Picture</p>
           <p>Tap <strong>"🎨 Look & Background"</strong> in the top toolbar to switch between 6 themes, upload your profile picture, or set a custom full-screen background image.</p>
-        </div>
-
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold text-emerald-400 mb-1">🔗 How to Rename Your Store Without Losing Customers</p>
-          <p>Tap <strong>"✏️ Change Name"</strong> on your Store Link card. Even after you rename your shop, anyone clicking your old link will be redirected to your new link automatically!</p>
         </div>
       </div>
 
