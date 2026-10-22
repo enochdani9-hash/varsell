@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 {% set theme = store.theme_color or 'emerald' %}
 {% set is_light = (theme == 'light') %}
 
@@ -241,7 +241,7 @@
       toast.classList.remove("hidden");
       setTimeout(function() {
         toast.classList.add("hidden");
-      }, 2800);
+      }, 3000);
     }
 
     function syncSlugPreview(val) {
@@ -436,7 +436,7 @@
   <!-- Main Dashboard Workspace -->
   <main class="max-w-6xl mx-auto px-3.5 sm:px-4 py-5 sm:py-8 space-y-6 relative z-10">
 
-    <!-- UPGRADE #4: 4-CARD LIVE SELLER ANALYTICS & REVENUE BAR -->
+    <!-- 4-CARD LIVE SELLER ANALYTICS & REVENUE BAR -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <div class="{{ card_bg }} border rounded-3xl p-4 sm:p-5 shadow-xl min-w-0">
         <div class="flex items-center justify-between">
@@ -678,7 +678,7 @@
     <!-- Main Workspace: Add Product Form + Live Inventory -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
 
-      <!-- Left Column: Post New Product (With Multi-Photo + Discount + Variants Picker) -->
+      <!-- Left Column: Post New Product -->
       <div class="lg:col-span-5 {{ card_bg }} border rounded-3xl p-5 sm:p-6 shadow-2xl min-w-0 w-full">
         <div class="mb-4">
           <span class="text-[11px] font-bold uppercase tracking-widest {{ accent_text }}">Fast Multi-Photo & Variants Uploader</span>
@@ -862,6 +862,7 @@
             {% set img_list = p.images_list if p.images_list is defined else [p.image_data] %}
             {% set img_count = img_list|length %}
             {% set var_list = p.variants_list if p.variants_list is defined else [] %}
+            {% set direct_ad_url = request.host_url ~ store.store_slug ~ '?item=' ~ p.id %}
             <div class="{{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl min-w-0">
               <div>
                 <div class="relative overflow-hidden bg-slate-950 h-52">
@@ -972,7 +973,17 @@
                 </div>
               </div>
 
+              <!-- Action Buttons: Direct Ad Link (Upgrade #5) + Edit Product + Stock + Delete -->
               <div class="p-4 sm:p-5 pt-0 space-y-2">
+                <button
+                  type="button"
+                  onclick="showToast('Direct Product Ad Link copied! Paste in Meta/TikTok Ads or WhatsApp Status.', '{{ direct_ad_url }}')"
+                  class="w-full {{ accent_btn }} text-xs font-extrabold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <span>🎯</span>
+                  <span>Copy Direct Ad Link (Meta / Status)</span>
+                </button>
+
                 <button
                   type="button"
                   onclick="toggleProductEditor({{ p.id }})"
@@ -1184,9 +1195,7 @@
     </div>
   </main>
 
-  <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 1: CUSTOMER ORDERS & BOOKKEEPER MANAGER (UPGRADE #4)         -->
-  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 1: CUSTOMER ORDERS & BOOKKEEPER MANAGER -->
   <div
     id="ordersBookkeeperModal"
     class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4"
@@ -1242,7 +1251,6 @@
           </div>
 
           <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <!-- Status Updater Form -->
             <form action="/update-order-status/{{ o.id }}" method="POST" class="flex items-center gap-2">
               <select
                 name="order_status"
@@ -1295,9 +1303,7 @@
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 2: STORE LOOK, BACKGROUND IMAGE, THEME & AVATAR STUDIO       -->
-  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 2: STORE LOOK, BACKGROUND IMAGE, THEME & AVATAR STUDIO -->
   <div
     id="themeStudioModal"
     class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4"
@@ -1533,9 +1539,7 @@
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 3: GLOBAL & PAYMENT SETUP                                    -->
-  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 3: GLOBAL & PAYMENT SETUP -->
   <div
     id="profileEditorModal"
     class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4"
@@ -1673,9 +1677,7 @@
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 4: FULL-SCREEN DASHBOARD IMAGE LIGHTBOX                      -->
-  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 4: FULL-SCREEN DASHBOARD IMAGE LIGHTBOX -->
   <div
     id="dashLightboxModal"
     class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4"
@@ -1715,9 +1717,7 @@
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 5: WHATSAPP STATUS FLYER & QR CARD                           -->
-  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 5: WHATSAPP STATUS FLYER & QR CARD -->
   <div
     id="flyerModal"
     class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
