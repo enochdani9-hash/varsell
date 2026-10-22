@@ -83,19 +83,16 @@
     var dashLightboxImages = [];
     var dashLightboxIdx = 0;
 
-    // 1. Ping server every 60 seconds so Render NEVER sleeps while seller is on dashboard
     setInterval(function() {
       fetch('/ping').catch(function() {});
     }, 60000);
 
-    // 2. Register Offline Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js');
       });
     }
 
-    // 3. Fast Client-Side Image Compressor (Shrinks 6MB phone photos to ~65KB for instant uploads!)
     function compressImageFile(file, maxWidth, quality) {
       return new Promise(function(resolve) {
         var reader = new FileReader();
@@ -157,7 +154,6 @@
 
       if (hiddenInput) {
         hiddenInput.value = JSON.stringify(compressedList);
-        // Clear raw file input so browser only sends the fast compressed string
         event.target.value = "";
       }
       prompt.innerHTML = '<p class="text-xs font-extrabold text-emerald-400">✅ ' + files.length + ' Photo(s) Optimized & Ready for Instant Upload!</p>';
@@ -210,7 +206,6 @@
       }
     }
 
-    // 4. Modal & Drawer Controllers
     function openModal(id) {
       var el = document.getElementById(id);
       if (el) el.classList.remove("hidden");
@@ -362,7 +357,6 @@
   <header class="border-b {{ 'border-slate-300 bg-white/95' if is_light and not store.bg_image_data else 'border-white/10 bg-slate-950/90' }} backdrop-blur-md sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
       
-      <!-- Left: 1-Click Profile Picture Uploader + Store Name -->
       <div class="flex items-center gap-2.5 min-w-0">
         <form id="quickAvatarForm" action="/update-avatar" method="POST" enctype="multipart/form-data" class="shrink-0">
           <input type="hidden" id="quickCompressedLogo" name="compressed_logo" value="" />
@@ -410,8 +404,16 @@
         </div>
       </div>
 
-      <!-- Right: Primary Store Actions -->
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <button
+          type="button"
+          onclick="openModal('ordersBookkeeperModal')"
+          class="bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-extrabold px-3 py-2 rounded-xl transition cursor-pointer flex items-center gap-1"
+        >
+          <span>📋</span>
+          <span>Orders ({{ total_orders or 0 }})</span>
+        </button>
+
         <a
           href="/{{ store.store_slug }}"
           target="_blank"
@@ -419,6 +421,7 @@
         >
           View Store ↗
         </a>
+
         <a
           href="/logout"
           class="bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 text-xs font-semibold px-2.5 sm:px-3 py-2 rounded-xl transition"
@@ -433,6 +436,59 @@
   <!-- Main Dashboard Workspace -->
   <main class="max-w-6xl mx-auto px-3.5 sm:px-4 py-5 sm:py-8 space-y-6 relative z-10">
 
+    <!-- UPGRADE #4: 4-CARD LIVE SELLER ANALYTICS & REVENUE BAR -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div class="{{ card_bg }} border rounded-3xl p-4 sm:p-5 shadow-xl min-w-0">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">Store Views</span>
+          <span class="text-base">👁️</span>
+        </div>
+        <p class="text-2xl sm:text-3xl font-extrabold text-white mt-1 font-mono">
+          {{ store.views_count or 0 }}
+        </p>
+        <p class="text-[11px] text-slate-400 mt-0.5 truncate">Total storefront visits</p>
+      </div>
+
+      <div
+        onclick="openModal('ordersBookkeeperModal')"
+        class="{{ card_bg }} border border-emerald-500/35 rounded-3xl p-4 sm:p-5 shadow-xl min-w-0 cursor-pointer hover:opacity-95 transition"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-300">WhatsApp Orders</span>
+          <span class="text-base">🛍️</span>
+        </div>
+        <p class="text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-1 font-mono">
+          {{ total_orders or 0 }}
+        </p>
+        <p class="text-[11px] text-emerald-300 font-bold underline mt-0.5 truncate">Tap to view order log →</p>
+      </div>
+
+      <div
+        onclick="openModal('ordersBookkeeperModal')"
+        class="{{ card_bg }} border border-amber-400/35 rounded-3xl p-4 sm:p-5 shadow-xl min-w-0 cursor-pointer hover:opacity-95 transition"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-300">Order Volume</span>
+          <span class="text-base">💰</span>
+        </div>
+        <p class="text-lg sm:text-2xl font-extrabold text-amber-400 mt-1.5 font-mono truncate">
+          {{ store.default_currency or 'GHS' }} {{ "%.2f"|format(total_revenue or 0) }}
+        </p>
+        <p class="text-[11px] text-slate-400 mt-0.5 truncate">Active customer orders</p>
+      </div>
+
+      <div class="{{ card_bg }} border rounded-3xl p-4 sm:p-5 shadow-xl min-w-0">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">Live Catalog</span>
+          <span class="text-base">📦</span>
+        </div>
+        <p class="text-2xl sm:text-3xl font-extrabold {{ accent_text }} mt-1 font-mono">
+          {{ products|length }}
+        </p>
+        <p class="text-[11px] text-slate-400 mt-0.5 truncate">Products published</p>
+      </div>
+    </div>
+
     <!-- 4-Button Quick Action Toolbar -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
       <button
@@ -442,6 +498,15 @@
       >
         <span class="block text-base sm:text-lg">🎨</span>
         <span class="block text-[11px] sm:text-xs font-extrabold text-white mt-0.5 truncate">Look & Background</span>
+      </button>
+
+      <button
+        type="button"
+        onclick="openModal('ordersBookkeeperModal')"
+        class="{{ card_bg }} border border-emerald-400/40 rounded-2xl p-3 text-center hover:opacity-90 transition shadow-lg cursor-pointer"
+      >
+        <span class="block text-base sm:text-lg">📋</span>
+        <span class="block text-[11px] sm:text-xs font-extrabold text-emerald-300 mt-0.5 truncate">Order Log ({{ total_orders or 0 }})</span>
       </button>
 
       <button
@@ -460,15 +525,6 @@
       >
         <span class="block text-base sm:text-lg">⚙️</span>
         <span class="block text-[11px] sm:text-xs font-extrabold text-slate-200 mt-0.5 truncate">Global & Payment</span>
-      </button>
-
-      <button
-        type="button"
-        onclick="openModal('dashHelpModal')"
-        class="{{ card_bg }} border border-white/15 rounded-2xl p-3 text-center hover:opacity-90 transition shadow-lg cursor-pointer"
-      >
-        <span class="block text-base sm:text-lg">❓</span>
-        <span class="block text-[11px] sm:text-xs font-extrabold text-emerald-300 mt-0.5 truncate">Seller Help Guide</span>
       </button>
     </div>
 
@@ -645,7 +701,6 @@
             />
           </div>
 
-          <!-- Currency + Selling Price -->
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
@@ -718,7 +773,6 @@
             <span id="liveDiscountText">🔥 SAVE 25% OFF Badge Active!</span>
           </div>
 
-          <!-- UPGRADE #3: Product Sizes / Colors / Options Picker -->
           <div class="bg-white/[0.03] border border-white/15 rounded-2xl p-3.5">
             <label class="block text-xs font-extrabold uppercase tracking-wider {{ accent_text }} mb-1">
               👕 Sizes / Colors / Options (Comma-Separated — Optional)
@@ -734,7 +788,6 @@
             </p>
           </div>
 
-          <!-- Multi-Photo Dropzone -->
           <div>
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -901,7 +954,6 @@
                     </p>
                   {% endif %}
 
-                  <!-- Display Active Variants on Seller Card -->
                   {% if var_list %}
                   <div class="flex flex-wrap gap-1 mt-2">
                     {% for v in var_list %}
@@ -954,7 +1006,7 @@
                   </form>
                 </div>
 
-                <!-- Collapsible Product Editor Form (Includes Variants & Fast Image Compression) -->
+                <!-- Collapsible Product Editor Form -->
                 <form
                   id="editProductForm-{{ p.id }}"
                   action="/edit-product/{{ p.id }}"
@@ -1133,7 +1185,118 @@
   </main>
 
   <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 1: STORE LOOK, BACKGROUND IMAGE, THEME & AVATAR STUDIO       -->
+  <!-- POP-UP MODAL 1: CUSTOMER ORDERS & BOOKKEEPER MANAGER (UPGRADE #4)         -->
+  <!-- ========================================================================= -->
+  <div
+    id="ordersBookkeeperModal"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4"
+  >
+    <div class="bg-slate-900 text-white border-2 border-emerald-400 rounded-3xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-5 gap-2">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Live Order Bookkeeper</span>
+          <h2 class="text-lg sm:text-2xl font-extrabold text-white">
+            📋 Customer WhatsApp Orders ({{ total_orders or 0 }})
+          </h2>
+        </div>
+        <button
+          type="button"
+          onclick="closeModal('ordersBookkeeperModal')"
+          class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-2 rounded-xl shrink-0 cursor-pointer"
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      {% if orders %}
+      <div class="space-y-3.5">
+        {% for o in orders %}
+        <div class="bg-slate-950 border border-white/15 rounded-2xl p-4 space-y-3">
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-mono font-bold text-slate-400">#{{ o.id }}</span>
+                <h4 class="text-sm sm:text-base font-extrabold text-white">{{ o.buyer_name }}</h4>
+                {% set st = o.order_status or 'Pending' %}
+                <span class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full {% if st == 'Paid' %}bg-emerald-500/20 text-emerald-300 border border-emerald-500/40{% elif st == 'Delivered' %}bg-cyan-500/20 text-cyan-300 border border-cyan-500/40{% elif st == 'Cancelled' %}bg-red-500/20 text-red-300 border border-red-500/40{% else %}bg-amber-400/20 text-amber-300 border border-amber-400/40{% endif %}">
+                  {{ st }}
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">
+                📍 {{ o.buyer_location or 'Location not specified' }} • 🚚 {{ o.delivery_zone or 'Standard Delivery' }} • 💳 {{ o.payment_method or 'Direct Pay' }}
+              </p>
+            </div>
+
+            <div class="text-right">
+              <span class="text-sm sm:text-base font-mono font-extrabold text-emerald-400">
+                {{ o.currency }} {{ "%.2f"|format(o.total_amount or 0) }}
+              </span>
+              {% if o.created_at %}
+              <span class="block text-[10px] text-slate-500">{{ o.created_at }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="bg-slate-900/90 border border-white/10 rounded-xl p-3 text-xs text-slate-200 font-mono whitespace-pre-line">
+            {{ o.items_summary }}
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <!-- Status Updater Form -->
+            <form action="/update-order-status/{{ o.id }}" method="POST" class="flex items-center gap-2">
+              <select
+                name="order_status"
+                class="bg-slate-900 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white font-bold"
+              >
+                {% for s_opt in ['Pending', 'Paid', 'Delivered', 'Cancelled'] %}
+                  <option value="{{ s_opt }}" {% if (o.order_status or 'Pending') == s_opt %}selected{% endif %}>{{ s_opt }}</option>
+                {% endfor %}
+              </select>
+              <button
+                type="submit"
+                class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs px-3 py-1.5 rounded-xl transition cursor-pointer"
+              >
+                Update Status
+              </button>
+            </form>
+
+            <div class="flex items-center gap-2">
+              {% if o.buyer_phone %}
+              <a
+                href="https://wa.me/{{ o.buyer_phone }}?text={{ ('Hi ' ~ o.buyer_name ~ '! Regarding your order #' ~ o.id ~ ' at ' ~ store.store_name ~ '...')|urlencode }}"
+                target="_blank"
+                class="bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-xs font-extrabold px-3 py-1.5 rounded-xl transition"
+              >
+                💬 Chat Buyer
+              </a>
+              {% endif %}
+
+              <form action="/delete-order/{{ o.id }}" method="POST" onsubmit="return confirm('Remove this order entry?');">
+                <button
+                  type="submit"
+                  class="bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/25 text-xs font-bold px-2.5 py-1.5 rounded-xl transition cursor-pointer"
+                >
+                  Delete
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="bg-slate-950 border border-white/10 rounded-2xl p-10 text-center space-y-2">
+        <p class="text-base font-extrabold text-white">No customer orders logged yet</p>
+        <p class="text-xs text-slate-400">
+          Whenever a customer clicks <strong>"Send Final Order to WhatsApp →"</strong> on your store, their full order, items, and contact details will automatically appear right here!
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 2: STORE LOOK, BACKGROUND IMAGE, THEME & AVATAR STUDIO       -->
   <!-- ========================================================================= -->
   <div
     id="themeStudioModal"
@@ -1161,7 +1324,6 @@
         <input type="hidden" id="studioCompressedBg" name="compressed_bg" value="" />
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <!-- Profile Picture Upload -->
           <div class="bg-slate-950 border border-white/15 rounded-2xl p-3.5 space-y-2.5">
             <label class="block text-xs font-extrabold uppercase text-emerald-300">
               📸 1. Store Profile Picture / Logo
@@ -1189,7 +1351,6 @@
             </div>
           </div>
 
-          <!-- Full-Screen Store Background Image Upload -->
           <div class="bg-slate-950 border border-amber-400/35 rounded-2xl p-3.5 space-y-2.5">
             <div class="flex items-center justify-between">
               <label class="block text-xs font-extrabold uppercase text-amber-300">
@@ -1234,7 +1395,6 @@
           </div>
         </div>
 
-        <!-- 1-Click Pro Background Wallpaper Presets -->
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-3.5">
           <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
             ✨ Or Tap a Ready-Made Pro Store Wallpaper:
@@ -1278,7 +1438,6 @@
           </div>
         </div>
 
-        <!-- 3. Select Color Theme -->
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2.5">
             🎨 3. Select Your Storefront Color Theme:
@@ -1336,7 +1495,6 @@
           </div>
         </div>
 
-        <!-- 4. Optional Top Header Strip Banner -->
         <div class="bg-slate-950 border border-white/10 rounded-2xl p-3.5">
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold uppercase text-purple-300">
@@ -1376,7 +1534,7 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 2: GLOBAL & PAYMENT SETUP                                    -->
+  <!-- POP-UP MODAL 3: GLOBAL & PAYMENT SETUP                                    -->
   <!-- ========================================================================= -->
   <div
     id="profileEditorModal"
@@ -1516,7 +1674,7 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 3: FULL-SCREEN DASHBOARD IMAGE LIGHTBOX                      -->
+  <!-- POP-UP MODAL 4: FULL-SCREEN DASHBOARD IMAGE LIGHTBOX                      -->
   <!-- ========================================================================= -->
   <div
     id="dashLightboxModal"
@@ -1558,7 +1716,7 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 4: WHATSAPP STATUS FLYER & QR CARD                           -->
+  <!-- POP-UP MODAL 5: WHATSAPP STATUS FLYER & QR CARD                           -->
   <!-- ========================================================================= -->
   <div
     id="flyerModal"
@@ -1610,55 +1768,6 @@
           Close
         </button>
       </div>
-    </div>
-  </div>
-
-  <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 5: SELLER DASHBOARD HELP GUIDE                               -->
-  <!-- ========================================================================= -->
-  <div
-    id="dashHelpModal"
-    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
-  >
-    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto text-white">
-      <div class="flex items-center justify-between border-b border-white/10 pb-3">
-        <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-widest {{ accent_text }}">Seller Command Guide</span>
-          <h3 class="text-xl font-extrabold text-white">❓ How to Manage Your Varsell Store</h3>
-        </div>
-        <button
-          type="button"
-          onclick="closeModal('dashHelpModal')"
-          class="text-slate-400 hover:text-white text-sm cursor-pointer"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold {{ accent_text }} mb-1">👕 How to Add Product Sizes, Colors or Options</p>
-          <p>In the <strong>"Sizes / Colors / Options"</strong> box, type your options separated by commas (e.g. <strong>Size 32, Size 34, Black, Brown</strong>). Customers will tap their choice on your store before ordering!</p>
-        </div>
-
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold text-rose-400 mb-1">🔥 How to Add Strike-Through Discount Prices</p>
-          <p>Enter your selling price (e.g. <strong>150</strong>) and type a higher number in the <strong>"Old Price (Optional Slash Deal)"</strong> box (e.g. <strong>200</strong>). Varsell automatically crosses out 200 and displays a <strong>🔥 SAVE 25%</strong> badge!</p>
-        </div>
-
-        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
-          <p class="font-extrabold text-amber-300 mb-1">🎨 How to Change Your Store Theme, Wallpaper & Profile Picture</p>
-          <p>Tap <strong>"🎨 Look & Background"</strong> in the top toolbar to switch between 6 themes, upload your profile picture, or set a custom full-screen background image.</p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onclick="closeModal('dashHelpModal')"
-        class="w-full {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs cursor-pointer"
-      >
-        Got It!
-      </button>
     </div>
   </div>
 
