@@ -57,13 +57,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <meta name="theme-color" content="#10b981" />
-  <meta
-    name="description"
-    content="Shop {{ store.store_name }} ({{ store.category }}) on Varsell. {{ store.bio or 'Browse products online or offline and order directly on WhatsApp.' }}"
-  />
+
+  {% if featured_product %}
+    <title>{{ featured_product.product_name }} ({{ featured_product.currency }} {{ "%.2f"|format(featured_product.price) }}) — {{ store.store_name }}</title>
+    <meta name="description" content="Order {{ featured_product.product_name }} for {{ featured_product.currency }} {{ '%.2f'|format(featured_product.price) }} at {{ store.store_name }} on Varsell." />
+    <meta property="og:title" content="{{ featured_product.product_name }} — {{ featured_product.currency }} {{ '%.2f'|format(featured_product.price) }}" />
+    <meta property="og:description" content="{{ featured_product.description or ('Available now at ' ~ store.store_name ~ '. Tap to order on WhatsApp!') }}" />
+    <meta property="og:image" content="{{ request.host_url }}product-image/{{ featured_product.id }}.jpg" />
+    <meta property="og:url" content="{{ request.host_url }}{{ store.store_slug }}?item={{ featured_product.id }}" />
+  {% else %}
+    <title>{{ store.store_name }} — Official Store on Varsell</title>
+    <meta name="description" content="Shop {{ store.store_name }} ({{ store.category }}) on Varsell. {{ store.bio or 'Browse products online or offline and order directly on WhatsApp.' }}" />
+    <meta property="og:title" content="{{ store.store_name }} — Official Store" />
+    <meta property="og:description" content="{{ store.bio or ('Browse ' ~ store.store_name ~ ' on Varsell and order directly on WhatsApp.') }}" />
+    <meta property="og:image" content="{{ request.host_url }}store-logo/{{ store.id }}.jpg" />
+    <meta property="og:url" content="{{ request.host_url }}{{ store.store_slug }}" />
+  {% endif %}
+  <meta property="og:type" content="website" />
+
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-  <title>{{ store.store_name }} — Official Store on Varsell</title>
 
   <script type="application/ld+json">
   {
@@ -106,11 +119,12 @@
     }
   </style>
 
-  <!-- TOP-LEVEL STOREFRONT JAVASCRIPT + VARIANTS + LIVE ORDER LOGGER -->
+  <!-- TOP-LEVEL STOREFRONT JAVASCRIPT + VARIANTS + AD SPOTLIGHT + LIVE ORDER LOGGER -->
   <script>
     var storeId = {{ store.id }};
     var sellerWhatsApp = "{{ store.whatsapp_number }}";
     var storeName = {{ store.store_name|tojson }};
+    var storeBaseUrl = "{{ request.host_url }}{{ store.store_slug }}";
     var cart = [];
     var selectedVariants = {};
     var lightboxImages = [];
@@ -149,7 +163,7 @@
       toast.classList.remove("hidden");
       setTimeout(function() {
         toast.classList.add("hidden");
-      }, 2600);
+      }, 2800);
     }
 
     function copyTextToClipboard(text, msg) {
@@ -157,6 +171,21 @@
         navigator.clipboard.writeText(text);
       }
       showStoreToast(msg || "Copied to clipboard!");
+    }
+
+    function shareProductLink(productId, productName) {
+      var directUrl = storeBaseUrl + "?item=" + productId;
+      if (navigator.share) {
+        navigator.share({
+          title: productName + " — " + storeName,
+          text: "Check out " + productName + " at " + storeName + "!",
+          url: directUrl
+        }).catch(function() {
+          copyTextToClipboard(directUrl, "Direct product link copied!");
+        });
+      } else {
+        copyTextToClipboard(directUrl, "Direct product link copied: " + directUrl);
+      }
     }
 
     async function installStoreApp() {
@@ -241,6 +270,7 @@
         cart.push({ cartKey: cartKey, id: id, name: fullName, price: parseFloat(price), currency: currency, qty: 1 });
       }
       renderCartBar();
+      closeStoreModal("adSpotlightModal");
       showStoreToast('Added "' + fullName + '" to your bag!');
     }
 
@@ -264,6 +294,7 @@
       if (!existing) {
         cart.push({ cartKey: cartKey, id: id, name: fullName, price: parseFloat(price), currency: currency, qty: 1 });
       }
+      closeStoreModal("adSpotlightModal");
       renderCartBar();
       openCheckoutModal();
     }
@@ -334,7 +365,6 @@
       document.getElementById("cartTotal").textContent = "Total: " + currency + " " + totalAmount.toFixed(2);
     }
 
-    // UPGRADE #4: Logs Order to Database AND Opens WhatsApp
     function checkoutWhatsApp() {
       if (cart.length === 0) return;
 
@@ -366,7 +396,6 @@
       lines.push("💳 *Payment:* " + paymentMethod);
       lines.push("\nPlease confirm availability and delivery details!");
 
-      // Log order to seller's Varsell Bookkeeper in the background
       try {
         fetch("/place-order/" + storeId, {
           method: "POST",
@@ -547,8 +576,9 @@
         {% set var_list = p.variants_list if p.variants_list is defined else [] %}
         {% set first_var = var_list[0] if var_list else '' %}
         <div
+          id="product-card-{{ p.id }}"
           data-name="{{ p.product_name|lower }} {{ p.description|lower }} {{ p.price }} {{ (p.badge_text or '')|lower }} {{ (p.variants_text or '')|lower }}"
-          class="product-card {{ card_bg }} border rounded-3xl overflow-hidden flex flex-col justify-between shadow-2xl group transition min-w-0"
+          class="product-card {{ card_bg }} border {% if featured_product and featured_product.id == p.id %}border-2 {{ accent_border }}{% endif %} rounded-3xl overflow-hidden flex flex-col justify-between shadow-2xl group transition min-w-0"
         >
           <div>
             <div class="relative h-60 bg-slate-950 overflow-hidden">
@@ -586,14 +616,28 @@
                 {% endif %}
               </div>
 
-              {% if img_count > 1 %}
-              <span
-                id="storeSlideBadge-{{ p.id }}"
-                class="absolute top-3 right-3 bg-slate-950/85 border border-white/15 text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full pointer-events-none"
-              >
-                📸 1/{{ img_count }}
-              </span>
+              <!-- Share Direct Product Link Button + Photo Counter -->
+              <div class="absolute top-3 right-3 flex items-center gap-1.5">
+                {% if img_count > 1 %}
+                <span
+                  id="storeSlideBadge-{{ p.id }}"
+                  class="bg-slate-950/85 border border-white/15 text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full pointer-events-none"
+                >
+                  📸 1/{{ img_count }}
+                </span>
+                {% endif %}
 
+                <button
+                  type="button"
+                  title="Share Direct Product Link"
+                  onclick='shareProductLink({{ p.id }}, {{ p.product_name|tojson }})'
+                  class="w-8 h-8 rounded-full bg-slate-950/85 hover:bg-slate-900 border border-white/20 text-white text-xs flex items-center justify-center shadow-lg cursor-pointer"
+                >
+                  🔗
+                </button>
+              </div>
+
+              {% if img_count > 1 %}
               <button
                 type="button"
                 onclick="stepStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', -1)"
@@ -719,6 +763,180 @@
       </div>
     {% endif %}
   </main>
+
+  <!-- ========================================================================= -->
+  <!-- UPGRADE #5: AUTO-OPENING DIRECT AD SPOTLIGHT MODAL (?item=ID)             -->
+  <!-- ========================================================================= -->
+  {% if featured_product %}
+  {% set fp = featured_product %}
+  {% set fp_imgs = fp.images_list if fp.images_list is defined else [fp.image_data] %}
+  {% set fp_img_count = fp_imgs|length %}
+  {% set fp_vars = fp.variants_list if fp.variants_list is defined else [] %}
+  {% set fp_first_var = fp_vars[0] if fp_vars else '' %}
+  <div
+    id="adSpotlightModal"
+    class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4"
+  >
+    <div class="bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl max-h-[92vh] overflow-y-auto">
+      
+      <!-- Top Spotlight Bar -->
+      <div class="px-5 py-3.5 border-b border-white/10 flex items-center justify-between bg-slate-950/80">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-[11px] font-extrabold uppercase tracking-wider {{ accent_text }}">
+            Featured Product Offer • {{ store.store_name }}
+          </span>
+        </div>
+        <button
+          type="button"
+          onclick="closeStoreModal('adSpotlightModal')"
+          class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full cursor-pointer"
+        >
+          ✕ View All Products
+        </button>
+      </div>
+
+      <!-- Featured Product Image Slider -->
+      <div class="relative h-64 sm:h-72 bg-slate-950 overflow-hidden">
+        <img
+          id="adSlideImg-{{ fp.id }}"
+          src="{{ fp_imgs[0] }}"
+          alt="{{ fp.product_name }}"
+          data-idx="0"
+          data-images='{{ fp_imgs|tojson }}'
+          class="w-full h-full object-cover"
+        />
+
+        <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+          {% if fp.discount_percent and fp.discount_percent > 0 %}
+            <span class="bg-rose-600 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-lg animate-pulse">
+              🔥 SAVE {{ fp.discount_percent }}% OFF
+            </span>
+          {% endif %}
+          {% if fp.badge_text %}
+            <span class="bg-slate-950/90 border border-amber-400/50 text-amber-300 text-xs font-extrabold px-3 py-1 rounded-full shadow">
+              {{ fp.badge_text }}
+            </span>
+          {% endif %}
+        </div>
+
+        {% if fp_img_count > 1 %}
+        <span
+          id="adSlideBadge-{{ fp.id }}"
+          class="absolute top-3 right-3 bg-slate-950/85 border border-white/15 text-white text-xs font-mono font-bold px-2.5 py-1 rounded-full"
+        >
+          📸 1/{{ fp_img_count }}
+        </span>
+        <button
+          type="button"
+          onclick="stepStoreSlide('adSlideImg-{{ fp.id }}', 'adSlideBadge-{{ fp.id }}', -1)"
+          class="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/75 text-white font-bold flex items-center justify-center text-base shadow-lg cursor-pointer"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          onclick="stepStoreSlide('adSlideImg-{{ fp.id }}', 'adSlideBadge-{{ fp.id }}', 1)"
+          class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/75 text-white font-bold flex items-center justify-center text-base shadow-lg cursor-pointer"
+        >
+          ›
+        </button>
+        {% endif %}
+      </div>
+
+      {% if fp_img_count > 1 %}
+      <div class="flex items-center gap-2 px-5 pt-3 overflow-x-auto no-scrollbar">
+        {% for img_url in fp_imgs %}
+        <img
+          src="{{ img_url }}"
+          onclick="jumpStoreSlide('adSlideImg-{{ fp.id }}', 'adSlideBadge-{{ fp.id }}', {{ loop.index0 }})"
+          class="w-12 h-12 rounded-xl object-cover border border-white/20 cursor-pointer shrink-0"
+        />
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="p-5 sm:p-6 space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-white leading-snug">
+              {{ fp.product_name }}
+            </h2>
+            {% if fp.savings_amount and fp.savings_amount > 0 %}
+              <p class="text-xs font-extrabold text-rose-400 mt-1">
+                🔥 Limited Deal: You save {{ fp.currency }} {{ "%.2f"|format(fp.savings_amount) }}!
+              </p>
+            {% endif %}
+          </div>
+
+          <div class="text-right shrink-0">
+            {% if fp.compare_price and fp.compare_price > fp.price %}
+              <span class="block text-xs font-mono text-slate-400 line-through">
+                {{ fp.currency }} {{ "%.2f"|format(fp.compare_price) }}
+              </span>
+            {% endif %}
+            <span class="inline-block border {{ accent_badge }} font-extrabold text-base px-3.5 py-1.5 rounded-xl">
+              {{ fp.currency }} {{ "%.2f"|format(fp.price) }}
+            </span>
+          </div>
+        </div>
+
+        {% if fp_vars %}
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-3.5">
+          <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+            1. Tap to Select Your Size / Option:
+          </span>
+          <div class="flex flex-wrap gap-2">
+            {% for v in fp_vars %}
+            <button
+              type="button"
+              onclick="selectVariant({{ fp.id }}, {{ v|tojson }}, this)"
+              class="variant-btn-{{ fp.id }} text-xs {% if loop.first %}font-extrabold bg-emerald-400 text-slate-950 border border-emerald-300 shadow{% else %}font-bold bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300{% endif %} px-3 py-1.5 rounded-xl transition cursor-pointer"
+            >
+              {{ v }}
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if fp.description %}
+        <div class="text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-950/60 border border-white/10 rounded-2xl p-3.5">
+          {{ fp.description|format_desc }}
+        </div>
+        {% endif %}
+
+        {% if fp.in_stock == 1 %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          <button
+            type="button"
+            onclick='quickBuyNow({{ fp.id }}, {{ fp.product_name|tojson }}, {{ fp.price }}, {{ fp.currency|tojson }}, {{ fp_first_var|tojson }})'
+            class="w-full {{ accent_bg }} text-sm font-extrabold py-4 px-4 rounded-2xl text-center transition shadow-xl cursor-pointer"
+          >
+            ⚡ Buy This Item Now →
+          </button>
+          <button
+            type="button"
+            onclick='addToCart({{ fp.id }}, {{ fp.product_name|tojson }}, {{ fp.price }}, {{ fp.currency|tojson }}, {{ fp_first_var|tojson }})'
+            class="w-full bg-white/10 hover:bg-white/15 text-white border border-white/15 text-xs font-extrabold py-4 px-4 rounded-2xl transition cursor-pointer"
+          >
+            + Add to Bag & Browse Store
+          </button>
+        </div>
+        {% else %}
+        <button
+          type="button"
+          disabled
+          class="w-full bg-slate-500/10 text-slate-400 text-xs font-bold py-3.5 rounded-2xl cursor-not-allowed"
+        >
+          Currently Out of Stock
+        </button>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Viral Varsell Footer -->
   <footer class="max-w-5xl mx-auto px-4 py-12 text-center border-t border-white/10 mt-8 relative z-10">
