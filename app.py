@@ -1,10 +1,14 @@
 import os
 import re
+import gzip
 import json
+import time
 import sqlite3
 import secrets
 import string
 import base64
+import threading
+import urllib.request
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, jsonify
 from markupsafe import Markup, escape
@@ -35,6 +39,51 @@ RESERVED_SLUGS = {
 }
 
 
+# --- SPEED BOOST 1: AUTOMATIC GZIP COMPRESSION FOR FAST MOBILE LOADING ---
+@app.after_request
+def compress_response(response):
+    accept_encoding = request.headers.get("Accept-Encoding", "")
+    if (
+        "gzip" not in accept_encoding.lower()
+        or response.status_code < 200
+        or response.status_code >= 300
+        or response.direct_passthrough
+        or "Content-Encoding" in response.headers
+        or not (
+            response.content_type.startswith("text/")
+            or response.content_type.startswith("application/json")
+            or response.content_type.startswith("application/javascript")
+        )
+    ):
+        return response
+
+    data = response.get_data()
+    if len(data) < 500:
+        return response
+
+    gzip_buffer = gzip.compress(data, compresslevel=5)
+    response.set_data(gzip_buffer)
+    response.headers["Content-Encoding"] = "gzip"
+    response.headers["Content-Length"] = len(gzip_buffer)
+    response.headers["Vary"] = "Accept-Encoding"
+    return response
+
+
+# --- SPEED BOOST 2: SELF-PING BACKGROUND THREAD TO PREVENT RENDER SLEEP ---
+def keep_render_awake():
+    """Pings the live Render URL every 8 minutes from inside the server itself"""
+    while True:
+        time.sleep(480)
+        ext_url = os.environ.get("RENDER_EXTERNAL_URL", "https://varsell.onrender.com").rstrip("/")
+        try:
+            urllib.request.urlopen(f"{ext_url}/ping", timeout=10)
+        except Exception:
+            pass
+
+
+threading.Thread(target=keep_render_awake, daemon=True).start()
+
+
 @app.template_filter("format_desc")
 def format_desc_filter(text):
     if not text:
@@ -45,30 +94,62 @@ def format_desc_filter(text):
     return Markup(formatted)
 
 
+# --- SPEED BOOST 3: PERSISTENT REUSABLE DATABASE CONNECTION ---
+_pg_conn = None
+_pg_lock = threading.Lock()
+
+
+def get_raw_pg_conn():
+    global _pg_conn
+    if _pg_conn is None or _pg_conn.closed != 0:
+        _pg_conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
+        _pg_conn.autocommit = False
+    return _pg_conn
+
+
 class DBWrapper:
     def __init__(self):
         if IS_POSTGRES:
-            self.conn = psycopg2.connect(DATABASE_URL)
+            self.conn = get_raw_pg_conn()
         else:
-            self.conn = sqlite3.connect(DB_NAME)
+            self.conn = sqlite3.connect(DB_NAME, timeout=15)
             self.conn.row_factory = sqlite3.Row
 
     def execute(self, query, params=()):
         if IS_POSTGRES:
             pg_query = query.replace("?", "%s")
-            cursor = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            cursor.execute(pg_query, params)
-            return cursor
+            try:
+                cursor = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cursor.execute(pg_query, params)
+                return cursor
+            except Exception:
+                # Reconnect automatically if idle connection was reset by cloud provider
+                global _pg_conn
+                try:
+                    if _pg_conn and _pg_conn.closed == 0:
+                        _pg_conn.rollback()
+                except Exception:
+                    pass
+                _pg_conn = None
+                self.conn = get_raw_pg_conn()
+                cursor = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cursor.execute(pg_query, params)
+                return cursor
         else:
             cursor = self.conn.cursor()
             cursor.execute(query, params)
             return cursor
 
     def commit(self):
-        self.conn.commit()
+        try:
+            self.conn.commit()
+        except Exception:
+            pass
 
     def close(self):
-        self.conn.close()
+        # Keep PostgreSQL connection warm in memory for instant subsequent requests
+        if not IS_POSTGRES:
+            self.conn.close()
 
 
 def get_db_connection():
@@ -131,6 +212,7 @@ def init_db():
                 price REAL NOT NULL,
                 compare_price REAL DEFAULT 0,
                 badge_text TEXT DEFAULT '',
+                variants_text TEXT DEFAULT '',
                 currency TEXT DEFAULT 'USD',
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
@@ -142,6 +224,7 @@ def init_db():
         conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS images_json TEXT DEFAULT '[]'")
         conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS compare_price REAL DEFAULT 0")
         conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS badge_text TEXT DEFAULT ''")
+        conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS variants_text TEXT DEFAULT ''")
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS stores (
@@ -199,6 +282,7 @@ def init_db():
                 price REAL NOT NULL,
                 compare_price REAL DEFAULT 0,
                 badge_text TEXT DEFAULT '',
+                variants_text TEXT DEFAULT '',
                 currency TEXT DEFAULT 'USD',
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
@@ -211,7 +295,8 @@ def init_db():
         for col_name, col_def in [
             ("images_json", "TEXT DEFAULT '[]'"),
             ("compare_price", "REAL DEFAULT 0"),
-            ("badge_text", "TEXT DEFAULT ''")
+            ("badge_text", "TEXT DEFAULT ''"),
+            ("variants_text", "TEXT DEFAULT ''")
         ]:
             try:
                 conn.execute(f"ALTER TABLE products ADD COLUMN {col_name} {col_def}")
@@ -274,6 +359,7 @@ def encode_uploaded_image(file_obj):
 
 
 def hydrate_products(product_rows):
+    """Hydrates multi-image list, calculates discount %, and parses variants (Sizes/Colors)"""
     hydrated = []
     for row in product_rows:
         p = dict(row)
@@ -293,6 +379,15 @@ def hydrate_products(product_rows):
         p["images_list"] = imgs
         p["image_data"] = imgs[0]
 
+        # Parse comma-separated variants (e.g. "Size 32, Size 34, Black")
+        raw_variants = (p.get("variants_text") or "").strip()
+        p["variants_text"] = raw_variants
+        if raw_variants:
+            p["variants_list"] = [v.strip() for v in raw_variants.split(",") if v.strip()]
+        else:
+            p["variants_list"] = []
+
+        # Calculate discount percentage and savings amount
         price_val = float(p.get("price") or 0.0)
         compare_val = float(p.get("compare_price") or 0.0)
         p["compare_price"] = compare_val
@@ -350,13 +445,14 @@ def find_store_by_any_identifier(conn, identifier):
             return dict(store), True
 
     if compact_candidate:
-        all_stores = conn.execute("SELECT * FROM stores").fetchall()
+        all_stores = conn.execute("SELECT id, store_name, store_slug FROM stores").fetchall()
         for s in all_stores:
             s_dict = dict(s)
             s_compact = re.sub(r"[^a-z0-9]", "", s_dict["store_slug"].lower())
             name_compact = re.sub(r"[^a-z0-9]", "", s_dict["store_name"].lower())
             if compact_candidate in (s_compact, name_compact):
-                return s_dict, True
+                full_store = conn.execute("SELECT * FROM stores WHERE id = ?", (s_dict["id"],)).fetchone()
+                return dict(full_store), True
 
     return None, False
 
@@ -365,7 +461,6 @@ def find_store_by_any_identifier(conn, identifier):
 
 @app.route("/ping")
 def ping():
-    """Ultra-fast 2-byte endpoint for cron-job.org and in-browser heartbeat so Render never sleeps"""
     return Response("OK", status=200, mimetype="text/plain")
 
 
@@ -411,7 +506,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v8';
+const CACHE_NAME = 'varsell-global-v9';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -489,7 +584,6 @@ def index():
     q = request.args.get("q", "").strip()
     conn = get_db_connection()
 
-    # Check if seller is already logged in so we can show a 1-click "Return to Dashboard" banner
     active_store = None
     active_key = session.get("store_key")
     if active_key:
@@ -530,6 +624,7 @@ def create_store():
     momo_number = request.form.get("momo_number", "").strip()
     momo_name = request.form.get("momo_name", "").strip()
     theme_color = request.form.get("theme_color", "emerald").strip()
+    compressed_logo = request.form.get("compressed_logo", "").strip()
     logo_file = request.files.get("logo_file")
 
     if not store_name or not whatsapp_number:
@@ -570,7 +665,7 @@ def create_store():
         counter += 1
 
     formatted_wa = clean_international_whatsapp(whatsapp_number, country_code)
-    logo_data = encode_uploaded_image(logo_file)
+    logo_data = compressed_logo if compressed_logo.startswith("data:image") else encode_uploaded_image(logo_file)
 
     conn.execute(
         """INSERT INTO stores (
@@ -603,7 +698,7 @@ def login():
         return redirect(url_for("admin_panel"))
 
     conn = get_db_connection()
-    store = conn.execute("SELECT * FROM stores WHERE access_key = ?", (access_key,)).fetchone()
+    store = conn.execute("SELECT id FROM stores WHERE access_key = ?", (access_key,)).fetchone()
     conn.close()
 
     if store:
@@ -715,8 +810,10 @@ def update_avatar():
         conn.close()
         return redirect(url_for("index"))
 
+    compressed_logo = request.form.get("compressed_logo", "").strip()
     logo_file = request.files.get("logo_file")
-    logo_data = encode_uploaded_image(logo_file)
+    logo_data = compressed_logo if compressed_logo.startswith("data:image") else encode_uploaded_image(logo_file)
+
     if logo_data:
         conn.execute("UPDATE stores SET logo_data = ? WHERE id = ?", (logo_data, store["id"]))
         conn.commit()
@@ -742,6 +839,8 @@ def update_theme():
     store = dict(store_row)
 
     theme_color = request.form.get("theme_color", store.get("theme_color") or "emerald").strip()
+    compressed_logo = request.form.get("compressed_logo", "").strip()
+    compressed_bg = request.form.get("compressed_bg", "").strip()
     logo_file = request.files.get("logo_file")
     banner_file = request.files.get("banner_file")
     bg_image_file = request.files.get("bg_image_file")
@@ -750,10 +849,12 @@ def update_theme():
     clear_banner = request.form.get("clear_banner") == "1"
     clear_bg = request.form.get("clear_bg") == "1"
 
-    logo_data = encode_uploaded_image(logo_file) or store.get("logo_data") or ""
+    new_logo = compressed_logo if compressed_logo.startswith("data:image") else encode_uploaded_image(logo_file)
+    logo_data = new_logo or store.get("logo_data") or ""
+
     banner_data = "" if clear_banner else (encode_uploaded_image(banner_file) or store.get("banner_data") or "")
 
-    uploaded_bg = encode_uploaded_image(bg_image_file)
+    uploaded_bg = compressed_bg if compressed_bg.startswith("data:image") else encode_uploaded_image(bg_image_file)
     if clear_bg:
         bg_image_data = ""
     elif uploaded_bg:
@@ -882,21 +983,30 @@ def add_product():
     price = request.form.get("price", "0").strip()
     compare_price = request.form.get("compare_price", "0").strip()
     badge_text = request.form.get("badge_text", "").strip()
+    variants_text = request.form.get("variants_text", "").strip()
     currency = request.form.get("currency", store.get("default_currency") or "USD").strip()
     description = request.form.get("description", "").strip()
     image_url = request.form.get("image_url", "").strip()
-
-    uploaded_files = request.files.getlist("image_files")
-    if not uploaded_files:
-        single_file = request.files.get("image_file")
-        if single_file:
-            uploaded_files = [single_file]
+    compressed_images_json = request.form.get("compressed_images_json", "").strip()
 
     images_list = []
-    for f in uploaded_files:
-        encoded = encode_uploaded_image(f)
-        if encoded:
-            images_list.append(encoded)
+
+    # 1. Prefer fast client-compressed images if available
+    if compressed_images_json:
+        try:
+            parsed_compressed = json.loads(compressed_images_json)
+            if isinstance(parsed_compressed, list):
+                images_list.extend([img for img in parsed_compressed if isinstance(img, str) and img.startswith("data:image")])
+        except Exception:
+            pass
+
+    # 2. Fallback to standard file upload if no client-compressed array
+    if not images_list:
+        uploaded_files = request.files.getlist("image_files")
+        for f in uploaded_files:
+            encoded = encode_uploaded_image(f)
+            if encoded:
+                images_list.append(encoded)
 
     if image_url:
         for url_part in image_url.split(","):
@@ -922,18 +1032,18 @@ def add_product():
 
     conn.execute(
         """INSERT INTO products (
-               store_id, product_name, price, compare_price, badge_text,
+               store_id, product_name, price, compare_price, badge_text, variants_text,
                currency, description, image_data, images_json
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
-            store["id"], product_name, numeric_price, numeric_compare, badge_text,
+            store["id"], product_name, numeric_price, numeric_compare, badge_text, variants_text,
             currency, description, primary_image, images_json_str
         )
     )
     conn.commit()
     conn.close()
 
-    flash(f"Product published with {len(images_list)} photo(s)!", "success")
+    flash(f"🚀 Published '{product_name}' with {len(images_list)} photo(s)!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -965,10 +1075,12 @@ def edit_product(product_id):
     new_currency = request.form.get("currency", product["currency"]).strip() or product["currency"]
     new_description = request.form.get("description", product["description"]).strip()
     new_badge = request.form.get("badge_text", "").strip()
+    new_variants = request.form.get("variants_text", "").strip()
     price_raw = request.form.get("price", str(product["price"])).strip()
     compare_raw = request.form.get("compare_price", "0").strip()
     photo_mode = request.form.get("photo_mode", "append").strip()
     new_image_url = request.form.get("image_url", "").strip()
+    compressed_edit_json = request.form.get("compressed_edit_json", "").strip()
 
     try:
         new_price = float(price_raw)
@@ -990,12 +1102,21 @@ def edit_product(product_id):
         except ValueError:
             pass
 
-    uploaded_files = request.files.getlist("image_files")
     new_images = []
-    for f in uploaded_files:
-        encoded = encode_uploaded_image(f)
-        if encoded:
-            new_images.append(encoded)
+    if compressed_edit_json:
+        try:
+            parsed_edit = json.loads(compressed_edit_json)
+            if isinstance(parsed_edit, list):
+                new_images.extend([img for img in parsed_edit if isinstance(img, str) and img.startswith("data:image")])
+        except Exception:
+            pass
+
+    if not new_images:
+        uploaded_files = request.files.getlist("image_files")
+        for f in uploaded_files:
+            encoded = encode_uploaded_image(f)
+            if encoded:
+                new_images.append(encoded)
 
     if new_image_url:
         for url_part in new_image_url.split(","):
@@ -1019,11 +1140,11 @@ def edit_product(product_id):
 
     conn.execute(
         """UPDATE products
-           SET product_name = ?, price = ?, compare_price = ?, badge_text = ?,
+           SET product_name = ?, price = ?, compare_price = ?, badge_text = ?, variants_text = ?,
                currency = ?, description = ?, image_data = ?, images_json = ?
            WHERE id = ? AND store_id = ?""",
         (
-            new_name, new_price, new_compare, new_badge,
+            new_name, new_price, new_compare, new_badge, new_variants,
             new_currency, new_description, primary_image, images_json_str,
             product_id, store["id"]
         )
