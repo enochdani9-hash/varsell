@@ -35,8 +35,8 @@ RESERVED_SLUGS = {
     "login", "logout", "dashboard", "admin", "admin-logout", "create-store",
     "change-key", "change-store-name", "update-store", "update-theme",
     "update-avatar", "add-product", "edit-product", "place-order",
-    "update-order-status", "delete-order", "manifest.json", "sw.js",
-    "icon.svg", "sitemap.xml", "robots.txt", "store", "ping"
+    "update-order-status", "delete-order", "product-image", "store-logo",
+    "manifest.json", "sw.js", "icon.svg", "sitemap.xml", "robots.txt", "store", "ping"
 }
 
 
@@ -491,6 +491,46 @@ def find_store_by_any_identifier(conn, identifier):
     return None, False
 
 
+# --- UPGRADE #5: DYNAMIC SOCIAL IMAGE ROUTES FOR META ADS & WHATSAPP LINK PREVIEWS ---
+
+def serve_data_uri_or_url(raw_data):
+    """Converts a Base64 data URI into a real binary image response for WhatsApp/Meta crawlers"""
+    if not raw_data:
+        return redirect("https://placehold.co/600x600/0f172a/10b981?text=Varsell")
+    if raw_data.startswith("data:"):
+        try:
+            header, b64_part = raw_data.split(",", 1)
+            mime_match = re.search(r"data:([^;]+)", header)
+            mime_type = mime_match.group(1) if mime_match else "image/jpeg"
+            binary_bytes = base64.b64decode(b64_part)
+            resp = Response(binary_bytes, mimetype=mime_type)
+            resp.headers["Cache-Control"] = "public, max-age=86400"
+            return resp
+        except Exception:
+            return redirect("https://placehold.co/600x600/0f172a/10b981?text=Varsell")
+    return redirect(raw_data)
+
+
+@app.route("/product-image/<int:product_id>.jpg")
+def product_social_image(product_id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT image_data FROM products WHERE id = ?", (product_id,)).fetchone()
+    conn.close()
+    if not row:
+        return redirect("https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product")
+    return serve_data_uri_or_url(row["image_data"])
+
+
+@app.route("/store-logo/<int:store_id>.jpg")
+def store_social_logo(store_id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT logo_data FROM stores WHERE id = ?", (store_id,)).fetchone()
+    conn.close()
+    if not row or not row.get("logo_data"):
+        return redirect(url_for("app_icon"))
+    return serve_data_uri_or_url(row["logo_data"])
+
+
 # --- ULTRA-LIGHTWEIGHT KEEP-ALIVE PING ROUTE ---
 
 @app.route("/ping")
@@ -540,7 +580,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v10';
+const CACHE_NAME = 'varsell-global-v11';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -1019,7 +1059,6 @@ def dashboard():
 
 @app.route("/place-order/<int:store_id>", methods=["POST"])
 def place_order(store_id):
-    """Logs customer WhatsApp checkout orders into the seller's dashboard bookkeeper"""
     data = request.get_json(silent=True) or {}
     buyer_name = (data.get("buyer_name") or "Customer").strip()
     buyer_phone = clean_international_whatsapp(data.get("buyer_phone") or "")
@@ -1418,7 +1457,7 @@ def admin_logout():
     return redirect(url_for("index"))
 
 
-# --- SMART DYNAMIC STOREFRONT ROUTES ---
+# --- SMART DYNAMIC STOREFRONT ROUTES (WITH UPGRADE #5 AD SPOTLIGHT ROUTING) ---
 
 @app.route("/store/<store_slug>")
 @app.route("/<store_slug>")
@@ -1432,9 +1471,10 @@ def view_store(store_slug):
 
     if should_redirect and store["store_slug"] != store_slug:
         conn.close()
-        return redirect(f"/{store['store_slug']}", code=302)
+        item_param = request.args.get("item", "").strip()
+        target_url = f"/{store['store_slug']}" + (f"?item={item_param}" if item_param else "")
+        return redirect(target_url, code=302)
 
-    # Increment live store views counter
     conn.execute(
         "UPDATE stores SET views_count = COALESCE(views_count, 0) + 1 WHERE id = ?",
         (store["id"],)
@@ -1449,7 +1489,23 @@ def view_store(store_slug):
     conn.close()
 
     products = hydrate_products(raw_products)
-    return render_template("store.html", store=store, products=products)
+
+    # Check if visitor clicked a Direct Single-Product Ad Link (?item=ID)
+    featured_product = None
+    item_id_raw = request.args.get("item", "").strip()
+    if item_id_raw.isdigit():
+        target_id = int(item_id_raw)
+        for p in products:
+            if p["id"] == target_id:
+                featured_product = p
+                break
+
+    return render_template(
+        "store.html",
+        store=store,
+        products=products,
+        featured_product=featured_product
+    )
 
 
 if __name__ == "__main__":
