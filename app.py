@@ -73,7 +73,6 @@ def compress_response(response):
 
 # --- SPEED BOOST 2: SELF-PING BACKGROUND THREAD TO PREVENT RENDER SLEEP ---
 def keep_render_awake():
-    """Pings the live Render URL every 8 minutes from inside the server itself"""
     while True:
         time.sleep(480)
         ext_url = os.environ.get("RENDER_EXTERNAL_URL", "https://varsell.onrender.com").rstrip("/")
@@ -177,6 +176,7 @@ def init_db():
                 momo_number TEXT DEFAULT '',
                 momo_name TEXT DEFAULT '',
                 views_count INTEGER DEFAULT 0,
+                is_pro INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -190,7 +190,8 @@ def init_db():
             ("payment_method_label", "TEXT DEFAULT 'Mobile Money / Instant Transfer'"),
             ("momo_number", "TEXT DEFAULT ''"),
             ("momo_name", "TEXT DEFAULT ''"),
-            ("views_count", "INTEGER DEFAULT 0")
+            ("views_count", "INTEGER DEFAULT 0"),
+            ("is_pro", "INTEGER DEFAULT 0")
         ]
         for col_name, col_def in new_store_cols:
             conn.execute(f"ALTER TABLE stores ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
@@ -274,6 +275,7 @@ def init_db():
                 momo_number TEXT DEFAULT '',
                 momo_name TEXT DEFAULT '',
                 views_count INTEGER DEFAULT 0,
+                is_pro INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -287,7 +289,8 @@ def init_db():
             ("payment_method_label", "TEXT DEFAULT 'Mobile Money / Instant Transfer'"),
             ("momo_number", "TEXT DEFAULT ''"),
             ("momo_name", "TEXT DEFAULT ''"),
-            ("views_count", "INTEGER DEFAULT 0")
+            ("views_count", "INTEGER DEFAULT 0"),
+            ("is_pro", "INTEGER DEFAULT 0")
         ]:
             try:
                 conn.execute(f"ALTER TABLE stores ADD COLUMN {col_name} {col_def}")
@@ -464,7 +467,6 @@ def hydrate_products(product_rows):
 
 
 def compute_review_stats(review_rows):
-    """Returns hydrated review list, average rating (float), and total review count"""
     reviews = [dict(r) for r in review_rows]
     count = len(reviews)
     if count > 0:
@@ -526,7 +528,7 @@ def find_store_by_any_identifier(conn, identifier):
     return None, False
 
 
-# --- DYNAMIC SOCIAL IMAGE ROUTES FOR META ADS & WHATSAPP LINK PREVIEWS ---
+# --- DYNAMIC SOCIAL IMAGE ROUTES ---
 
 def serve_data_uri_or_url(raw_data):
     if not raw_data:
@@ -564,8 +566,6 @@ def store_social_logo(store_id):
         return redirect(url_for("app_icon"))
     return serve_data_uri_or_url(row["logo_data"])
 
-
-# --- ULTRA-LIGHTWEIGHT KEEP-ALIVE PING ROUTE ---
 
 @app.route("/ping")
 def ping():
@@ -614,7 +614,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v12';
+const CACHE_NAME = 'varsell-global-v13';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -673,7 +673,7 @@ def robots_txt():
 def sitemap_xml():
     host = request.host_url.rstrip("/")
     conn = get_db_connection()
-    stores = conn.execute("SELECT store_slug FROM stores ORDER BY id DESC").fetchall()
+    stores = conn.execute("SELECT store_slug FROM stores ORDER BY COALESCE(is_pro, 0) DESC, id DESC").fetchall()
     conn.close()
 
     xml = ['<?xml version="1.0" encoding="UTF-8"?>']
@@ -685,7 +685,7 @@ def sitemap_xml():
     return Response("\n".join(xml), mimetype="application/xml")
 
 
-# --- MAIN PLATFORM ROUTES ---
+# --- MAIN PLATFORM ROUTES (WITH PRO PRIORITY SORTING) ---
 
 @app.route("/")
 def index():
@@ -696,23 +696,28 @@ def index():
     active_key = session.get("store_key")
     if active_key:
         row = conn.execute(
-            "SELECT store_name, store_slug FROM stores WHERE access_key = ?", (active_key,)
+            "SELECT store_name, store_slug, is_pro FROM stores WHERE access_key = ?", (active_key,)
         ).fetchone()
         if row:
             active_store = dict(row)
 
+    # UPGRADE #7: Verified Pro stores are automatically pinned to the top of the directory!
     if q:
         like_q = f"%{q.lower()}%"
         recent_stores = conn.execute(
-            """SELECT store_name, store_slug, category, bio, logo_data, momo_name, country, theme_color
+            """SELECT store_name, store_slug, category, bio, logo_data, momo_name, country, theme_color,
+                      COALESCE(is_pro, 0) AS is_pro, COALESCE(views_count, 0) AS views_count
                FROM stores
                WHERE LOWER(store_name) LIKE ? OR LOWER(store_slug) LIKE ? OR LOWER(category) LIKE ? OR LOWER(country) LIKE ?
-               ORDER BY id DESC LIMIT 24""",
+               ORDER BY COALESCE(is_pro, 0) DESC, COALESCE(views_count, 0) DESC, id DESC LIMIT 24""",
             (like_q, like_q, like_q, like_q)
         ).fetchall()
     else:
         recent_stores = conn.execute(
-            "SELECT store_name, store_slug, category, bio, logo_data, momo_name, country, theme_color FROM stores ORDER BY id DESC LIMIT 12"
+            """SELECT store_name, store_slug, category, bio, logo_data, momo_name, country, theme_color,
+                      COALESCE(is_pro, 0) AS is_pro, COALESCE(views_count, 0) AS views_count
+               FROM stores
+               ORDER BY COALESCE(is_pro, 0) DESC, COALESCE(views_count, 0) DESC, id DESC LIMIT 15"""
         ).fetchall()
     conn.close()
     return render_template("index.html", recent_stores=recent_stores, search_query=q, active_store=active_store)
@@ -1098,7 +1103,7 @@ def dashboard():
     )
 
 
-# --- UPGRADE #4: ORDER LOGGING & ORDER STATUS MANAGEMENT ROUTES ---
+# --- ORDER LOGGING & ORDER STATUS MANAGEMENT ROUTES ---
 
 @app.route("/place-order/<int:store_id>", methods=["POST"])
 def place_order(store_id):
@@ -1177,7 +1182,7 @@ def delete_order(order_id):
     return redirect(url_for("dashboard"))
 
 
-# --- UPGRADE #6: CUSTOMER REVIEWS & STAR RATINGS ROUTES ---
+# --- CUSTOMER REVIEWS & STAR RATINGS ROUTES ---
 
 @app.route("/add-review/<int:store_id>", methods=["POST"])
 def add_review(store_id):
@@ -1467,7 +1472,7 @@ def logout():
     return redirect(url_for("index"))
 
 
-# --- FOUNDER MASTER ADMIN ROUTES ---
+# --- UPGRADE #7: FOUNDER MASTER ADMIN & PRO MONETIZATION ROUTES ---
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin_panel():
@@ -1487,27 +1492,55 @@ def admin_panel():
         return render_template("admin.html", is_admin=False)
 
     conn = get_db_connection()
-    stores = conn.execute("""
+    stores_rows = conn.execute("""
         SELECT s.*, COUNT(p.id) AS product_count
         FROM stores s
         LEFT JOIN products p ON s.id = p.store_id
         GROUP BY s.id
-        ORDER BY s.id DESC
+        ORDER BY COALESCE(s.is_pro, 0) DESC, s.id DESC
     """).fetchall()
+    stores = [dict(s) for s in stores_rows]
 
     total_products_row = conn.execute("SELECT COUNT(*) AS cnt FROM products").fetchone()
     total_products = total_products_row["cnt"] if total_products_row else 0
+
+    total_orders_row = conn.execute("SELECT COUNT(*) AS cnt FROM orders").fetchone()
+    total_orders = total_orders_row["cnt"] if total_orders_row else 0
     conn.close()
+
+    pro_stores_count = sum(1 for s in stores if s.get("is_pro") == 1)
+    total_views = sum(int(s.get("views_count") or 0) for s in stores)
 
     db_type = "Neon Cloud PostgreSQL" if IS_POSTGRES else "Local SQLite"
     return render_template(
         "admin.html",
         is_admin=True,
         stores=stores,
+        pro_stores_count=pro_stores_count,
+        total_views=total_views,
+        total_orders=total_orders,
         total_products=total_products,
         db_type=db_type,
         master_key=ADMIN_MASTER_KEY
     )
+
+
+@app.route("/admin/toggle-pro/<int:store_id>", methods=["POST"])
+def admin_toggle_pro(store_id):
+    """1-click Founder monetization button to grant or revoke Verified Pro Merchant status"""
+    if not session.get("is_varsell_admin"):
+        return redirect(url_for("admin_panel"))
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT id, store_name, COALESCE(is_pro, 0) AS is_pro FROM stores WHERE id = ?", (store_id,)).fetchone()
+    if store:
+        new_pro = 0 if store["is_pro"] == 1 else 1
+        conn.execute("UPDATE stores SET is_pro = ? WHERE id = ?", (new_pro, store_id))
+        conn.commit()
+        status_label = "👑 VERIFIED PRO granted to" if new_pro == 1 else "Pro badge removed from"
+        flash(f"{status_label} '{store['store_name']}'!", "success")
+    conn.close()
+    return redirect(url_for("admin_panel"))
 
 
 @app.route("/admin/manage-store/<int:store_id>")
@@ -1552,7 +1585,7 @@ def admin_logout():
     return redirect(url_for("index"))
 
 
-# --- SMART DYNAMIC STOREFRONT ROUTES (WITH AD SPOTLIGHT & CUSTOMER REVIEWS) ---
+# --- SMART DYNAMIC STOREFRONT ROUTES ---
 
 @app.route("/store/<store_slug>")
 @app.route("/<store_slug>")
