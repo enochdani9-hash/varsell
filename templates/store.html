@@ -52,7 +52,7 @@
   {% set hero_grad = 'from-emerald-950/50 via-slate-900/85 to-transparent' %}
 {% endif %}
 
-<html lang="en" class="{% if not is_light %}dark{% endif %}">
+<html lang="en" class="{% if not is_light %}dark{% endif %} scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
@@ -84,7 +84,12 @@
     "@type": "Store",
     "name": {{ store.store_name|tojson }},
     "description": {{ (store.bio or store.category)|tojson }},
-    "url": "{{ request.host_url }}{{ store.store_slug }}"
+    "url": "{{ request.host_url }}{{ store.store_slug }}"{% if review_count and review_count > 0 %},
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "{{ '%.1f'|format(avg_rating or 5.0) }}",
+      "reviewCount": "{{ review_count }}"
+    }{% endif %}
   }
   </script>
 
@@ -119,7 +124,7 @@
     }
   </style>
 
-  <!-- TOP-LEVEL STOREFRONT JAVASCRIPT + VARIANTS + AD SPOTLIGHT + LIVE ORDER LOGGER -->
+  <!-- TOP-LEVEL STOREFRONT JAVASCRIPT + VARIANTS + AD SPOTLIGHT + REVIEWS + ORDER LOGGER -->
   <script>
     var storeId = {{ store.id }};
     var sellerWhatsApp = "{{ store.whatsapp_number }}";
@@ -154,6 +159,24 @@
     function closeStoreModal(id) {
       var el = document.getElementById(id);
       if (el) el.classList.add("hidden");
+    }
+
+    // UPGRADE #6: Interactive 1-5 Star Selector in Write Review Modal
+    function setReviewRating(stars) {
+      var input = document.getElementById("reviewRatingInput");
+      if (input) input.value = stars;
+      for (var i = 1; i <= 5; i++) {
+        var btn = document.getElementById("starBtn-" + i);
+        if (btn) {
+          if (i <= stars) {
+            btn.className = "text-2xl sm:text-3xl text-yellow-400 scale-110 transition cursor-pointer";
+            btn.textContent = "★";
+          } else {
+            btn.className = "text-2xl sm:text-3xl text-slate-600 hover:text-yellow-400 transition cursor-pointer";
+            btn.textContent = "☆";
+          }
+        }
+      }
     }
 
     function showStoreToast(msg) {
@@ -461,6 +484,20 @@
     class="fixed top-4 right-4 left-4 sm:left-auto z-50 hidden {{ accent_bg }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all text-center"
   ></div>
 
+  <!-- Flash Messages (e.g. When a customer posts a new review) -->
+  <div class="max-w-5xl mx-auto px-4 pt-3 relative z-30">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="p-3.5 rounded-2xl mb-2 text-xs sm:text-sm font-extrabold flex items-center gap-2 border {{ accent_badge }}">
+            <span>✨</span>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
   <!-- Optional Store Cover Banner -->
   {% if store.banner_data %}
   <div class="w-full h-44 sm:h-64 overflow-hidden relative bg-slate-950 z-10">
@@ -508,6 +545,14 @@
                   ✓ Verified Store
                 </span>
               {% endif %}
+
+              <!-- UPGRADE #6: Live Clickable Star Rating Pill in Header -->
+              <a
+                href="#reviews-section"
+                class="text-[11px] font-extrabold text-yellow-300 bg-yellow-400/15 border border-yellow-400/35 px-2.5 py-0.5 rounded-full hover:bg-yellow-400/25 transition"
+              >
+                ⭐ {{ "%.1f"|format(avg_rating or 5.0) }} ({{ review_count or 0 }} Reviews)
+              </a>
             </div>
 
             <h1 class="text-2xl sm:text-4xl font-extrabold {{ 'text-slate-950' if is_light and not store.bg_image_data else 'text-white' }} mt-1.5 tracking-tight break-words">
@@ -523,6 +568,14 @@
         </div>
 
         <div class="flex items-center gap-2 flex-wrap shrink-0">
+          <button
+            type="button"
+            onclick="openStoreModal('writeReviewModal')"
+            class="bg-yellow-400/15 hover:bg-yellow-400/25 text-yellow-300 border border-yellow-400/40 text-xs font-extrabold px-3.5 py-2.5 rounded-2xl transition cursor-pointer"
+          >
+            ⭐ Rate Store
+          </button>
+
           <button
             type="button"
             onclick="openStoreModal('shareStoreModal')"
@@ -616,7 +669,6 @@
                 {% endif %}
               </div>
 
-              <!-- Share Direct Product Link Button + Photo Counter -->
               <div class="absolute top-3 right-3 flex items-center gap-1.5">
                 {% if img_count > 1 %}
                 <span
@@ -765,6 +817,157 @@
   </main>
 
   <!-- ========================================================================= -->
+  <!-- UPGRADE #6: VERIFIED CUSTOMER REVIEWS & STAR RATINGS SECTION              -->
+  <!-- ========================================================================= -->
+  <section id="reviews-section" class="max-w-5xl mx-auto px-4 py-10 border-t border-white/10 relative z-10">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-yellow-400 text-lg">★★★★★</span>
+          <span class="text-xs font-extrabold uppercase tracking-widest text-yellow-400">
+            {{ "%.1f"|format(avg_rating or 5.0) }} Out of 5 • {{ review_count or 0 }} Customer Review(s)
+          </span>
+        </div>
+        <h3 class="text-xl sm:text-2xl font-extrabold {{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-white' }} mt-1">
+          Customer Reviews for {{ store.store_name }}
+        </h3>
+      </div>
+
+      <button
+        type="button"
+        onclick="openStoreModal('writeReviewModal')"
+        class="{{ accent_bg }} text-xs font-extrabold px-5 py-3 rounded-2xl shadow-lg transition cursor-pointer shrink-0"
+      >
+        ✍️ Leave a Review
+      </button>
+    </div>
+
+    {% if reviews %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      {% for r in reviews %}
+      <div class="{{ card_bg }} border rounded-3xl p-5 flex flex-col justify-between shadow-xl">
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="font-extrabold text-sm {{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-white' }} truncate">
+              {{ r.reviewer_name }}
+            </span>
+            <span class="text-xs text-yellow-400 shrink-0">
+              {% for _ in range(r.rating or 5) %}★{% endfor %}{% for _ in range(5 - (r.rating or 5)) %}☆{% endfor %}
+            </span>
+          </div>
+          <p class="text-xs {{ 'text-slate-600' if is_light and not store.bg_image_data else 'text-slate-300' }} leading-relaxed break-words">
+            "{{ r.comment }}"
+          </p>
+        </div>
+
+        <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-400">
+          <span class="text-emerald-400 font-bold">✓ Verified Feedback</span>
+          {% if r.created_at %}
+          <span>{{ (r.created_at|string)[:10] }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="{{ card_bg }} border rounded-3xl p-8 text-center">
+      <p class="text-sm font-extrabold {{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-white' }}">
+        Bought from {{ store.store_name }} recently?
+      </p>
+      <p class="text-xs text-slate-400 mt-1 mb-4">
+        Be the first to share your experience and help other shoppers!
+      </p>
+      <button
+        type="button"
+        onclick="openStoreModal('writeReviewModal')"
+        class="border {{ accent_badge }} text-xs font-extrabold px-5 py-2.5 rounded-2xl transition cursor-pointer"
+      >
+        ⭐ Write the First Review
+      </button>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: WRITE A CUSTOMER REVIEW (UPGRADE #6)                               -->
+  <!-- ========================================================================= -->
+  <div
+    id="writeReviewModal"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
+    <div class="bg-slate-900 text-white border-2 border-yellow-400/60 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-widest text-yellow-400">Customer Feedback</span>
+          <h3 class="text-lg font-extrabold text-white">Rate {{ store.store_name }}</h3>
+        </div>
+        <button
+          type="button"
+          onclick="closeStoreModal('writeReviewModal')"
+          class="text-slate-400 hover:text-white text-sm cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      <form action="/add-review/{{ store.id }}" method="POST" class="space-y-4">
+        <input type="hidden" id="reviewRatingInput" name="rating" value="5" />
+
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-3.5 text-center">
+          <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+            Tap a Star to Rate:
+          </span>
+          <div class="flex items-center justify-center gap-2">
+            {% for i in range(1, 6) %}
+            <button
+              type="button"
+              id="starBtn-{{ i }}"
+              onclick="setReviewRating({{ i }})"
+              class="text-2xl sm:text-3xl text-yellow-400 scale-110 transition cursor-pointer"
+            >
+              ★
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">
+            Your Name *
+          </label>
+          <input
+            type="text"
+            name="reviewer_name"
+            placeholder="e.g. Kwame A. or Sarah M."
+            required
+            class="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-300 mb-1">
+            Your Review / Experience *
+          </label>
+          <textarea
+            name="comment"
+            rows="3"
+            placeholder="How was the product quality and delivery speed?"
+            required
+            class="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+          ></textarea>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-xs sm:text-sm shadow-xl transition cursor-pointer"
+        >
+          ⭐ Submit Verified Review →
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
   <!-- UPGRADE #5: AUTO-OPENING DIRECT AD SPOTLIGHT MODAL (?item=ID)             -->
   <!-- ========================================================================= -->
   {% if featured_product %}
@@ -779,7 +982,6 @@
   >
     <div class="bg-slate-900 text-white border-2 {{ accent_border }} rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl max-h-[92vh] overflow-y-auto">
       
-      <!-- Top Spotlight Bar -->
       <div class="px-5 py-3.5 border-b border-white/10 flex items-center justify-between bg-slate-950/80">
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -796,7 +998,6 @@
         </button>
       </div>
 
-      <!-- Featured Product Image Slider -->
       <div class="relative h-64 sm:h-72 bg-slate-950 overflow-hidden">
         <img
           id="adSlideImg-{{ fp.id }}"
