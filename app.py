@@ -35,8 +35,9 @@ RESERVED_SLUGS = {
     "login", "logout", "dashboard", "admin", "admin-logout", "create-store",
     "change-key", "change-store-name", "update-store", "update-theme",
     "update-avatar", "add-product", "edit-product", "place-order",
-    "update-order-status", "delete-order", "product-image", "store-logo",
-    "manifest.json", "sw.js", "icon.svg", "sitemap.xml", "robots.txt", "store", "ping"
+    "update-order-status", "delete-order", "add-review", "delete-review",
+    "product-image", "store-logo", "manifest.json", "sw.js", "icon.svg",
+    "sitemap.xml", "robots.txt", "store", "ping"
 }
 
 
@@ -242,6 +243,17 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS reviews (
+                id SERIAL PRIMARY KEY,
+                store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+                reviewer_name TEXT NOT NULL,
+                rating INTEGER DEFAULT 5,
+                comment TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
     else:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS stores (
@@ -335,6 +347,18 @@ def init_db():
                 total_amount REAL DEFAULT 0,
                 currency TEXT DEFAULT 'USD',
                 order_status TEXT DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE
+            )
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS reviews (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                store_id INTEGER NOT NULL,
+                reviewer_name TEXT NOT NULL,
+                rating INTEGER DEFAULT 5,
+                comment TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE
             )
@@ -439,6 +463,17 @@ def hydrate_products(product_rows):
     return hydrated
 
 
+def compute_review_stats(review_rows):
+    """Returns hydrated review list, average rating (float), and total review count"""
+    reviews = [dict(r) for r in review_rows]
+    count = len(reviews)
+    if count > 0:
+        avg = round(sum(int(r.get("rating") or 5) for r in reviews) / count, 1)
+    else:
+        avg = 5.0
+    return reviews, avg, count
+
+
 def save_alias_if_needed(conn, store_id, old_slug, old_name):
     existing = conn.execute(
         "SELECT id FROM store_aliases WHERE old_slug = ?", (old_slug,)
@@ -491,10 +526,9 @@ def find_store_by_any_identifier(conn, identifier):
     return None, False
 
 
-# --- UPGRADE #5: DYNAMIC SOCIAL IMAGE ROUTES FOR META ADS & WHATSAPP LINK PREVIEWS ---
+# --- DYNAMIC SOCIAL IMAGE ROUTES FOR META ADS & WHATSAPP LINK PREVIEWS ---
 
 def serve_data_uri_or_url(raw_data):
-    """Converts a Base64 data URI into a real binary image response for WhatsApp/Meta crawlers"""
     if not raw_data:
         return redirect("https://placehold.co/600x600/0f172a/10b981?text=Varsell")
     if raw_data.startswith("data:"):
@@ -580,7 +614,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v11';
+const CACHE_NAME = 'varsell-global-v12';
 const CORE_ASSETS = [
   '/',
   '/manifest.json',
@@ -1032,10 +1066,16 @@ def dashboard():
     raw_orders = conn.execute(
         "SELECT * FROM orders WHERE store_id = ? ORDER BY id DESC LIMIT 100", (store["id"],)
     ).fetchall()
+
+    raw_reviews = conn.execute(
+        "SELECT * FROM reviews WHERE store_id = ? ORDER BY id DESC LIMIT 100", (store["id"],)
+    ).fetchall()
     conn.close()
 
     products = hydrate_products(raw_products)
     orders = [dict(o) for o in raw_orders]
+    reviews, avg_rating, review_count = compute_review_stats(raw_reviews)
+
     total_orders = len(orders)
     total_revenue = sum(
         float(o.get("total_amount") or 0.0)
@@ -1049,6 +1089,9 @@ def dashboard():
         store=store,
         products=products,
         orders=orders,
+        reviews=reviews,
+        avg_rating=avg_rating,
+        review_count=review_count,
         total_orders=total_orders,
         total_revenue=total_revenue,
         new_store_alert=new_store_alert
@@ -1130,6 +1173,57 @@ def delete_order(order_id):
         )
         conn.commit()
         flash("Order entry removed from log.", "success")
+    conn.close()
+    return redirect(url_for("dashboard"))
+
+
+# --- UPGRADE #6: CUSTOMER REVIEWS & STAR RATINGS ROUTES ---
+
+@app.route("/add-review/<int:store_id>", methods=["POST"])
+def add_review(store_id):
+    reviewer_name = request.form.get("reviewer_name", "").strip() or "Verified Buyer"
+    comment = request.form.get("comment", "").strip()
+    rating_raw = request.form.get("rating", "5").strip()
+
+    try:
+        rating = max(1, min(5, int(rating_raw)))
+    except ValueError:
+        rating = 5
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT store_slug FROM stores WHERE id = ?", (store_id,)).fetchone()
+    if not store:
+        conn.close()
+        return redirect(url_for("index"))
+
+    if comment:
+        conn.execute(
+            "INSERT INTO reviews (store_id, reviewer_name, rating, comment) VALUES (?, ?, ?, ?)",
+            (store_id, reviewer_name, rating, comment)
+        )
+        conn.commit()
+        flash("⭐ Thank you! Your review has been posted to this store.", "success")
+
+    slug = store["store_slug"]
+    conn.close()
+    return redirect(f"/{slug}#reviews-section")
+
+
+@app.route("/delete-review/<int:review_id>", methods=["POST"])
+def delete_review(review_id):
+    access_key = session.get("store_key")
+    if not access_key:
+        return redirect(url_for("index"))
+
+    conn = get_db_connection()
+    store = conn.execute("SELECT id FROM stores WHERE access_key = ?", (access_key,)).fetchone()
+    if store:
+        conn.execute(
+            "DELETE FROM reviews WHERE id = ? AND store_id = ?",
+            (review_id, store["id"])
+        )
+        conn.commit()
+        flash("Review removed from your storefront.", "success")
     conn.close()
     return redirect(url_for("dashboard"))
 
@@ -1440,6 +1534,7 @@ def admin_delete_store(store_id):
         return redirect(url_for("admin_panel"))
 
     conn = get_db_connection()
+    conn.execute("DELETE FROM reviews WHERE store_id = ?", (store_id,))
     conn.execute("DELETE FROM orders WHERE store_id = ?", (store_id,))
     conn.execute("DELETE FROM products WHERE store_id = ?", (store_id,))
     conn.execute("DELETE FROM store_aliases WHERE store_id = ?", (store_id,))
@@ -1457,7 +1552,7 @@ def admin_logout():
     return redirect(url_for("index"))
 
 
-# --- SMART DYNAMIC STOREFRONT ROUTES (WITH UPGRADE #5 AD SPOTLIGHT ROUTING) ---
+# --- SMART DYNAMIC STOREFRONT ROUTES (WITH AD SPOTLIGHT & CUSTOMER REVIEWS) ---
 
 @app.route("/store/<store_slug>")
 @app.route("/<store_slug>")
@@ -1486,11 +1581,16 @@ def view_store(store_slug):
         "SELECT * FROM products WHERE store_id = ? ORDER BY in_stock DESC, id DESC",
         (store["id"],)
     ).fetchall()
+
+    raw_reviews = conn.execute(
+        "SELECT * FROM reviews WHERE store_id = ? ORDER BY id DESC LIMIT 50",
+        (store["id"],)
+    ).fetchall()
     conn.close()
 
     products = hydrate_products(raw_products)
+    reviews, avg_rating, review_count = compute_review_stats(raw_reviews)
 
-    # Check if visitor clicked a Direct Single-Product Ad Link (?item=ID)
     featured_product = None
     item_id_raw = request.args.get("item", "").strip()
     if item_id_raw.isdigit():
@@ -1504,7 +1604,10 @@ def view_store(store_slug):
         "store.html",
         store=store,
         products=products,
-        featured_product=featured_product
+        featured_product=featured_product,
+        reviews=reviews,
+        avg_rating=avg_rating,
+        review_count=review_count
     )
 
 
