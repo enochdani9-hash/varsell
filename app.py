@@ -36,12 +36,27 @@ RESERVED_SLUGS = {
     "change-key", "change-store-name", "update-store", "update-theme",
     "update-avatar", "add-product", "edit-product", "place-order",
     "update-order-status", "delete-order", "add-review", "delete-review",
-    "product-image", "store-logo", "manifest.json", "sw.js", "icon.svg",
-    "sitemap.xml", "robots.txt", "store", "ping"
+    "product-image", "store-logo", "img", "manifest.json", "sw.js",
+    "icon.svg", "sitemap.xml", "robots.txt", "store", "ping"
 }
 
+# --- IN-MEMORY RAM CACHE FOR INSTANT IMAGE SERVING (ZERO DB LAG) ---
+IMAGE_RAM_CACHE = {}
+CACHE_VERSION = int(time.time())
 
-# --- SPEED BOOST 1: AUTOMATIC GZIP COMPRESSION FOR FAST MOBILE LOADING ---
+
+def clear_image_cache(prefix=""):
+    global CACHE_VERSION
+    CACHE_VERSION = int(time.time())
+    if not prefix:
+        IMAGE_RAM_CACHE.clear()
+    else:
+        keys_to_delete = [k for k in IMAGE_RAM_CACHE if k.startswith(prefix)]
+        for k in keys_to_delete:
+            IMAGE_RAM_CACHE.pop(k, None)
+
+
+# --- AUTOMATIC GZIP COMPRESSION ---
 @app.after_request
 def compress_response(response):
     accept_encoding = request.headers.get("Accept-Encoding", "")
@@ -71,7 +86,7 @@ def compress_response(response):
     return response
 
 
-# --- SPEED BOOST 2: SELF-PING BACKGROUND THREAD TO PREVENT RENDER SLEEP ---
+# --- SELF-PING BACKGROUND THREAD ---
 def keep_render_awake():
     while True:
         time.sleep(480)
@@ -95,7 +110,7 @@ def format_desc_filter(text):
     return Markup(formatted)
 
 
-# --- SPEED BOOST 3: PERSISTENT REUSABLE DATABASE CONNECTION ---
+# --- PERSISTENT REUSABLE DATABASE CONNECTION ---
 _pg_conn = None
 
 
@@ -180,7 +195,7 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        new_store_cols = [
+        for col_name, col_def in [
             ("logo_data", "TEXT DEFAULT ''"),
             ("banner_data", "TEXT DEFAULT ''"),
             ("bg_image_data", "TEXT DEFAULT ''"),
@@ -192,8 +207,7 @@ def init_db():
             ("momo_name", "TEXT DEFAULT ''"),
             ("views_count", "INTEGER DEFAULT 0"),
             ("is_pro", "INTEGER DEFAULT 0")
-        ]
-        for col_name, col_def in new_store_cols:
+        ]:
             conn.execute(f"ALTER TABLE stores ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
 
         conn.execute("""
@@ -219,14 +233,19 @@ def init_db():
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
                 images_json TEXT DEFAULT '[]',
+                image_count INTEGER DEFAULT 1,
                 in_stock INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS images_json TEXT DEFAULT '[]'")
-        conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS compare_price REAL DEFAULT 0")
-        conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS badge_text TEXT DEFAULT ''")
-        conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS variants_text TEXT DEFAULT ''")
+        for col_name, col_def in [
+            ("images_json", "TEXT DEFAULT '[]'"),
+            ("compare_price", "REAL DEFAULT 0"),
+            ("badge_text", "TEXT DEFAULT ''"),
+            ("variants_text", "TEXT DEFAULT ''"),
+            ("image_count", "INTEGER DEFAULT 1")
+        ]:
+            conn.execute(f"ALTER TABLE products ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS orders (
@@ -321,6 +340,7 @@ def init_db():
                 description TEXT DEFAULT '',
                 image_data TEXT NOT NULL,
                 images_json TEXT DEFAULT '[]',
+                image_count INTEGER DEFAULT 1,
                 in_stock INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE
@@ -330,7 +350,8 @@ def init_db():
             ("images_json", "TEXT DEFAULT '[]'"),
             ("compare_price", "REAL DEFAULT 0"),
             ("badge_text", "TEXT DEFAULT ''"),
-            ("variants_text", "TEXT DEFAULT ''")
+            ("variants_text", "TEXT DEFAULT ''"),
+            ("image_count", "INTEGER DEFAULT 1")
         ]:
             try:
                 conn.execute(f"ALTER TABLE products ADD COLUMN {col_name} {col_def}")
@@ -422,23 +443,37 @@ def encode_uploaded_image(file_obj):
     return ""
 
 
-def hydrate_products(product_rows):
+# --- FAST STORE & PRODUCT HYDRATION (REPLACES MBs OF BASE64 WITH TINY FAST URLs) ---
+
+STORE_LIGHT_COLS = """
+    id, store_name, store_slug, access_key, whatsapp_number, category, bio,
+    theme_color, country, default_currency, payment_method_label, momo_number, momo_name,
+    COALESCE(views_count, 0) AS views_count, COALESCE(is_pro, 0) AS is_pro, created_at,
+    CASE WHEN logo_data IS NOT NULL AND logo_data != '' THEN 1 ELSE 0 END AS has_logo,
+    CASE WHEN banner_data IS NOT NULL AND banner_data != '' THEN 1 ELSE 0 END AS has_banner,
+    CASE WHEN bg_image_data IS NOT NULL AND bg_image_data != '' THEN 1 ELSE 0 END AS has_bg
+"""
+
+
+def hydrate_store_light(row):
+    if not row:
+        return None
+    s = dict(row)
+    sid = s["id"]
+    s["logo_data"] = f"/img/store-logo/{sid}?v={CACHE_VERSION}" if s.get("has_logo") else ""
+    s["banner_data"] = f"/img/store-banner/{sid}?v={CACHE_VERSION}" if s.get("has_banner") else ""
+    s["bg_image_data"] = f"/img/store-bg/{sid}?v={CACHE_VERSION}" if s.get("has_bg") else ""
+    return s
+
+
+def hydrate_products_fast(product_rows):
+    """Generates lightweight `/img/product/<id>/<idx>` URLs instead of embedding megabytes of Base64 in HTML!"""
     hydrated = []
     for row in product_rows:
         p = dict(row)
-        imgs = []
-        raw_json = p.get("images_json")
-        if raw_json:
-            try:
-                parsed = json.loads(raw_json)
-                if isinstance(parsed, list):
-                    imgs = [str(x) for x in parsed if x]
-            except Exception:
-                pass
-        if not imgs and p.get("image_data"):
-            imgs = [p["image_data"]]
-        if not imgs:
-            imgs = ["https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product"]
+        pid = p["id"]
+        cnt = max(1, int(p.get("image_count") or 1))
+        imgs = [f"/img/product/{pid}/{i}?v={CACHE_VERSION}" for i in range(cnt)]
         p["images_list"] = imgs
         p["image_data"] = imgs[0]
 
@@ -464,6 +499,24 @@ def hydrate_products(product_rows):
 
         hydrated.append(p)
     return hydrated
+
+
+def extract_raw_images_list(product_row):
+    """Used only when editing a product's photos in the backend"""
+    imgs = []
+    raw_json = product_row.get("images_json")
+    if raw_json:
+        try:
+            parsed = json.loads(raw_json)
+            if isinstance(parsed, list):
+                imgs = [str(x) for x in parsed if x]
+        except Exception:
+            pass
+    if not imgs and product_row.get("image_data"):
+        imgs = [product_row["image_data"]]
+    if not imgs:
+        imgs = ["https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product"]
+    return imgs
 
 
 def compute_review_stats(review_rows):
@@ -493,27 +546,27 @@ def find_store_by_any_identifier(conn, identifier):
     compact_candidate = re.sub(r"[^a-z0-9]", "", raw.lower())
 
     store = conn.execute(
-        "SELECT * FROM stores WHERE store_slug = ? OR store_slug = ?",
+        f"SELECT {STORE_LIGHT_COLS} FROM stores WHERE store_slug = ? OR store_slug = ?",
         (raw.lower(), slug_candidate)
     ).fetchone()
     if store:
-        return dict(store), False
+        return hydrate_store_light(store), False
 
     store = conn.execute(
-        "SELECT * FROM stores WHERE LOWER(store_name) = ?",
+        f"SELECT {STORE_LIGHT_COLS} FROM stores WHERE LOWER(store_name) = ?",
         (raw.lower(),)
     ).fetchone()
     if store:
-        return dict(store), True
+        return hydrate_store_light(store), True
 
     alias = conn.execute(
         "SELECT store_id FROM store_aliases WHERE old_slug = ? OR old_slug = ? OR LOWER(old_name) = ?",
         (raw.lower(), slug_candidate, raw.lower())
     ).fetchone()
     if alias:
-        store = conn.execute("SELECT * FROM stores WHERE id = ?", (alias["store_id"],)).fetchone()
+        store = conn.execute(f"SELECT {STORE_LIGHT_COLS} FROM stores WHERE id = ?", (alias["store_id"],)).fetchone()
         if store:
-            return dict(store), True
+            return hydrate_store_light(store), True
 
     if compact_candidate:
         all_stores = conn.execute("SELECT id, store_name, store_slug FROM stores").fetchall()
@@ -522,15 +575,15 @@ def find_store_by_any_identifier(conn, identifier):
             s_compact = re.sub(r"[^a-z0-9]", "", s_dict["store_slug"].lower())
             name_compact = re.sub(r"[^a-z0-9]", "", s_dict["store_name"].lower())
             if compact_candidate in (s_compact, name_compact):
-                full_store = conn.execute("SELECT * FROM stores WHERE id = ?", (s_dict["id"],)).fetchone()
-                return dict(full_store), True
+                full_store = conn.execute(f"SELECT {STORE_LIGHT_COLS} FROM stores WHERE id = ?", (s_dict["id"],)).fetchone()
+                return hydrate_store_light(full_store), True
 
     return None, False
 
 
-# --- DYNAMIC SOCIAL IMAGE ROUTES ---
+# --- ULTRA-FAST RAM-CACHED BINARY IMAGE ENDPOINTS ---
 
-def serve_data_uri_or_url(raw_data):
+def decode_and_cache_image(cache_key, raw_data):
     if not raw_data:
         return redirect("https://placehold.co/600x600/0f172a/10b981?text=Varsell")
     if raw_data.startswith("data:"):
@@ -539,32 +592,106 @@ def serve_data_uri_or_url(raw_data):
             mime_match = re.search(r"data:([^;]+)", header)
             mime_type = mime_match.group(1) if mime_match else "image/jpeg"
             binary_bytes = base64.b64decode(b64_part)
+            if len(IMAGE_RAM_CACHE) > 300:
+                IMAGE_RAM_CACHE.clear()
+            IMAGE_RAM_CACHE[cache_key] = ("bytes", binary_bytes, mime_type)
             resp = Response(binary_bytes, mimetype=mime_type)
-            resp.headers["Cache-Control"] = "public, max-age=86400"
+            resp.headers["Cache-Control"] = "public, max-age=604800, immutable"
             return resp
         except Exception:
             return redirect("https://placehold.co/600x600/0f172a/10b981?text=Varsell")
+    IMAGE_RAM_CACHE[cache_key] = ("redirect", raw_data, "")
     return redirect(raw_data)
 
 
-@app.route("/product-image/<int:product_id>.jpg")
-def product_social_image(product_id):
-    conn = get_db_connection()
-    row = conn.execute("SELECT image_data FROM products WHERE id = ?", (product_id,)).fetchone()
-    conn.close()
-    if not row:
-        return redirect("https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product")
-    return serve_data_uri_or_url(row["image_data"])
+def serve_from_ram_cache(cache_key):
+    cached = IMAGE_RAM_CACHE.get(cache_key)
+    if not cached:
+        return None
+    kind, payload, mime_type = cached
+    if kind == "bytes":
+        resp = Response(payload, mimetype=mime_type)
+        resp.headers["Cache-Control"] = "public, max-age=604800, immutable"
+        return resp
+    return redirect(payload)
 
 
+@app.route("/img/store-logo/<int:store_id>")
 @app.route("/store-logo/<int:store_id>.jpg")
-def store_social_logo(store_id):
+def serve_store_logo(store_id):
+    cache_key = f"logo:{store_id}"
+    cached_resp = serve_from_ram_cache(cache_key)
+    if cached_resp:
+        return cached_resp
+
     conn = get_db_connection()
     row = conn.execute("SELECT logo_data FROM stores WHERE id = ?", (store_id,)).fetchone()
     conn.close()
     if not row or not row.get("logo_data"):
         return redirect(url_for("app_icon"))
-    return serve_data_uri_or_url(row["logo_data"])
+    return decode_and_cache_image(cache_key, row["logo_data"])
+
+
+@app.route("/img/store-banner/<int:store_id>")
+def serve_store_banner(store_id):
+    cache_key = f"banner:{store_id}"
+    cached_resp = serve_from_ram_cache(cache_key)
+    if cached_resp:
+        return cached_resp
+
+    conn = get_db_connection()
+    row = conn.execute("SELECT banner_data FROM stores WHERE id = ?", (store_id,)).fetchone()
+    conn.close()
+    if not row or not row.get("banner_data"):
+        return Response("", status=404)
+    return decode_and_cache_image(cache_key, row["banner_data"])
+
+
+@app.route("/img/store-bg/<int:store_id>")
+def serve_store_bg(store_id):
+    cache_key = f"bg:{store_id}"
+    cached_resp = serve_from_ram_cache(cache_key)
+    if cached_resp:
+        return cached_resp
+
+    conn = get_db_connection()
+    row = conn.execute("SELECT bg_image_data FROM stores WHERE id = ?", (store_id,)).fetchone()
+    conn.close()
+    if not row or not row.get("bg_image_data"):
+        return Response("", status=404)
+    return decode_and_cache_image(cache_key, row["bg_image_data"])
+
+
+@app.route("/img/product/<int:product_id>/<int:idx>")
+def serve_product_photo(product_id, idx):
+    cache_key = f"prod:{product_id}:{idx}"
+    cached_resp = serve_from_ram_cache(cache_key)
+    if cached_resp:
+        return cached_resp
+
+    conn = get_db_connection()
+    row = conn.execute("SELECT image_data, images_json, image_count FROM products WHERE id = ?", (product_id,)).fetchone()
+    if not row:
+        conn.close()
+        return redirect("https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product")
+
+    imgs = extract_raw_images_list(dict(row))
+    # Auto-sync image_count if older product had multiple images
+    if len(imgs) != (row.get("image_count") or 1):
+        try:
+            conn.execute("UPDATE products SET image_count = ? WHERE id = ?", (len(imgs), product_id))
+            conn.commit()
+        except Exception:
+            pass
+    conn.close()
+
+     chosen = imgs[idx] if 0 <= idx < len(imgs) else imgs[0]
+    return decode_and_cache_image(cache_key, chosen)
+
+
+@app.route("/product-image/<int:product_id>.jpg")
+def product_social_image(product_id):
+    return serve_product_photo(product_id, 0)
 
 
 @app.route("/ping")
@@ -614,18 +741,13 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-global-v13';
-const CORE_ASSETS = [
-  '/',
-  '/manifest.json',
-  '/icon.svg',
-  'https://cdn.tailwindcss.com'
-];
+const CACHE_NAME = 'varsell-fast-v15';
+const STATIC_ASSETS = ['/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
 });
 
@@ -639,23 +761,27 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || event.request.url.includes('/ping')) return;
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  if (url.pathname === '/ping') return;
+
+  // Cache images for instant repeat viewing, but never block HTML navigation
+  if (url.pathname.startsWith('/img/')) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
+          return res;
+        });
+      })
+    );
+    return;
+  }
 
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        const clone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, clone);
-        });
-        return networkResponse;
-      })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          return caches.match('/');
-        });
-      })
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
 """
@@ -685,7 +811,7 @@ def sitemap_xml():
     return Response("\n".join(xml), mimetype="application/xml")
 
 
-# --- MAIN PLATFORM ROUTES (WITH PRO PRIORITY SORTING) ---
+# --- MAIN PLATFORM ROUTES (ZERO HEAVY BLOB QUERIES = INSTANT RESPONSE) ---
 
 @app.route("/")
 def index():
@@ -696,30 +822,30 @@ def index():
     active_key = session.get("store_key")
     if active_key:
         row = conn.execute(
-            "SELECT store_name, store_slug, is_pro FROM stores WHERE access_key = ?", (active_key,)
+            "SELECT store_name, store_slug, COALESCE(is_pro, 0) AS is_pro FROM stores WHERE access_key = ?",
+            (active_key,)
         ).fetchone()
         if row:
             active_store = dict(row)
 
-    # UPGRADE #7: Verified Pro stores are automatically pinned to the top of the directory!
     if q:
         like_q = f"%{q.lower()}%"
-        recent_stores = conn.execute(
-            """SELECT store_name, store_slug, category, bio, logo_data, momo_name, country, theme_color,
-                      COALESCE(is_pro, 0) AS is_pro, COALESCE(views_count, 0) AS views_count
-               FROM stores
-               WHERE LOWER(store_name) LIKE ? OR LOWER(store_slug) LIKE ? OR LOWER(category) LIKE ? OR LOWER(country) LIKE ?
-               ORDER BY COALESCE(is_pro, 0) DESC, COALESCE(views_count, 0) DESC, id DESC LIMIT 24""",
+        rows = conn.execute(
+            f"""SELECT {STORE_LIGHT_COLS}
+                FROM stores
+                WHERE LOWER(store_name) LIKE ? OR LOWER(store_slug) LIKE ? OR LOWER(category) LIKE ? OR LOWER(country) LIKE ?
+                ORDER BY COALESCE(is_pro, 0) DESC, COALESCE(views_count, 0) DESC, id DESC LIMIT 24""",
             (like_q, like_q, like_q, like_q)
         ).fetchall()
     else:
-        recent_stores = conn.execute(
-            """SELECT store_name, store_slug, category, bio, logo_data, momo_name, country, theme_color,
-                      COALESCE(is_pro, 0) AS is_pro, COALESCE(views_count, 0) AS views_count
-               FROM stores
-               ORDER BY COALESCE(is_pro, 0) DESC, COALESCE(views_count, 0) DESC, id DESC LIMIT 15"""
+        rows = conn.execute(
+            f"""SELECT {STORE_LIGHT_COLS}
+                FROM stores
+                ORDER BY COALESCE(is_pro, 0) DESC, COALESCE(views_count, 0) DESC, id DESC LIMIT 18"""
         ).fetchall()
     conn.close()
+
+    recent_stores = [hydrate_store_light(r) for r in rows]
     return render_template("index.html", recent_stores=recent_stores, search_query=q, active_store=active_store)
 
 
@@ -870,7 +996,7 @@ def change_store_name():
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store_row = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    store_row = conn.execute("SELECT id, store_name, store_slug FROM stores WHERE access_key = ?", (current_key,)).fetchone()
     if not store_row:
         conn.close()
         return redirect(url_for("index"))
@@ -930,6 +1056,7 @@ def update_avatar():
     if logo_data:
         conn.execute("UPDATE stores SET logo_data = ? WHERE id = ?", (logo_data, store["id"]))
         conn.commit()
+        clear_image_cache(f"logo:{store['id']}")
         flash("📸 Profile picture updated on your live store!", "success")
     else:
         flash("Please choose an image file to upload.", "error")
@@ -945,11 +1072,12 @@ def update_theme():
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store_row = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    store_row = conn.execute("SELECT id, theme_color FROM stores WHERE access_key = ?", (current_key,)).fetchone()
     if not store_row:
         conn.close()
         return redirect(url_for("index"))
     store = dict(store_row)
+    sid = store["id"]
 
     theme_color = request.form.get("theme_color", store.get("theme_color") or "emerald").strip()
     compressed_logo = request.form.get("compressed_logo", "").strip()
@@ -962,25 +1090,32 @@ def update_theme():
     clear_banner = request.form.get("clear_banner") == "1"
     clear_bg = request.form.get("clear_bg") == "1"
 
-    new_logo = compressed_logo if compressed_logo.startswith("data:image") else encode_uploaded_image(logo_file)
-    logo_data = new_logo or store.get("logo_data") or ""
+    conn.execute("UPDATE stores SET theme_color = ? WHERE id = ?", (theme_color, sid))
 
-    banner_data = "" if clear_banner else (encode_uploaded_image(banner_file) or store.get("banner_data") or "")
+    new_logo = compressed_logo if compressed_logo.startswith("data:image") else encode_uploaded_image(logo_file)
+    if new_logo:
+        conn.execute("UPDATE stores SET logo_data = ? WHERE id = ?", (new_logo, sid))
+        clear_image_cache(f"logo:{sid}")
+
+    new_banner = encode_uploaded_image(banner_file)
+    if clear_banner:
+        conn.execute("UPDATE stores SET banner_data = '' WHERE id = ?", (sid,))
+        clear_image_cache(f"banner:{sid}")
+    elif new_banner:
+        conn.execute("UPDATE stores SET banner_data = ? WHERE id = ?", (new_banner, sid))
+        clear_image_cache(f"banner:{sid}")
 
     uploaded_bg = compressed_bg if compressed_bg.startswith("data:image") else encode_uploaded_image(bg_image_file)
     if clear_bg:
-        bg_image_data = ""
+        conn.execute("UPDATE stores SET bg_image_data = '' WHERE id = ?", (sid,))
+        clear_image_cache(f"bg:{sid}")
     elif uploaded_bg:
-        bg_image_data = uploaded_bg
+        conn.execute("UPDATE stores SET bg_image_data = ? WHERE id = ?", (uploaded_bg, sid))
+        clear_image_cache(f"bg:{sid}")
     elif bg_preset_url:
-        bg_image_data = bg_preset_url
-    else:
-        bg_image_data = store.get("bg_image_data") or ""
+        conn.execute("UPDATE stores SET bg_image_data = ? WHERE id = ?", (bg_preset_url, sid))
+        clear_image_cache(f"bg:{sid}")
 
-    conn.execute(
-        "UPDATE stores SET theme_color = ?, logo_data = ?, banner_data = ?, bg_image_data = ? WHERE id = ?",
-        (theme_color, logo_data, banner_data, bg_image_data, store["id"])
-    )
     conn.commit()
     conn.close()
 
@@ -995,7 +1130,7 @@ def update_store():
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store_row = conn.execute("SELECT * FROM stores WHERE access_key = ?", (current_key,)).fetchone()
+    store_row = conn.execute(f"SELECT {STORE_LIGHT_COLS} FROM stores WHERE access_key = ?", (current_key,)).fetchone()
     if not store_row:
         conn.close()
         return redirect(url_for("index"))
@@ -1012,8 +1147,6 @@ def update_store():
     momo_number = request.form.get("momo_number", store.get("momo_number", "")).strip()
     momo_name = request.form.get("momo_name", store.get("momo_name", "")).strip()
     theme_color = request.form.get("theme_color", store.get("theme_color") or "emerald").strip()
-    logo_file = request.files.get("logo_file")
-    banner_file = request.files.get("banner_file")
 
     new_slug = create_slug(custom_slug_raw) if custom_slug_raw else create_slug(store_name)
     conflict = conn.execute(
@@ -1026,19 +1159,16 @@ def update_store():
         save_alias_if_needed(conn, store["id"], store["store_slug"], store["store_name"])
         conn.execute("DELETE FROM store_aliases WHERE old_slug = ? AND store_id = ?", (new_slug, store["id"]))
 
-    logo_data = encode_uploaded_image(logo_file) or store.get("logo_data") or ""
-    banner_data = encode_uploaded_image(banner_file) or store.get("banner_data") or ""
-
     conn.execute(
         """UPDATE stores
            SET store_name = ?, store_slug = ?, whatsapp_number = ?, category = ?, bio = ?,
-               logo_data = ?, banner_data = ?, theme_color = ?, country = ?,
-               default_currency = ?, payment_method_label = ?, momo_number = ?, momo_name = ?
+               theme_color = ?, country = ?, default_currency = ?,
+               payment_method_label = ?, momo_number = ?, momo_name = ?
            WHERE id = ?""",
         (
             store_name, new_slug, whatsapp_number, category, bio,
-            logo_data, banner_data, theme_color, country,
-            default_currency, payment_method_label, momo_number, momo_name, store["id"]
+            theme_color, country, default_currency,
+            payment_method_label, momo_number, momo_name, store["id"]
         )
     )
     conn.commit()
@@ -1056,16 +1186,20 @@ def dashboard():
         return redirect(url_for("index"))
 
     conn = get_db_connection()
-    store_row = conn.execute("SELECT * FROM stores WHERE access_key = ?", (access_key,)).fetchone()
+    store_row = conn.execute(f"SELECT {STORE_LIGHT_COLS} FROM stores WHERE access_key = ?", (access_key,)).fetchone()
 
     if not store_row:
         session.pop("store_key", None)
         conn.close()
         return redirect(url_for("index"))
 
-    store = dict(store_row)
+    store = hydrate_store_light(store_row)
     raw_products = conn.execute(
-        "SELECT * FROM products WHERE store_id = ? ORDER BY id DESC", (store["id"],)
+        """SELECT id, store_id, product_name, price, compare_price, badge_text,
+                  variants_text, currency, description, in_stock,
+                  COALESCE(image_count, 1) AS image_count, created_at
+           FROM products WHERE store_id = ? ORDER BY id DESC""",
+        (store["id"],)
     ).fetchall()
 
     raw_orders = conn.execute(
@@ -1077,7 +1211,7 @@ def dashboard():
     ).fetchall()
     conn.close()
 
-    products = hydrate_products(raw_products)
+    products = hydrate_products_fast(raw_products)
     orders = [dict(o) for o in raw_orders]
     reviews, avg_rating, review_count = compute_review_stats(raw_reviews)
 
@@ -1286,6 +1420,7 @@ def add_product():
 
     primary_image = images_list[0]
     images_json_str = json.dumps(images_list)
+    image_count = len(images_list)
 
     try:
         numeric_price = float(price)
@@ -1300,17 +1435,17 @@ def add_product():
     conn.execute(
         """INSERT INTO products (
                store_id, product_name, price, compare_price, badge_text, variants_text,
-               currency, description, image_data, images_json
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               currency, description, image_data, images_json, image_count
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             store["id"], product_name, numeric_price, numeric_compare, badge_text, variants_text,
-            currency, description, primary_image, images_json_str
+            currency, description, primary_image, images_json_str, image_count
         )
     )
     conn.commit()
     conn.close()
 
-    flash(f"🚀 Published '{product_name}' with {len(images_list)} photo(s)!", "success")
+    flash(f"🚀 Published '{product_name}' with {image_count} photo(s)!", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -1336,7 +1471,8 @@ def edit_product(product_id):
         flash("Product not found.", "error")
         return redirect(url_for("dashboard"))
 
-    product = hydrate_products([product_row])[0]
+    product = dict(product_row)
+    raw_existing_list = extract_raw_images_list(product)
 
     new_name = request.form.get("product_name", product["product_name"]).strip() or product["product_name"]
     new_currency = request.form.get("currency", product["currency"]).strip() or product["currency"]
@@ -1364,8 +1500,8 @@ def edit_product(product_id):
     for idx_str in kept_indices:
         try:
             idx = int(idx_str)
-            if 0 <= idx < len(product["images_list"]):
-                existing_images.append(product["images_list"][idx])
+            if 0 <= idx < len(raw_existing_list):
+                existing_images.append(raw_existing_list[idx])
         except ValueError:
             pass
 
@@ -1397,28 +1533,30 @@ def edit_product(product_id):
         else:
             final_images = existing_images + new_images
     else:
-        final_images = existing_images if existing_images else product["images_list"]
+        final_images = existing_images if existing_images else raw_existing_list
 
     if not final_images:
         final_images = ["https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product"]
 
     primary_image = final_images[0]
     images_json_str = json.dumps(final_images)
+    image_count = len(final_images)
 
     conn.execute(
         """UPDATE products
            SET product_name = ?, price = ?, compare_price = ?, badge_text = ?, variants_text = ?,
-               currency = ?, description = ?, image_data = ?, images_json = ?
+               currency = ?, description = ?, image_data = ?, images_json = ?, image_count = ?
            WHERE id = ? AND store_id = ?""",
         (
             new_name, new_price, new_compare, new_badge, new_variants,
-            new_currency, new_description, primary_image, images_json_str,
+            new_currency, new_description, primary_image, images_json_str, image_count,
             product_id, store["id"]
         )
     )
     conn.commit()
     conn.close()
 
+    clear_image_cache(f"prod:{product_id}:")
     flash(f"✨ Updated '{new_name}'!", "success")
     return redirect(url_for("dashboard"))
 
@@ -1461,6 +1599,7 @@ def delete_product(product_id):
             (product_id, store["id"])
         )
         conn.commit()
+        clear_image_cache(f"prod:{product_id}:")
         flash("Product removed from store.", "success")
     conn.close()
     return redirect(url_for("dashboard"))
@@ -1472,7 +1611,7 @@ def logout():
     return redirect(url_for("index"))
 
 
-# --- UPGRADE #7: FOUNDER MASTER ADMIN & PRO MONETIZATION ROUTES ---
+# --- FOUNDER MASTER ADMIN & PRO MONETIZATION ROUTES (FAST LIGHTWEIGHT QUERY) ---
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin_panel():
@@ -1493,13 +1632,18 @@ def admin_panel():
 
     conn = get_db_connection()
     stores_rows = conn.execute("""
-        SELECT s.*, COUNT(p.id) AS product_count
+        SELECT s.id, s.store_name, s.store_slug, s.access_key, s.whatsapp_number,
+               s.category, s.country, s.default_currency,
+               COALESCE(s.views_count, 0) AS views_count,
+               COALESCE(s.is_pro, 0) AS is_pro,
+               CASE WHEN s.logo_data IS NOT NULL AND s.logo_data != '' THEN 1 ELSE 0 END AS has_logo,
+               COUNT(p.id) AS product_count
         FROM stores s
         LEFT JOIN products p ON s.id = p.store_id
         GROUP BY s.id
         ORDER BY COALESCE(s.is_pro, 0) DESC, s.id DESC
     """).fetchall()
-    stores = [dict(s) for s in stores_rows]
+    stores = [hydrate_store_light(s) for s in stores_rows]
 
     total_products_row = conn.execute("SELECT COUNT(*) AS cnt FROM products").fetchone()
     total_products = total_products_row["cnt"] if total_products_row else 0
@@ -1527,7 +1671,6 @@ def admin_panel():
 
 @app.route("/admin/toggle-pro/<int:store_id>", methods=["POST"])
 def admin_toggle_pro(store_id):
-    """1-click Founder monetization button to grant or revoke Verified Pro Merchant status"""
     if not session.get("is_varsell_admin"):
         return redirect(url_for("admin_panel"))
 
@@ -1585,7 +1728,7 @@ def admin_logout():
     return redirect(url_for("index"))
 
 
-# --- SMART DYNAMIC STOREFRONT ROUTES ---
+# --- SMART DYNAMIC STOREFRONT ROUTES (ULTRA-FAST LIGHTWEIGHT QUERY) ---
 
 @app.route("/store/<store_slug>")
 @app.route("/<store_slug>")
@@ -1611,7 +1754,10 @@ def view_store(store_slug):
     store["views_count"] = (store.get("views_count") or 0) + 1
 
     raw_products = conn.execute(
-        "SELECT * FROM products WHERE store_id = ? ORDER BY in_stock DESC, id DESC",
+        """SELECT id, store_id, product_name, price, compare_price, badge_text,
+                  variants_text, currency, description, in_stock,
+                  COALESCE(image_count, 1) AS image_count, created_at
+           FROM products WHERE store_id = ? ORDER BY in_stock DESC, id DESC""",
         (store["id"],)
     ).fetchall()
 
@@ -1621,7 +1767,7 @@ def view_store(store_slug):
     ).fetchall()
     conn.close()
 
-    products = hydrate_products(raw_products)
+    products = hydrate_products_fast(raw_products)
     reviews, avg_rating, review_count = compute_review_stats(raw_reviews)
 
     featured_product = None
