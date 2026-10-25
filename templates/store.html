@@ -151,6 +151,32 @@
       deferredPrompt = e;
     });
 
+    function showStoreLoading(text) {
+      var bar = document.getElementById("pwaLoadingBar");
+      var badge = document.getElementById("pwaLoadingBadge");
+      if (bar) bar.classList.remove("hidden");
+      if (badge) {
+        badge.textContent = text || "⚡ Loading...";
+        badge.classList.remove("hidden");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", function() {
+      document.querySelectorAll("a[href^='/']").forEach(function(link) {
+        if (!link.hasAttribute("target")) {
+          link.addEventListener("click", function() {
+            showStoreLoading("⚡ Loading...");
+          });
+        }
+      });
+      document.querySelectorAll("form").forEach(function(f) {
+        f.addEventListener("submit", function() {
+          showStoreLoading("⚡ Submitting...");
+        });
+      });
+      updateOnlineStatus();
+    });
+
     function openStoreModal(id) {
       var el = document.getElementById(id);
       if (el) el.classList.remove("hidden");
@@ -161,7 +187,6 @@
       if (el) el.classList.add("hidden");
     }
 
-    // UPGRADE #6: Interactive 1-5 Star Selector in Write Review Modal
     function setReviewRating(stars) {
       var input = document.getElementById("reviewRatingInput");
       if (input) input.value = stars;
@@ -465,10 +490,15 @@
 
     window.addEventListener("online", updateOnlineStatus);
     window.addEventListener("offline", updateOnlineStatus);
-    window.addEventListener("DOMContentLoaded", updateOnlineStatus);
   </script>
 </head>
 <body class="{{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-slate-100' }} min-h-screen pb-36 relative">
+
+  <!-- Instant PWA Navigation Progress Bar & Floating Status Pill -->
+  <div id="pwaLoadingBar" class="hidden fixed top-0 inset-x-0 h-1.5 bg-gradient-to-r from-emerald-400 via-amber-300 to-purple-500 animate-pulse z-50"></div>
+  <div id="pwaLoadingBadge" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-400 text-slate-950 font-extrabold text-xs px-5 py-2.5 rounded-full shadow-2xl z-50">
+    ⚡ Loading...
+  </div>
 
   <!-- Offline Status Banner -->
   <div
@@ -484,7 +514,7 @@
     class="fixed top-4 right-4 left-4 sm:left-auto z-50 hidden {{ accent_bg }} font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-2xl transition-all text-center"
   ></div>
 
-  <!-- Flash Messages (e.g. When a customer posts a new review) -->
+  <!-- Flash Messages -->
   <div class="max-w-5xl mx-auto px-4 pt-3 relative z-30">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -520,7 +550,7 @@
             <img
               src="{{ store.logo_data }}"
               alt="{{ store.store_name }}"
-              class="w-16 h-16 sm:w-22 sm:h-22 rounded-3xl object-cover border-2 {{ accent_border }} shadow-2xl shrink-0"
+              class="w-16 h-16 sm:w-22 sm:h-22 rounded-3xl object-cover border-2 {% if store.is_pro == 1 %}border-amber-400{% else %}{{ accent_border }}{% endif %} shadow-2xl shrink-0"
             />
           {% else %}
             <div class="w-16 h-16 sm:w-22 sm:h-22 rounded-3xl {{ accent_bg }} flex items-center justify-center font-black text-2xl sm:text-3xl shadow-2xl shrink-0">
@@ -530,6 +560,12 @@
 
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
+              {% if store.is_pro == 1 %}
+                <span class="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow">
+                  👑 VERIFIED PRO MERCHANT
+                </span>
+              {% endif %}
+
               <span class="text-[11px] font-bold border {{ accent_badge }} px-2.5 py-0.5 rounded-full">
                 {{ store.category }}
               </span>
@@ -546,7 +582,6 @@
                 </span>
               {% endif %}
 
-              <!-- UPGRADE #6: Live Clickable Star Rating Pill in Header -->
               <a
                 href="#reviews-section"
                 class="text-[11px] font-extrabold text-yellow-300 bg-yellow-400/15 border border-yellow-400/35 px-2.5 py-0.5 rounded-full hover:bg-yellow-400/25 transition"
@@ -639,6 +674,7 @@
                 id="storeSlideImg-{{ p.id }}"
                 src="{{ img_list[0] }}"
                 alt="{{ p.product_name }}"
+                loading="lazy"
                 data-idx="0"
                 data-images='{{ img_list|tojson }}'
                 onclick="openLightbox('storeSlideImg-{{ p.id }}', {{ p.product_name|tojson }})"
@@ -712,6 +748,7 @@
               {% for img_url in img_list %}
               <img
                 src="{{ img_url }}"
+                loading="lazy"
                 onclick="jumpStoreSlide('storeSlideImg-{{ p.id }}', 'storeSlideBadge-{{ p.id }}', {{ loop.index0 }})"
                 class="w-11 h-11 rounded-xl object-cover border border-white/20 hover:border-amber-400 cursor-pointer shrink-0 transition"
               />
@@ -816,9 +853,7 @@
     {% endif %}
   </main>
 
-  <!-- ========================================================================= -->
-  <!-- UPGRADE #6: VERIFIED CUSTOMER REVIEWS & STAR RATINGS SECTION              -->
-  <!-- ========================================================================= -->
+  <!-- VERIFIED CUSTOMER REVIEWS & STAR RATINGS SECTION -->
   <section id="reviews-section" class="max-w-5xl mx-auto px-4 py-10 border-t border-white/10 relative z-10">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
@@ -888,9 +923,7 @@
     {% endif %}
   </section>
 
-  <!-- ========================================================================= -->
-  <!-- MODAL: WRITE A CUSTOMER REVIEW (UPGRADE #6)                               -->
-  <!-- ========================================================================= -->
+  <!-- MODAL: WRITE A CUSTOMER REVIEW -->
   <div
     id="writeReviewModal"
     class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
@@ -967,9 +1000,7 @@
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- UPGRADE #5: AUTO-OPENING DIRECT AD SPOTLIGHT MODAL (?item=ID)             -->
-  <!-- ========================================================================= -->
+  <!-- AUTO-OPENING DIRECT AD SPOTLIGHT MODAL (?item=ID) -->
   {% if featured_product %}
   {% set fp = featured_product %}
   {% set fp_imgs = fp.images_list if fp.images_list is defined else [fp.image_data] %}
