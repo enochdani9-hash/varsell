@@ -1,4 +1,4 @@
-import os 
+import os
 import re
 import gzip
 import json
@@ -443,8 +443,6 @@ def encode_uploaded_image(file_obj):
     return ""
 
 
-# --- FAST STORE & PRODUCT HYDRATION (REPLACES MBs OF BASE64 WITH TINY FAST URLs) ---
-
 STORE_LIGHT_COLS = """
     id, store_name, store_slug, access_key, whatsapp_number, category, bio,
     theme_color, country, default_currency, payment_method_label, momo_number, momo_name,
@@ -467,7 +465,6 @@ def hydrate_store_light(row):
 
 
 def hydrate_products_fast(product_rows):
-    """Generates lightweight `/img/product/<id>/<idx>` URLs instead of embedding megabytes of Base64 in HTML!"""
     hydrated = []
     for row in product_rows:
         p = dict(row)
@@ -502,7 +499,6 @@ def hydrate_products_fast(product_rows):
 
 
 def extract_raw_images_list(product_row):
-    """Used only when editing a product's photos in the backend"""
     imgs = []
     raw_json = product_row.get("images_json")
     if raw_json:
@@ -581,7 +577,7 @@ def find_store_by_any_identifier(conn, identifier):
     return None, False
 
 
-# --- ULTRA-FAST RAM-CACHED BINARY IMAGE ENDPOINTS ---
+# --- RAM-CACHED BINARY IMAGE ENDPOINTS ---
 
 def decode_and_cache_image(cache_key, raw_data):
     if not raw_data:
@@ -676,7 +672,6 @@ def serve_product_photo(product_id, idx):
         return redirect("https://placehold.co/600x600/0f172a/10b981?text=Varsell+Product")
 
     imgs = extract_raw_images_list(dict(row))
-    # Auto-sync image_count if older product had multiple images
     if len(imgs) != (row.get("image_count") or 1):
         try:
             conn.execute("UPDATE products SET image_count = ? WHERE id = ?", (len(imgs), product_id))
@@ -685,7 +680,7 @@ def serve_product_photo(product_id, idx):
             pass
     conn.close()
 
-     chosen = imgs[idx] if 0 <= idx < len(imgs) else imgs[0]
+    chosen = imgs[idx] if 0 <= idx < len(imgs) else imgs[0]
     return decode_and_cache_image(cache_key, chosen)
 
 
@@ -741,7 +736,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     sw_code = """
-const CACHE_NAME = 'varsell-fast-v15';
+const CACHE_NAME = 'varsell-fast-v14';
 const STATIC_ASSETS = ['/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -765,7 +760,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.pathname === '/ping') return;
 
-  // Cache images for instant repeat viewing, but never block HTML navigation
   if (url.pathname.startsWith('/img/')) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
@@ -811,7 +805,7 @@ def sitemap_xml():
     return Response("\n".join(xml), mimetype="application/xml")
 
 
-# --- MAIN PLATFORM ROUTES (ZERO HEAVY BLOB QUERIES = INSTANT RESPONSE) ---
+# --- MAIN PLATFORM ROUTES ---
 
 @app.route("/")
 def index():
@@ -1611,7 +1605,7 @@ def logout():
     return redirect(url_for("index"))
 
 
-# --- FOUNDER MASTER ADMIN & PRO MONETIZATION ROUTES (FAST LIGHTWEIGHT QUERY) ---
+# --- FOUNDER MASTER ADMIN & PRO MONETIZATION ROUTES ---
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin_panel():
@@ -1728,7 +1722,7 @@ def admin_logout():
     return redirect(url_for("index"))
 
 
-# --- SMART DYNAMIC STOREFRONT ROUTES (ULTRA-FAST LIGHTWEIGHT QUERY) ---
+# --- SMART DYNAMIC STOREFRONT ROUTES ---
 
 @app.route("/store/<store_slug>")
 @app.route("/<store_slug>")
