@@ -78,7 +78,7 @@
     }
   </style>
 
-  <!-- TOP-LEVEL INTERACTIVE FUNCTIONS + INSTANT PHOTO COMPRESSOR + HEARTBEAT -->
+  <!-- TOP-LEVEL INTERACTIVE FUNCTIONS + INSTANT PHOTO COMPRESSOR + PWA PROGRESS BAR -->
   <script>
     var dashLightboxImages = [];
     var dashLightboxIdx = 0;
@@ -92,6 +92,32 @@
         navigator.serviceWorker.register('/sw.js');
       });
     }
+
+    function showDashLoading(text) {
+      var bar = document.getElementById("pwaLoadingBar");
+      var badge = document.getElementById("pwaLoadingBadge");
+      if (bar) bar.classList.remove("hidden");
+      if (badge) {
+        badge.textContent = text || "⚡ Saving...";
+        badge.classList.remove("hidden");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", function() {
+      document.querySelectorAll("a[href^='/']").forEach(function(link) {
+        if (!link.hasAttribute("target")) {
+          link.addEventListener("click", function() {
+            showDashLoading("⚡ Loading...");
+          });
+        }
+      });
+      document.querySelectorAll("form").forEach(function(f) {
+        f.addEventListener("submit", function() {
+          showDashLoading("⚡ Saving changes...");
+        });
+      });
+      updateOnlineStatus();
+    });
 
     function compressImageFile(file, maxWidth, quality) {
       return new Promise(function(resolve) {
@@ -124,7 +150,7 @@
     async function handleQuickAvatarUpload(event) {
       var file = event.target.files[0];
       if (!file) return;
-      showToast("Compressing & uploading profile photo...");
+      showDashLoading("📸 Optimizing & saving profile photo...");
       var compressed = await compressImageFile(file, 400, 0.82);
       document.getElementById("quickCompressedLogo").value = compressed;
       event.target.value = "";
@@ -334,10 +360,15 @@
     }
     window.addEventListener("online", updateOnlineStatus);
     window.addEventListener("offline", updateOnlineStatus);
-    window.addEventListener("DOMContentLoaded", updateOnlineStatus);
   </script>
 </head>
 <body class="{{ 'text-slate-900' if is_light and not store.bg_image_data else 'text-slate-100' }} min-h-screen pb-20 relative">
+
+  <!-- Instant PWA Navigation Progress Bar & Floating Status Pill -->
+  <div id="pwaLoadingBar" class="hidden fixed top-0 inset-x-0 h-1.5 bg-gradient-to-r from-emerald-400 via-amber-300 to-purple-500 animate-pulse z-50"></div>
+  <div id="pwaLoadingBadge" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-400 text-slate-950 font-extrabold text-xs px-5 py-2.5 rounded-full shadow-2xl z-50">
+    ⚡ Saving...
+  </div>
 
   <!-- Offline Status Banner -->
   <div
@@ -365,7 +396,7 @@
               <img
                 src="{{ store.logo_data }}"
                 alt="Profile"
-                class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border-2 {{ accent_border }} shadow-md"
+                class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border-2 {% if store.is_pro == 1 %}border-amber-400{% else %}{{ accent_border }}{% endif %} shadow-md"
               />
             {% else %}
               <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl {{ accent_btn }} flex items-center justify-center font-black text-lg shadow-md">
@@ -386,10 +417,15 @@
         </form>
 
         <div class="min-w-0">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5 flex-wrap">
             <h1 class="font-extrabold {{ 'text-slate-950' if is_light and not store.bg_image_data else 'text-white' }} text-sm sm:text-lg truncate">
               {{ store.store_name }}
             </h1>
+            {% if store.is_pro == 1 %}
+              <span class="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow shrink-0">
+                👑 PRO
+              </span>
+            {% endif %}
             <span class="hidden md:inline-block text-[10px] font-bold uppercase tracking-wider border {{ accent_badge }} px-2 py-0.5 rounded-full shrink-0">
               ⭐ {{ "%.1f"|format(avg_rating or 5.0) }} ({{ review_count or 0 }})
             </span>
@@ -625,9 +661,15 @@
             <span class="text-[10px] sm:text-[11px] uppercase tracking-widest text-slate-400 font-bold">
               Your Store Name & Web Link
             </span>
-            <span class="text-[10px] font-bold border {{ accent_badge }} px-2 py-0.5 rounded-full shrink-0">
-              Global Link
-            </span>
+            {% if store.is_pro == 1 %}
+              <span class="text-[10px] font-black bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 px-2.5 py-0.5 rounded-full shrink-0">
+                👑 VERIFIED PRO
+              </span>
+            {% else %}
+              <span class="text-[10px] font-bold border {{ accent_badge }} px-2 py-0.5 rounded-full shrink-0">
+                Global Link
+              </span>
+            {% endif %}
           </div>
           <p class="text-xs sm:text-base font-mono font-extrabold {{ accent_text }} break-all mt-1.5">
             {{ request.host }}/{{ store.store_slug }}
@@ -866,6 +908,13 @@
               Your Active Products ({{ products|length }})
             </h2>
           </div>
+          <button
+            type="button"
+            onclick="openModal('dashHelpModal')"
+            class="bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-bold text-emerald-300 px-3 py-1.5 rounded-xl cursor-pointer"
+          >
+            ❓ Seller Guide
+          </button>
         </div>
 
         {% if products %}
@@ -882,6 +931,7 @@
                     id="dashSlideImg-{{ p.id }}"
                     src="{{ img_list[0] }}"
                     alt="{{ p.product_name }}"
+                    loading="lazy"
                     data-idx="0"
                     data-images='{{ img_list|tojson }}'
                     onclick="openDashLightbox('dashSlideImg-{{ p.id }}', {{ p.product_name|tojson }})"
@@ -936,6 +986,7 @@
                   {% for img_url in img_list %}
                   <img
                     src="{{ img_url }}"
+                    loading="lazy"
                     onclick="jumpSlide('dashSlideImg-{{ p.id }}', 'dashSlideBadge-{{ p.id }}', {{ loop.index0 }})"
                     class="w-10 h-10 rounded-lg object-cover border border-white/20 cursor-pointer shrink-0"
                   />
@@ -1140,6 +1191,7 @@
                       <label class="relative cursor-pointer block">
                         <img
                           src="{{ img_url }}"
+                          loading="lazy"
                           class="w-full h-12 object-cover rounded-lg border border-white/20"
                         />
                         <input
@@ -1206,9 +1258,7 @@
     </div>
   </main>
 
-  <!-- ========================================================================= -->
-  <!-- POP-UP MODAL 1: CUSTOMER REVIEWS MODERATION CENTER (UPGRADE #6)           -->
-  <!-- ========================================================================= -->
+  <!-- POP-UP MODAL 1: CUSTOMER REVIEWS MODERATION CENTER -->
   <div
     id="reviewsManagerModal"
     class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4"
@@ -1797,15 +1847,15 @@
     class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
   >
     <div class="max-w-sm w-full space-y-3">
-      <div class="bg-slate-900 border-2 {{ accent_border }} rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
+      <div class="bg-slate-900 border-2 {% if store.is_pro == 1 %}border-amber-400{% else %}{{ accent_border }}{% endif %} rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
         {% if store.logo_data %}
           <img
             src="{{ store.logo_data }}"
-            class="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 border-2 {{ accent_border }} shadow-lg"
+            class="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 border-2 {% if store.is_pro == 1 %}border-amber-400{% else %}{{ accent_border }}{% endif %} shadow-lg"
           />
         {% endif %}
         <span class="inline-block text-[10px] font-extrabold uppercase tracking-widest {{ accent_btn }} px-3 py-1 rounded-full">
-          OFFICIAL ONLINE STORE
+          {% if store.is_pro == 1 %}👑 VERIFIED PRO STORE{% else %}OFFICIAL ONLINE STORE{% endif %}
         </span>
         <h3 class="text-2xl font-extrabold text-white mt-2">{{ store.store_name }}</h3>
         <p class="text-xs text-slate-300 mt-1">{{ store.category }} • ⭐ {{ "%.1f"|format(avg_rating or 5.0) }}</p>
@@ -1842,6 +1892,53 @@
           Close
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- POP-UP MODAL 7: SELLER DASHBOARD HELP GUIDE -->
+  <div
+    id="dashHelpModal"
+    class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+  >
+    <div class="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto text-white">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-widest {{ accent_text }}">Seller Command Guide</span>
+          <h3 class="text-xl font-extrabold text-white">❓ How to Manage Your Varsell Store</h3>
+        </div>
+        <button
+          type="button"
+          onclick="closeModal('dashHelpModal')"
+          class="text-slate-400 hover:text-white text-sm cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold {{ accent_text }} mb-1">🎯 How to Run Single-Product Ads (Meta / TikTok / Status)</p>
+          <p>Tap <strong>"🎯 Copy Direct Ad Link"</strong> on any product card. When customers click that link, your store opens with that exact product popped up in an instant spotlight modal ready for checkout!</p>
+        </div>
+
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold text-amber-300 mb-1">👕 How to Add Product Sizes, Colors or Options</p>
+          <p>In the <strong>"Sizes / Colors / Options"</strong> box, type your options separated by commas (e.g. <strong>Size 32, Size 34, Black, Brown</strong>). Customers will tap their choice before ordering.</p>
+        </div>
+
+        <div class="bg-slate-950 border border-white/10 rounded-2xl p-4">
+          <p class="font-extrabold text-rose-400 mb-1">🔥 How to Add Strike-Through Discount Prices</p>
+          <p>Enter your selling price (e.g. <strong>150</strong>) and type a higher number in the <strong>"Old Price"</strong> box (e.g. <strong>200</strong>). Varsell automatically crosses out 200 and displays a <strong>🔥 SAVE 25%</strong> badge!</p>
+        </div>
+      </div>
+
+      <button
+        type="button" 
+        onclick="closeModal('dashHelpModal')"
+        class="w-full {{ accent_btn }} font-extrabold py-3 rounded-2xl text-xs cursor-pointer"
+      >
+        Got It!
+      </button>
     </div>
   </div>
 
